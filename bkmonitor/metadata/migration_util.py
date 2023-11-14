@@ -35,6 +35,7 @@ models = {
     "ResultTableOption": None,
     "ResultTableFieldOption": None,
     "InfluxDBStorage": None,
+    "InfluxDBProxyStorage": None,
 }
 
 
@@ -129,12 +130,14 @@ def add_datasource_token(models, data_id):
 
 def add_influxdbstorage(table_id, database, real_table_name, source_duration_time):
     influx_cluster = models["ClusterInfo"].objects.get(cluster_type="influxdb", is_default_cluster=True)
+    proxy = models["InfluxDBProxyStorage"].objects.get(proxy_cluster_id=influx_cluster.cluster_id, is_default=True)
     models["InfluxDBStorage"].objects.create(
         table_id=table_id,
         storage_cluster_id=influx_cluster.cluster_id,
         database=database,
         real_table_name=real_table_name,
         source_duration_time=source_duration_time,
+        influxdb_proxy_storage_id=proxy.id,
     )
 
 
