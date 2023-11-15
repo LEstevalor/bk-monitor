@@ -926,3 +926,33 @@ class GetKafkaInfo(DataAccessAPIResource):
 
     class RequestSerializer(CommonRequestSerializer):
         tags = serializers.CharField(required=False, default="bkmonitor_outer", label="tag标识")
+
+
+####################################
+#          智能监控 故障根因接口         #
+####################################
+class GetIncidentList(DataAccessAPIResource):
+    """
+    获取故障列表信息
+    """
+
+    action = "/v3/aiops/incident/"
+    method = "GET"
+
+
+class GetIncidentDetail(DataAccessAPIResource):
+    """
+    获取故障详情
+    """
+
+    action = "/v3/aiops/incident/{incident_id}/"
+    method = "GET"
+
+
+class UpdateIncidentDetail(DataAccessAPIResource):
+    """
+    更新故障详情
+    """
+
+    action = "/v3/aiops/incident/{incident_id}/"
+    method = "PUT"
