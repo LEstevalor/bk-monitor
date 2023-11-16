@@ -27,8 +27,8 @@ class IncidentViewSet(ResourceViewSet):
     resource_routes = [
         # 故障列表接口
         ResourceRoute("GET", resource.incident.incident_list, endpoint="incident_list"),
-        # # 故障详情接口
-        # ResourceRoute("GET", resource.incident.incident_detail, endpoint="incident_detail"),
+        # 故障详情接口
+        ResourceRoute("GET", resource.incident.incident_detail, endpoint="incident_detail"),
         # # 故障拓扑图接口
         # ResourceRoute("GET", resource.incident.incident_topology, endpoint="incident_topology"),
         # # 故障时序图接口

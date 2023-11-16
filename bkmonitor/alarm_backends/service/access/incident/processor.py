@@ -8,8 +8,21 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 """
+
+from alarm_backends.core.storage.rabbitmq import RabbitMQClient
 from alarm_backends.service.access.base import BaseAccessProcess
 
 
-class AccessIncidentProcess(BaseAccessProcess):
+class BaseAccessIncidentProcess(BaseAccessProcess):
     pass
+
+
+class AccessIncidentProcess(BaseAccessIncidentProcess):
+    def __init__(self, broker_url=None):
+        super(AccessIncidentProcess, self).__init__()
+
+        self.broker_url = broker_url
+        self.client = RabbitMQClient(broker_url=broker_url)
+
+    def process(self):
+        pass

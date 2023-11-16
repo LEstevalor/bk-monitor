@@ -22,7 +22,7 @@ class IncidentListResource(Resource):
         super(IncidentListResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        bk_biz_id = serializers.IntegerField(required=False, label="业务ID")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
         status = serializers.ChoiceField(
             required=False,
             default=None,
@@ -120,3 +120,37 @@ class IncidentListResource(Resource):
         ]
 
         return {"total": 4, "incidents": incident_list}
+
+
+class IncidentDetailResource(Resource):
+    """
+    故障详情
+    """
+
+    def __init__(self):
+        super(IncidentDetailResource, self).__init__()
+
+    class RequestSerializer(serializers.Serializer):
+        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+
+    def perform_request(self, data):
+        return {
+            "incident_id": 1,
+            "incident_name": "我是故障名占位",
+            "incident_reason": "我是故障原因占位",
+            "bk_biz_id": 10,
+            "create_time": 1700000000,
+            "update_time": 1700000000,
+            "begin_time": 1700000000,
+            "end_time": None,
+            "alert_count": 48,
+            "assignee": ["admin", "admin2"],
+            "handlers": ["admin3", "admin4"],
+            "labels": ["游戏", "异常", "时序"],
+            "status": "abnormal",
+            "level": "ERROR",
+            "dimensions": {"bk_cloud_id": 0},
+            "incident_duration": 3000,
+            "current_incident_snapshot_id": 1000000,
+        }
