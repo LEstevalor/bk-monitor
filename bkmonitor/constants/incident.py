@@ -75,29 +75,25 @@ class IncidentOperationClass(CustomEnum):
 class IncidentOperationType(CustomEnum):
     """故障操作类型"""
 
-    CREATE = ("incident_create", IncidentOperationClass.SYSTEM)
-    OBSERVE = ("incident_observe", IncidentOperationClass.SYSTEM)
-    RECOVERE = ("incident_recover", IncidentOperationClass.SYSTEM)
-    NOTICE = ("incident_notice", IncidentOperationClass.SYSTEM)
-    UPDATE = ("incident_update", IncidentOperationClass.SYSTEM)
-    ALERT_TRIGGER = ("alert_trigger", IncidentOperationClass.SYSTEM)
-    ALERT_RECOVER = ("alert_recover", IncidentOperationClass.SYSTEM)
-    ALERT_INVALID = ("alert_invalid", IncidentOperationClass.SYSTEM)
-    ALERT_NOTICE = ("alert_notice", IncidentOperationClass.SYSTEM)
-    ALERT_CONVERGENCE = ("alert_convergence", IncidentOperationClass.SYSTEM)
-    MANUAL_UPDATE = ("manual_update", IncidentOperationClass.USER)
-    FEEDBACK = ("feedback", IncidentOperationClass.USER)
-    CLOSE = ("incident_close", IncidentOperationClass.USER)
-    GROUP_GATHER = ("group_gather", IncidentOperationClass.USER)
-    ALERT_COMFIRM = ("alert_confirm", IncidentOperationClass.USER)
-    ALERT_SHIELD = ("alert_shield", IncidentOperationClass.USER)
-    ALERT_HANDLE = ("alert_handle", IncidentOperationClass.USER)
-    ALERT_CLOSE = ("alert_close", IncidentOperationClass.USER)
-    ALERT_DISPATCH = ("alert_dispatch", IncidentOperationClass.USER)
-
-    def __init__(self, value: str, operation_class: IncidentOperationClass) -> None:
-        self.value = value
-        self.operation_class = operation_class
+    CREATE = "incident_create"
+    OBSERVE = "incident_observe"
+    RECOVERE = "incident_recover"
+    NOTICE = "incident_notice"
+    UPDATE = "incident_update"
+    ALERT_TRIGGER = "alert_trigger"
+    ALERT_RECOVER = "alert_recover"
+    ALERT_INVALID = "alert_invalid"
+    ALERT_NOTICE = "alert_notice"
+    ALERT_CONVERGENCE = "alert_convergence"
+    MANUAL_UPDATE = "manual_update"
+    FEEDBACK = "feedback"
+    CLOSE = "incident_close"
+    GROUP_GATHER = "group_gather"
+    ALERT_COMFIRM = "alert_confirm"
+    ALERT_SHIELD = "alert_shield"
+    ALERT_HANDLE = "alert_handle"
+    ALERT_CLOSE = "alert_close"
+    ALERT_DISPATCH = "alert_dispatch"
 
     @property
     def alias(self):
@@ -123,3 +119,21 @@ class IncidentOperationType(CustomEnum):
             "alert_dispatch": _lazy("告警分派"),
         }
         return incident_operation_type_map[self.value]
+
+    @property
+    def operation_class(self) -> IncidentOperationClass:
+        if self.value in [
+            "incident_create",
+            "incident_observe",
+            "incident_recover",
+            "incident_notice",
+            "incident_update",
+            "alert_trigger",
+            "alert_recover",
+            "alert_invalid",
+            "alert_notice",
+            "alert_convergence",
+        ]:
+            return IncidentOperationClass.SYSTEM
+        else:
+            return IncidentOperationClass.USER
