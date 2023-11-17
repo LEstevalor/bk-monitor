@@ -29,18 +29,18 @@ class IncidentViewSet(ResourceViewSet):
         ResourceRoute("GET", resource.incident.incident_list, endpoint="incident_list"),
         # 故障详情接口
         ResourceRoute("GET", resource.incident.incident_detail, endpoint="incident_detail"),
-        # # 故障拓扑图接口
-        # ResourceRoute("GET", resource.incident.incident_topology, endpoint="incident_topology"),
-        # # 故障时序图接口
-        # ResourceRoute("GET", resource.incident.incident_time_line, endpoint="incident_time_line"),
-        # # 故障告警对象接口
-        # ResourceRoute("GET", resource.incident.incident_targets, endpoint="incident_targets"),
-        # # 故障告警处理人接口
-        # ResourceRoute("GET", resource.incident.incident_handlers, endpoint="incident_handlers"),
-        # # 故障流转列表接口
-        # ResourceRoute("GET", resource.incident.incident_operations, endpoint="incident_operations"),
-        # # 编辑故障
-        # ResourceRoute("POST", resource.incident.edit_incident, endpoint="edit_incident"),
-        # # 反馈故障根因
-        # ResourceRoute("POST", resource.incident.feedback_incident_root, endpoint="feedback_incident_root"),
+        # 故障拓扑图接口
+        ResourceRoute("GET", resource.incident.incident_topology, endpoint="incident_topology"),
+        # 故障时序图接口
+        ResourceRoute("GET", resource.incident.incident_time_line, endpoint="incident_time_line"),
+        # 故障告警对象接口
+        ResourceRoute("GET", resource.incident.incident_targets, endpoint="incident_targets"),
+        # 故障告警处理人接口
+        ResourceRoute("GET", resource.incident.incident_handlers, endpoint="incident_handlers"),
+        # 故障流转列表接口
+        ResourceRoute("GET", resource.incident.incident_operations, endpoint="incident_operations"),
+        # 编辑故障
+        ResourceRoute("POST", resource.incident.edit_incident, endpoint="edit_incident"),
+        # 反馈故障根因
+        ResourceRoute("POST", resource.incident.feedback_incident_root, endpoint="feedback_incident_root"),
     ]

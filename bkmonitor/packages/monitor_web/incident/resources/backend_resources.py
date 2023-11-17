@@ -154,3 +154,115 @@ class IncidentDetailResource(Resource):
             "incident_duration": 3000,
             "current_incident_snapshot_id": 1000000,
         }
+
+
+class IncidentTopologyResource(Resource):
+    """
+    故障拓扑图
+    """
+
+    def __init__(self):
+        super(IncidentTopologyResource, self).__init__()
+
+    class RequestSerializer(serializers.Serializer):
+        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+
+    def perform_request(self, data):
+        return {}
+
+
+class IncidentTimeLineResource(Resource):
+    """
+    故障时序图
+    """
+
+    def __init__(self):
+        super(IncidentTimeLineResource, self).__init__()
+
+    class RequestSerializer(serializers.Serializer):
+        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+
+    def perform_request(self, data):
+        return {}
+
+
+class IncidentTargetsResource(Resource):
+    """
+    故障告警对象列表
+    """
+
+    def __init__(self):
+        super(IncidentTargetsResource, self).__init__()
+
+    class RequestSerializer(serializers.Serializer):
+        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+
+    def perform_request(self, data):
+        return {}
+
+
+class IncidentHandlersResource(Resource):
+    """
+    故障处理人列表
+    """
+
+    def __init__(self):
+        super(IncidentHandlersResource, self).__init__()
+
+    class RequestSerializer(serializers.Serializer):
+        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+
+    def perform_request(self, data):
+        return {}
+
+
+class IncidentOperationsResource(Resource):
+    """
+    故障流转列表
+    """
+
+    def __init__(self):
+        super(IncidentOperationsResource, self).__init__()
+
+    class RequestSerializer(serializers.Serializer):
+        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+
+    def perform_request(self, data):
+        return {}
+
+
+class EditIncidentResource(Resource):
+    """
+    故障修改接口
+    """
+
+    def __init__(self):
+        super(EditIncidentResource, self).__init__()
+
+    class RequestSerializer(serializers.Serializer):
+        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+
+    def perform_request(self, data):
+        return {}
+
+
+class FeedbackIncidentRootResource(Resource):
+    """
+    反馈故障根因
+    """
+
+    def __init__(self):
+        super(FeedbackIncidentRootResource, self).__init__()
+
+    class RequestSerializer(serializers.Serializer):
+        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+
+    def perform_request(self, data):
+        return {}
