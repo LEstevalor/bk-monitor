@@ -576,6 +576,8 @@ MINI_ACTION_IDS = [
     ActionEnum.IMPORT_CONFIG.id,
     ActionEnum.VIEW_APM_APPLICATION.id,
     ActionEnum.MANAGE_APM_APPLICATION.id,
+    ActionEnum.VIEW_INCIDENT.id,
+    ActionEnum.MANAGE_INCIDENT.id,
 ]
 # CMDB（主机依赖）权限
 CMDB_REQUIRE_ACTION_IDS = [
