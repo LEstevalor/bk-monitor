@@ -948,6 +948,9 @@ class GetIncidentDetail(DataAccessAPIResource):
     action = "/v3/aiops/incident/{incident_id}/"
     method = "GET"
 
+    class RequestSerializer(CommonRequestSerializer):
+        incident_id = serializers.CharField(required=True, label="故障ID")
+
 
 class UpdateIncidentDetail(DataAccessAPIResource):
     """
@@ -956,3 +959,18 @@ class UpdateIncidentDetail(DataAccessAPIResource):
 
     action = "/v3/aiops/incident/{incident_id}/"
     method = "PUT"
+
+    class RequestSerializer(CommonRequestSerializer):
+        incident_id = serializers.CharField(required=True, label="故障ID")
+
+
+class GetIncidentSnapshot(DataAccessAPIResource):
+    """
+    获取故障根因定位快照数据
+    """
+
+    action = "/v3/aiops/incident/snapshots/{snapshot_id}/"
+    method = "GET"
+
+    class RequestSerializer(CommonRequestSerializer):
+        snapshot_id = serializers.CharField(required=True, label="快照ID")

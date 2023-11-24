@@ -57,10 +57,9 @@ def run_access_event_handler(data_id):
 
 
 @task(ignore_result=True, queue="celery_service_access_incident")
-def run_access_incident_handler(incident_broker_url: str):
+def run_access_incident_handler(incident_broker_url: str, queue_name: str):
     """
     故障分析结果同步处理器.
     """
-    processor = AccessIncidentProcess(broker_url=incident_broker_url)
+    processor = AccessIncidentProcess(broker_url=incident_broker_url, queue_name=queue_name)
     processor.process()
-    metrics.report_all()

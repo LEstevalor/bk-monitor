@@ -51,16 +51,16 @@ DATABASES = {
         "ENGINE": "django.db.backends.mysql",
         "NAME": APP_CODE,  # noqa
         "USER": "root",
-        "PASSWORD": "",
-        "HOST": "localhost",
+        "PASSWORD": "example",
+        "HOST": "127.0.0.1",
         "PORT": "3306",
     },
     "monitor_api": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": APP_CODE,  # noqa
         "USER": "root",
-        "PASSWORD": "",
-        "HOST": "localhost",
+        "PASSWORD": "example",
+        "HOST": "127.0.0.1",
         "PORT": "3306",
     },
 }
