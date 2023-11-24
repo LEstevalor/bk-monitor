@@ -77,9 +77,10 @@ class IncidentOperationType(CustomEnum):
 
     CREATE = "incident_create"
     OBSERVE = "incident_observe"
-    RECOVERE = "incident_recover"
+    RECOVER = "incident_recover"
     NOTICE = "incident_notice"
     UPDATE = "incident_update"
+    MERGE = "incident_merge"
     ALERT_TRIGGER = "alert_trigger"
     ALERT_RECOVER = "alert_recover"
     ALERT_INVALID = "alert_invalid"
@@ -89,7 +90,7 @@ class IncidentOperationType(CustomEnum):
     FEEDBACK = "feedback"
     CLOSE = "incident_close"
     GROUP_GATHER = "group_gather"
-    ALERT_COMFIRM = "alert_confirm"
+    ALERT_CONFIRM = "alert_confirm"
     ALERT_SHIELD = "alert_shield"
     ALERT_HANDLE = "alert_handle"
     ALERT_CLOSE = "alert_close"
@@ -103,6 +104,7 @@ class IncidentOperationType(CustomEnum):
             "incident_recover": _lazy("故障恢复"),
             "incident_notice": _lazy("故障通知"),
             "incident_update": _lazy("修改故障属性"),
+            "incident_merge": _lazy("故障合并"),
             "alert_trigger": _lazy("触发告警"),
             "alert_recover": _lazy("告警恢复"),
             "alert_invalid": _lazy("告警失效"),
@@ -128,6 +130,7 @@ class IncidentOperationType(CustomEnum):
             "incident_recover",
             "incident_notice",
             "incident_update",
+            "incident_merge",
             "alert_trigger",
             "alert_recover",
             "alert_invalid",
@@ -137,3 +140,10 @@ class IncidentOperationType(CustomEnum):
             return IncidentOperationClass.SYSTEM
         else:
             return IncidentOperationClass.USER
+
+
+class IncidentSyncType(CustomEnum):
+    """故障同步类型."""
+
+    CREATE = "create"
+    UPDATE = "update"

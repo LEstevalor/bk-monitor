@@ -8,6 +8,8 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 """
+from typing import Dict, List
+
 from django_elasticsearch_dsl.registries import registry
 from elasticsearch_dsl import Search, field
 
@@ -25,8 +27,8 @@ class IncidentDocument(BaseDocument):
     incident_reason = field.Text()  # 故障原因
     status = field.Keyword()  # 故障状态
     level = field.Keyword()  # 故障级别
-    assignee = field.Keyword(multi=True)  # 故障负责人
-    handler = field.Keyword(multi=True)  # 故障处理人
+    assignees = field.Keyword(multi=True)  # 故障负责人
+    handlers = field.Keyword(multi=True)  # 故障处理人
     labels = field.Keyword(multi=True)  # 标签
 
     # 故障创建时间(服务器时间)
@@ -49,12 +51,26 @@ class IncidentDocument(BaseDocument):
         name = "bkmonitor_aiops_incident"
         settings = {"number_of_shards": 3, "number_of_replicas": 1, "refresh_interval": "1s"}
 
+    def generate_assignees(self, snapshot_info: Dict) -> None:
+        """生成故障负责人
+
+        :param snapshot_info: 故障分析结果图谱快照信息
+        """
+        pass
+
+    def generate_handlers(self, alert_ids: List[int]) -> None:
+        """生成故障处理人
+
+        :param alert_ids: 告警ID列表
+        """
+        pass
+
 
 @registry.register_document
 class IncidentSnapshotDocument(BaseDocument):
     id = field.Keyword(required=True)
     incident_id = field.Keyword()  # 故障ID
-    bk_biz_id = field.Keyword(multi=True)  # 故障影响的业务列表
+    bk_biz_ids = field.Keyword(multi=True)  # 故障影响的业务列表
     status = field.Keyword()  # 故障当前快照状态
     alerts = field.Keyword(multi=True)  # 故障关联的告警
     events = field.Keyword(multi=True)  # 故障关联的事件
@@ -64,7 +80,7 @@ class IncidentSnapshotDocument(BaseDocument):
     update_time = Date(format=BaseDocument.DATE_FORMAT)
 
     content = field.Object()  # 故障内容
-    graph_snapshot_id = field.Keyword()  # 故障当前快照的图谱快照ID
+    fpp_snapshot_id = field.Keyword()  # 故障当前快照的图谱快照ID
 
     # 故障额外信息，用于存放其他内容
     extra_info = field.Object(enabled=False)
