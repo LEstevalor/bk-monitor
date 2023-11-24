@@ -64,7 +64,11 @@ ADVANCED_OPTIONS = OrderedDict(
         ("BK_DATA_DATA_EXPIRES_DAYS_BY_HDFS", slz.IntegerField(label=_("计算平台中结果表(HDFS)默认保存天数"), default=180)),
         (
             "BK_DATA_MYSQL_STORAGE_CLUSTER_NAME",
-            slz.CharField(label=_("计算平台 MYSQL 存储集群名称"), default="default", allow_blank=True),
+            slz.CharField(label=_("计算平台 MYSQL 存储集群名称"), default="mysql-default", allow_blank=True),
+        ),
+        (
+            "BK_DATA_MYSQL_STORAGE_CLUSTER_TYPE",
+            slz.CharField(label=_("计算平台 MYSQL类 存储类型 "), default="mysql_storage", allow_blank=True),
         ),
         (
             "BK_DATA_HDFS_STORAGE_CLUSTER_NAME",

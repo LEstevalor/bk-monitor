@@ -192,7 +192,11 @@ class AccessHandler(base.BaseHandler):
             self.run_access(run_access_event_handler, data_id)
 
     def handle_incident(self) -> None:
-        self.run_access(run_access_incident_handler, settings.AIOPS_INCIDENT_BROKER_URL)
+        self.run_access(
+            run_access_incident_handler,
+            settings.AIOPS_INCIDENT_BROKER_URL,
+            settings.AIOPS_INCIDENT_SYNC_QUEUE,
+        )
 
     def handle(self):
         if self.access_type == AccessType.Data:

@@ -67,12 +67,12 @@ class RabbitMQClient(object):
             result["message"] = str(e)
         return result
 
-    def set_message_handler(self, queue_name: str, callback: Callable) -> None:
-        messages = {}
+    def start_consuming(self, queue_name: str, callback: Callable = None) -> None:
         try:
             channel = self.connection.channel()
             channel.queue_declare(queue=queue_name, durable=True)
-            channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=False)
+            if callback:
+                channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=False)
+            channel.start_consuming()
         except ChannelClosedByBroker as e:
             logger.exception(f"failed to get llen[{queue_name}], err: {e}")
-        return messages

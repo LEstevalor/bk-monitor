@@ -407,6 +407,7 @@ ACTIVE_VIEWS = {
         "as_code": "monitor_web.as_code.views",
         "share": "monitor_web.share.views",
         "promql_import": "monitor_web.promql_import.views",
+        "incident": "monitor_web.incident.views",
     },
     "weixin": {"mobile_event": "weixin.event.views"},
     "fta_web": {
@@ -875,6 +876,7 @@ BK_DATA_RT_ID_PREFIX = ""  # 计算平台的表名前缀
 BK_DATA_DATA_EXPIRES_DAYS = 30  # 接入到计算平台后，数据保留天数
 BK_DATA_DATA_EXPIRES_DAYS_BY_HDFS = 180  # 接入到计算平台后，存储到HDFS时数据保留天数
 BK_DATA_MYSQL_STORAGE_CLUSTER_NAME = "jungle_alert"  # 监控专属tspider存储集群名称
+BK_DATA_MYSQL_STORAGE_CLUSTER_TYPE = "tspider_storage"  # 接入计算平台关系型数据库存储类型
 BK_DATA_HDFS_STORAGE_CLUSTER_NAME = "hdfsOnline4"  # 监控专属HDFS存储集群名称
 BK_DATA_DRUID_STORAGE_CLUSTER_NAME = "monitor"  # 监控专属druid存储集群名称
 BK_DATA_KAFKA_BROKER_URL = "127.0.0.1:9092"
