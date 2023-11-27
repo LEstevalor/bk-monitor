@@ -35,8 +35,9 @@ class MultivariateAnomalyDetection(BasicAlgorithmsCollection):
         yield ExprDetectAlgorithms(
             expr,
             (
-                "主机场景智能检测发现{{ anomaly_sort | length }}个指标异常："
-                "{% for item in anomaly_sort %}{{ item.4 }}({{ item.0 }})={{ item.3 }}(异常得分:{{ item.2 }});{% endfor %}"
+                "主机智能异常检测 发现{{ anomaly_sort | length }}个指标异常："
+                "{% for item in anomaly_sort %}{{ item.4 }}({{ item.0 }})={{ item.3 }}"
+                "(异常得分: {{ item.2 }}); {% endfor %}"
             ),
         )
 
@@ -47,8 +48,7 @@ class MultivariateAnomalyDetection(BasicAlgorithmsCollection):
         return context
 
     def anomaly_message_template_tuple(self, data_point):
-        prefix, suffix = super(MultivariateAnomalyDetection, self).anomaly_message_template_tuple(data_point)
-        return prefix, ""
+        return "", ""
 
 
 def parse_anomaly(anomaly_str, config):
