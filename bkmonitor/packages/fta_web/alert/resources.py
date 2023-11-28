@@ -2983,7 +2983,7 @@ class QuickAlertShield(QuickActionTokenResource):
         )
 
 
-class MultiAnomalyDetectGraphs(AIOpsBaseResource):
+class MultiAnomalyDetectGraphsResource(AIOpsBaseResource):
     """提供主机智能异常检测告警详情的图表配置."""
 
     def perform_request(self, validated_request_data):
