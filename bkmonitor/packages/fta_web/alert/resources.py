@@ -2993,7 +2993,7 @@ class MultiAnomalyDetectGraphResource(AIOpsBaseResource):
         graph_panel["result_table_label"] = metric.result_table_label
         graph_panel["result_table_label_name"] = metric.result_table_label_name
         graph_panel["metric_name_alias"] = metric.metric_field_name
-        graph_panel["targets"][0]["api"] = "grafana.graphUnifyQuery"
+        graph_panel["targets"][0]["api"] = "alert.alertGraphQuery"
         graph_panel["targets"][0]["alias"] = ""
         graph_panel["targets"][0]["data"]["function"] = {}
 
