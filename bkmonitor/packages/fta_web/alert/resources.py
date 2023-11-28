@@ -15,7 +15,7 @@ import logging
 import math
 import re
 import time
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from collections import defaultdict
 from datetime import datetime, timedelta
 from itertools import chain
@@ -2137,7 +2137,6 @@ class AIOpsBaseResource(Resource, metaclass=ABCMeta):
 
         return cache_result
 
-    @abstractmethod
     def fetch_aiops_result(self, alert):
         """各种场景下获取AIOps算法结果.
 
@@ -2933,57 +2932,7 @@ class MetricRecommendationFeedbackResource(Resource):
         return result
 
 
-class QuickAlertShield(QuickActionTokenResource):
-    class RequestSerializer(serializers.Serializer):
-        action_id = serializers.IntegerField(label="告警ID")
-        token = serializers.CharField(label="通知token")
-        bk_biz_id = serializers.IntegerField(label="业务ID")
-        shield_hours = serializers.IntegerField(label="屏蔽时间", default=3)
-
-    def handle(self, params, alert_id):
-        shield_params = {
-            "end_time": params["end_time"].strftime("%Y-%m-%d %H:%M:%S"),
-            "begin_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "description": params["description"],
-            "bk_biz_id": params["bk_biz_id"],
-            "shield_notice": False,
-            "cycle_config": {"begin_time": "", "type": 1, "end_time": ""},
-            "is_quick": True,
-        }
-
-        shield_params.update({"category": "event", "dimension_config": {"id": alert_id}})
-        return shield_params
-
-    def perform_request(self, validated_data):
-        alert_ids = validated_data.pop("alert_ids", [])
-        bk_biz_id = validated_data["bk_biz_id"]
-        shield_hours = validated_data.get("shield_hours", 3)
-        shield_end_time = datetime.now() + timedelta(hours=shield_hours)
-        success_alerts = []
-        failed_alerts = []
-        for alert_id in alert_ids:
-            params = {
-                "type": "event",
-                "event_id": alert_id,
-                "end_time": shield_end_time,
-                "bk_biz_id": bk_biz_id,
-                "description": _("快捷屏蔽3小时"),
-            }
-            try:
-                resource.shield.add_shield(self.handle(params, alert_id))
-                success_alerts.append(alert_id)
-            except BaseException:
-                failed_alerts.append(alert_id)
-                logger.exception("quick shield alert(%s) error %s", alert_id)
-        if not failed_alerts:
-            return self.redirect(bk_biz_id, validated_data["action_id"])
-
-        return _("完成快捷屏蔽{shield_hours}小时, 成功({success_alerts})， 失败({failed_alerts})").format(
-            shield_hours=shield_hours, success_alerts=len(success_alerts), failed_alerts=len(failed_alerts)
-        )
-
-
-class MultiAnomalyDetectGraphsResource(AIOpsBaseResource):
+class MultiAnomalyDetectGraphResource(AIOpsBaseResource):
     """提供主机智能异常检测告警详情的图表配置."""
 
     def perform_request(self, validated_request_data):
@@ -3054,6 +3003,56 @@ class MultiAnomalyDetectGraphsResource(AIOpsBaseResource):
             query_config["metrics"] = [{"field": metric.metric_field, "method": "MAX", "alias": "a"}]
 
         return graph_panel
+
+
+class QuickAlertShield(QuickActionTokenResource):
+    class RequestSerializer(serializers.Serializer):
+        action_id = serializers.IntegerField(label="告警ID")
+        token = serializers.CharField(label="通知token")
+        bk_biz_id = serializers.IntegerField(label="业务ID")
+        shield_hours = serializers.IntegerField(label="屏蔽时间", default=3)
+
+    def handle(self, params, alert_id):
+        shield_params = {
+            "end_time": params["end_time"].strftime("%Y-%m-%d %H:%M:%S"),
+            "begin_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "description": params["description"],
+            "bk_biz_id": params["bk_biz_id"],
+            "shield_notice": False,
+            "cycle_config": {"begin_time": "", "type": 1, "end_time": ""},
+            "is_quick": True,
+        }
+
+        shield_params.update({"category": "event", "dimension_config": {"id": alert_id}})
+        return shield_params
+
+    def perform_request(self, validated_data):
+        alert_ids = validated_data.pop("alert_ids", [])
+        bk_biz_id = validated_data["bk_biz_id"]
+        shield_hours = validated_data.get("shield_hours", 3)
+        shield_end_time = datetime.now() + timedelta(hours=shield_hours)
+        success_alerts = []
+        failed_alerts = []
+        for alert_id in alert_ids:
+            params = {
+                "type": "event",
+                "event_id": alert_id,
+                "end_time": shield_end_time,
+                "bk_biz_id": bk_biz_id,
+                "description": _("快捷屏蔽3小时"),
+            }
+            try:
+                resource.shield.add_shield(self.handle(params, alert_id))
+                success_alerts.append(alert_id)
+            except BaseException:
+                failed_alerts.append(alert_id)
+                logger.exception("quick shield alert(%s) error %s", alert_id)
+        if not failed_alerts:
+            return self.redirect(bk_biz_id, validated_data["action_id"])
+
+        return _("完成快捷屏蔽{shield_hours}小时, 成功({success_alerts})， 失败({failed_alerts})").format(
+            shield_hours=shield_hours, success_alerts=len(success_alerts), failed_alerts=len(failed_alerts)
+        )
 
 
 class QuickAlertAck(QuickActionTokenResource):

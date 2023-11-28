@@ -191,7 +191,7 @@ class AlertViewSet(ResourceViewSet):
             "POST", resource.alert.metric_recommendation_feedback, endpoint="alert/metric_recommendation_feedback"
         ),
         # 主机多指标异常检测告警详情图表
-        ResourceRoute("GET", resource.alert.multi_anomaly_detect_graphs, endpoint="alert/multi_anomaly_detect_graphs"),
+        ResourceRoute("GET", resource.alert.multi_anomaly_detect_graph, endpoint="alert/multi_anomaly_detect_graph"),
     ]
 
 
