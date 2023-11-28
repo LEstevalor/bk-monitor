@@ -2986,12 +2986,13 @@ class MultiAnomalyDetectGraphResource(AIOpsBaseResource):
             "metric_name": anomaly_metric[4],
         }
 
-        base_graph_panel["id"] = anomaly_metric[0]
-        base_graph_panel["title"] = anomaly_metric[4]
-        base_graph_panel["anomaly_info"] = anomaly_info
-        base_graph_panel["result_table_label"] = metric.result_table_label
-        base_graph_panel["result_table_label_name"] = metric.result_table_label_name
-        base_graph_panel["metric_name_alias"] = metric.metric_field_name
+        graph_panel["id"] = anomaly_metric[0]
+        graph_panel["title"] = anomaly_metric[4]
+        graph_panel["subTitle"] = ""
+        graph_panel["anomaly_info"] = anomaly_info
+        graph_panel["result_table_label"] = metric.result_table_label
+        graph_panel["result_table_label_name"] = metric.result_table_label_name
+        graph_panel["metric_name_alias"] = metric.metric_field_name
 
         # 因为推荐指标不一定具有告警相同的维度，因此这里不对维度进行任何聚合，只做指标的推荐
         query_configs = base_graph_panel["targets"][0]["data"]["query_configs"]
@@ -3000,7 +3001,7 @@ class MultiAnomalyDetectGraphResource(AIOpsBaseResource):
             query_config["data_source_label"] = metric.data_source_label
             query_config["data_type_label"] = metric.data_type_label
             query_config["table"] = metric.result_table_id
-            query_config["metrics"] = [{"field": metric.metric_field, "method": "MAX", "alias": "a"}]
+            query_config["metrics"] = [{"field": metric.metric_field, "method": "AVG", "alias": "a"}]
 
         return graph_panel
 
