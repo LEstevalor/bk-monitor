@@ -13,6 +13,7 @@ from typing import Dict, List
 from django.utils.translation import ugettext as _
 from django.utils.translation import ugettext_lazy as _lazy
 from django_elasticsearch_dsl.search import Search
+from elasticsearch_dsl.response import Response
 from elasticsearch_dsl.utils import AttrList
 
 from bkmonitor.documents.incident import IncidentDocument
@@ -22,7 +23,6 @@ from fta_web.alert.handlers.base import (
     BaseQueryTransformer,
     QueryField,
 )
-from fta_web.alert.handlers.translator import AbstractTranslator
 
 
 class IncidentQueryTransformer(BaseQueryTransformer):
@@ -99,15 +99,18 @@ class IncidentQueryHandler(BaseQueryHandler):
 
         return search_object
 
-    def search(self, show_overview: bool = False, show_aggs: bool = False, show_dsl: bool = False) -> Dict:
+    def search(self, show_overview: bool = False, show_aggs: bool = False) -> Dict:
         search_object = self.get_search_object()
         search_object = self.add_conditions(search_object)
         search_object = self.add_query_string(search_object)
         search_object = self.add_ordering(search_object)
         search_object = self.add_pagination(search_object)
 
-        if show_dsl:
-            return {"dsl": search_object.to_dict()}
+        if show_overview:
+            search_object = self.add_overview(search_object)
+
+        if show_aggs:
+            search_object = self.add_aggs(search_object)
 
         search_result = search_object.execute()
         incidents = self.handle_hit_list(search_result.hits)
@@ -116,6 +119,12 @@ class IncidentQueryHandler(BaseQueryHandler):
             "total": min(search_result.hits.total.value, 10000),
             "incidents": incidents,
         }
+
+        if show_overview:
+            result["overview"] = self.handle_overview(search_result)
+
+        if show_aggs:
+            result["aggs"] = self.handle_aggs(search_result)
 
         return result
 
@@ -157,6 +166,83 @@ class IncidentQueryHandler(BaseQueryHandler):
         }
         return result_data
 
-    def top_n(self, fields: List, size=10, translators: Dict[str, AbstractTranslator] = None):
-        translators = {}
-        return super(IncidentQueryHandler, self).top_n(fields, size, translators)
+    def add_overview(self, search_object: Search) -> Search:
+        """补充检索全览的检索结构.
+
+        :param search_object: 检索结构
+        :return: 包含全览的检索结构
+        """
+        return search_object
+
+    def handle_overview(self, search_result: Response) -> Dict:
+        """处理返回内容中的检索全览部分.
+
+        :param search_result: 检索结果
+        :return: 故障全览内容
+        """
+        return {
+            "children": [
+                {
+                    "id": "abnormal",
+                    "name": _("未恢复"),
+                    "count": 60,
+                },
+                {
+                    "id": "recovering",
+                    "name": _("观察中"),
+                    "count": 20,
+                },
+                {
+                    "id": "recovered",
+                    "name": _("已恢复"),
+                    "count": 10,
+                },
+                {
+                    "id": "closed",
+                    "name": _("已解决"),
+                    "count": 10,
+                },
+            ],
+            "count": 100,
+            "id": "incident",
+            "name": _("故障"),
+        }
+
+    def add_aggs(self, search_object: Search) -> Search:
+        """补充检索聚合统计的检索结构.
+
+        :param search_object: 检索结构
+        :return: 包含聚合统计的检索结构
+        """
+        return search_object
+
+    def handle_aggs(self, search_result: Response) -> Dict:
+        """处理返回内容中的检索聚合统计部分.
+
+        :param search_result: 检索结果
+        :return: 故障聚合统计内容
+        """
+        return [
+            {
+                "id": "level",
+                "name": _("级别"),
+                "count": 100,
+                "children": [
+                    {
+                        "id": 1,
+                        "count": 60,
+                        "name": _("致命"),
+                    },
+                    {
+                        "id": 2,
+                        "count": 30,
+                        "name": _("预警"),
+                    },
+                    {
+                        "id": 3,
+                        "count": 10,
+                        "name": _("提醒"),
+                    },
+                ],
+            }
+        ]
