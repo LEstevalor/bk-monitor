@@ -54,9 +54,9 @@ class IncidentListResource(Resource):
             validated_request_data,
             enabled=record_history and validated_request_data.get("query_string"),
         ):
-            result = handler.search(show_overview=False, show_aggs=True, show_dsl=False)
+            result = handler.search(show_overview=False, show_aggs=True)
 
-        incident_list = [
+        result["incidents"] = [
             {
                 "incident_id": 1,
                 "incident_name": "我是故障名占位",
@@ -127,7 +127,6 @@ class IncidentListResource(Resource):
             },
         ]
 
-        return {"total": 4, "incidents": incident_list}
         return result
 
 
@@ -151,7 +150,7 @@ class IncidentOverviewResource(Resource):
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         handler = IncidentQueryHandler(**validated_request_data)
-        return handler.search(show_overview=True, show_aggs=False, show_dsl=False)
+        return handler.search(show_overview=True, show_aggs=False)
 
 
 class IncidentDetailResource(Resource):
