@@ -11,12 +11,12 @@ specific language governing permissions and limitations under the License.
 from typing import Dict
 
 from bkmonitor.documents.incident import IncidentDocument
-from bkmonitor.packages.fta_web.alert.handlers.incident import IncidentQueryHandler
 from bkmonitor.views import serializers
 from constants.incident import IncidentStatus
 from core.drf_resource import api
 from core.drf_resource.base import Resource
-from fta_web.models.alert import SearchHistory, SearchType
+from packages.fta_web.alert.handlers.incident import IncidentQueryHandler
+from packages.fta_web.models.alert import SearchHistory, SearchType
 
 
 class IncidentListResource(Resource):
@@ -55,8 +55,6 @@ class IncidentListResource(Resource):
             enabled=record_history and validated_request_data.get("query_string"),
         ):
             result = handler.search(show_overview=False, show_aggs=True, show_dsl=False)
-
-        return result
 
         incident_list = [
             {
@@ -130,6 +128,7 @@ class IncidentListResource(Resource):
         ]
 
         return {"total": 4, "incidents": incident_list}
+        return result
 
 
 class IncidentOverviewResource(Resource):
@@ -173,7 +172,6 @@ class IncidentDetailResource(Resource):
         incident = IncidentDocument.get(incident_id)
         # incident["snapshots"] = self.get_incident_snapshots(incident)
 
-        return incident
         return {
             "incident_id": 1,
             "incident_name": "我是故障名占位",
@@ -193,6 +191,8 @@ class IncidentDetailResource(Resource):
             "incident_duration": 3000,
             "current_incident_snapshot_id": 1000000,
         }
+
+        return incident
 
 
 class IncidentTopologyResource(Resource):
