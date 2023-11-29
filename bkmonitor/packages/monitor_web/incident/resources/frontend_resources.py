@@ -15,8 +15,8 @@ from bkmonitor.views import serializers
 from constants.incident import IncidentStatus
 from core.drf_resource import api
 from core.drf_resource.base import Resource
-from packages.fta_web.alert.handlers.incident import IncidentQueryHandler
-from packages.fta_web.models.alert import SearchHistory, SearchType
+from fta_web.alert.handlers.incident import IncidentQueryHandler
+from fta_web.models.alert import SearchHistory, SearchType
 
 
 class IncidentListResource(Resource):
