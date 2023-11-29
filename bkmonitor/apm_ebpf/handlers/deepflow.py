@@ -16,7 +16,11 @@ import requests
 from kubernetes.client import ApiException
 
 from apm_ebpf.apps import logger
-from apm_ebpf.constants import DeepflowComp
+from apm_ebpf.constants import (
+    APM_EBPF_METRIC_DEFAULT_NEGATIVE_PREFIX,
+    APM_EBPF_METRIC_DEFAULT_PREFIX,
+    DeepflowComp,
+)
 from apm_ebpf.handlers.kube import BcsKubeClient
 from apm_ebpf.handlers.workload import WorkloadContent, WorkloadHandler
 from apm_ebpf.utils import group_by
@@ -336,3 +340,42 @@ class DeepflowHandler:
         url = f"{self._scheme}://{node_ip}:{port}"
 
         return url
+
+
+class CustomTimeSeriesInstall(object):
+    def __init__(self, bk_biz_id):
+        self.bk_biz_id = bk_biz_id
+        self.custom_report_name = f"{APM_EBPF_METRIC_DEFAULT_PREFIX}_{self.bk_biz_id}_metric"
+        if self.bk_biz_id < 0:
+            self.custom_report_name = f"{APM_EBPF_METRIC_DEFAULT_NEGATIVE_PREFIX}_{abs(self.bk_biz_id)}_metric"
+
+    def check_custom_time_series(self):
+        """
+        根据 name 和 bk_biz_id 判断自定义指标是否存在
+        """
+        from monitor_web.models import CustomTSTable
+
+        if CustomTSTable.objects.filter(name=self.custom_report_name, bk_biz_id=self.bk_biz_id).exists():
+            return True
+        return False
+
+    def create_default_custom_time_series(self):
+        """
+        内置自定义指标数据
+        因是定时任务执行，故不考虑重试机制
+        """
+
+        if not self.check_custom_time_series():
+            param = {
+                "name": self.custom_report_name,
+                "scenario": "application_check",
+                "data_label": self.custom_report_name,
+                "is_platform": False,
+                "protocol": "prometheus",
+                "desc": "",
+                "bk_biz_id": self.bk_biz_id,
+            }
+            try:
+                api.monitor.create_custom_time_series(param)
+            except Exception as e:
+                logger.error(f"[create_default_custom_time_series], param: {param}, error: {e}")
