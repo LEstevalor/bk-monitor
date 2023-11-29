@@ -99,7 +99,7 @@ class IncidentQueryHandler(BaseQueryHandler):
 
         return search_object
 
-    def search(self, show_dsl: bool = False) -> Dict:
+    def search(self, show_overview: bool = False, show_aggs: bool = False, show_dsl: bool = False) -> Dict:
         search_object = self.get_search_object()
         search_object = self.add_conditions(search_object)
         search_object = self.add_query_string(search_object)
