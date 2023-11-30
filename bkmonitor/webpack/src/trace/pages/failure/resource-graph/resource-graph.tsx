@@ -221,7 +221,7 @@ export default defineComponent({
           },
           update: undefined
         },
-        'line'
+        'cubic-vertical'
       );
     };
     const registerCustomCombo = () => {
@@ -309,7 +309,7 @@ export default defineComponent({
           const nodeBegin = 80;
           const width = graph.getWidth() - nodeBegin - 100;
           const height = graph.getHeight();
-          const comboxHeight = height / combos.length;
+          const comboxHeight = Math.max(height / combos.length, 100);
           const nodeSize = 46;
           combos.forEach((combo, comboIndex) => {
             const comboNodes = nodes.filter(node => node.comboId.toString() === combo.id.toString());
@@ -346,6 +346,7 @@ export default defineComponent({
           size: 40
         },
         defaultEdge: {
+          type: 'cubic-vertical',
           size: 1,
           color: '#63656D'
         },
@@ -372,6 +373,7 @@ export default defineComponent({
         const isInvoke = cfg.type === EdgeStatus.Invoke;
         const edg = {
           ...cfg,
+          shape: 'cubic-vertical',
           style: {
             endArrow:
               cfg.type === EdgeStatus.Invoke
@@ -383,7 +385,7 @@ export default defineComponent({
                     lineDash: [0, 0]
                   }
                 : false,
-            fill: isInvoke ? '#F55555' : '#63656E',
+            // fill: isInvoke ? '#F55555' : '#63656E',
             stroke: isInvoke ? '#F55555' : '#63656E',
             lineWidth: isInvoke ? 2 : 1,
             lineDash: isInvoke ? [4, 2] : false
@@ -392,6 +394,7 @@ export default defineComponent({
         if (!cfg.color) return edg;
         return {
           ...edg,
+          shape: 'cubic-vertical',
           type: 'resource-edge'
         };
       });
@@ -408,7 +411,7 @@ export default defineComponent({
           // 获取 Combo 中包含的节点和边的范围
           const bbox = combo.getBBox();
           const height = graph.getHeight();
-          const comboxHeight = height / combos.length;
+          const comboxHeight = Math.max(height / combos.length, 100);
           const h = bbox.maxY - bbox.minY;
           const w = graph.getWidth();
           const fillColor = groups.findIndex(id => id === combo.get('model').groupId) % 2 === 1 ? '#292A2B' : '#1B1C1F';

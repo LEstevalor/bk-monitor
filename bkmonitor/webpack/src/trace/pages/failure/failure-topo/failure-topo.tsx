@@ -95,7 +95,7 @@ export default defineComponent({
     const topoGraphRef = ref<HTMLDivElement>(null);
     const graphRef = ref<HTMLDivElement>(null);
     let graph: Graph;
-    let toolTip: Tooltip = null;
+    let tooltips = null;
     const tooltipsModel = shallowRef();
     const tooltipsType = ref('node');
     const tooltipsRef = ref<InstanceType<typeof FailureTopoTooltips>>();
@@ -355,16 +355,11 @@ export default defineComponent({
       });
     };
     const registerCustomTooltip = () => {
-      toolTip = new Tooltip({
+      tooltips = new Tooltip({
         offsetX: 10,
         offsetY: 10,
-        // v4.2.1 起支持配置 trigger，click 代表点击后出现 tooltip。默认为 mouseenter
         trigger: 'click',
-        // the types of items that allow the tooltip show up
-        // 允许出现 tooltip 的 item 类型
-        itemTypes: ['node', 'edge'],
-        // custom the tooltip's content
-        // 自定义 tooltip 内容
+        itemTypes: ['edge', 'node'],
         getContent: e => {
           const type = e.item.getType();
           const model = e.item.getModel();
@@ -397,7 +392,7 @@ export default defineComponent({
         fitView: false,
         minZoom: 0.00000001,
         groupByTypes: false,
-        plugins: [toolTip],
+        plugins: [tooltips],
         layout: {
           // type: 'comboForce',
           // maxIteration: 1000,
@@ -506,6 +501,9 @@ export default defineComponent({
           graph.setItemState(nodeItem, 'running', true);
           return;
         }
+      });
+      graph.on('combo:click', () => {
+        tooltips.hide();
       });
       graph.on('afterlayout', () => {
         const combos = graph.getCombos();
