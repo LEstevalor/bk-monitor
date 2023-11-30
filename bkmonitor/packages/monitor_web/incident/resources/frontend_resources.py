@@ -11,6 +11,7 @@ specific language governing permissions and limitations under the License.
 from typing import Dict
 
 from bkmonitor.documents.incident import IncidentDocument
+from bkmonitor.utils.time_tools import hms_string
 from bkmonitor.views import serializers
 from constants.incident import IncidentStatus
 from core.drf_resource import api
@@ -73,6 +74,7 @@ class IncidentListResource(Resource):
                 "status": "abnormal",
                 "level": "ERROR",
                 "dimensions": {"bk_cloud_id": 0},
+                "incident_duration": hms_string(3000),
             },
             {
                 "incident_id": 2,
@@ -90,6 +92,7 @@ class IncidentListResource(Resource):
                 "status": "recovering",
                 "level": "WARN",
                 "dimensions": {"bk_cloud_id": 0},
+                "incident_duration": hms_string(3000),
             },
             {
                 "incident_id": 3,
@@ -107,6 +110,7 @@ class IncidentListResource(Resource):
                 "status": "recovered",
                 "level": "INFO",
                 "dimensions": {"bk_cloud_id": 0},
+                "incident_duration": hms_string(3000),
             },
             {
                 "incident_id": 4,
@@ -124,6 +128,7 @@ class IncidentListResource(Resource):
                 "status": "closed",
                 "level": "WARN",
                 "dimensions": {"bk_cloud_id": 0},
+                "incident_duration": hms_string(3000),
             },
         ]
 
@@ -187,7 +192,7 @@ class IncidentDetailResource(Resource):
             "status": "abnormal",
             "level": "ERROR",
             "dimensions": {"bk_cloud_id": 0},
-            "incident_duration": 3000,
+            "incident_duration": hms_string(3000),
             "current_incident_snapshot_id": 1000000,
         }
 
