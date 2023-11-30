@@ -17,9 +17,9 @@ from pika.spec import Basic
 from alarm_backends.core.storage.rabbitmq import RabbitMQClient
 from alarm_backends.service.access.base import BaseAccessProcess
 from bkmonitor.aiops.incident.operation import IncidentOperationManager
-from bkmonitor.bkmonitor.documents.base import BulkActionType
-from bkmonitor.constants.incident import IncidentSyncType
+from bkmonitor.documents.base import BulkActionType
 from bkmonitor.documents.incident import IncidentDocument, IncidentSnapshotDocument
+from constants.incident import IncidentSyncType
 from core.drf_resource import api
 
 
