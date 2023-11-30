@@ -11,9 +11,9 @@ specific language governing permissions and limitations under the License.
 import time
 from typing import Any, List
 
-from bkmonitor.bkmonitor.documents.base import BulkActionType
-from bkmonitor.constants.incident import IncidentOperationType
+from bkmonitor.documents.base import BulkActionType
 from bkmonitor.documents.incident import IncidentOperationDocument
+from constants.incident import IncidentOperationType
 
 
 class IncidentOperationManager(object):

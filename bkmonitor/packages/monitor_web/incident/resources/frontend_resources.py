@@ -13,7 +13,7 @@ from typing import Dict
 from bkmonitor.documents.incident import IncidentDocument
 from bkmonitor.utils.time_tools import hms_string
 from bkmonitor.views import serializers
-from constants.incident import IncidentStatus
+from constants.incident import IncidentLevel, IncidentStatus
 from core.drf_resource import api
 from core.drf_resource.base import Resource
 from fta_web.alert.handlers.incident import IncidentQueryHandler
@@ -62,7 +62,6 @@ class IncidentListResource(Resource):
                 "incident_id": 1,
                 "incident_name": "我是故障名占位",
                 "incident_reason": "我是故障原因占位",
-                "bk_biz_id": 10,
                 "create_time": 1700000000,
                 "update_time": 1700000000,
                 "begin_time": 1700000000,
@@ -72,7 +71,9 @@ class IncidentListResource(Resource):
                 "handlers": ["admin3", "admin4"],
                 "labels": ["游戏", "异常", "时序"],
                 "status": "abnormal",
+                "status_alias": IncidentStatus("abnormal").alias,
                 "level": "ERROR",
+                "level_alias": IncidentLevel("ERROR").alias,
                 "dimensions": {"bk_cloud_id": 0},
                 "incident_duration": hms_string(3000),
             },
@@ -80,7 +81,6 @@ class IncidentListResource(Resource):
                 "incident_id": 2,
                 "incident_name": "我是故障名占位",
                 "incident_reason": "我是故障原因占位",
-                "bk_biz_id": 10,
                 "create_time": 1700000000,
                 "update_time": 1700000000,
                 "begin_time": 1700000000,
@@ -90,7 +90,9 @@ class IncidentListResource(Resource):
                 "handlers": ["admin3", "admin4"],
                 "labels": ["游戏", "异常", "时序"],
                 "status": "recovering",
+                "status_alias": IncidentStatus("recovering").alias,
                 "level": "WARN",
+                "level_alias": IncidentLevel("WARN").alias,
                 "dimensions": {"bk_cloud_id": 0},
                 "incident_duration": hms_string(3000),
             },
@@ -98,7 +100,6 @@ class IncidentListResource(Resource):
                 "incident_id": 3,
                 "incident_name": "我是故障名占位",
                 "incident_reason": "我是故障原因占位",
-                "bk_biz_id": 10,
                 "create_time": 1700000000,
                 "update_time": 1700000000,
                 "begin_time": 1700000000,
@@ -108,7 +109,9 @@ class IncidentListResource(Resource):
                 "handlers": ["admin3", "admin4"],
                 "labels": ["游戏", "异常", "时序"],
                 "status": "recovered",
+                "status_alias": IncidentStatus("recovered").alias,
                 "level": "INFO",
+                "level_alias": IncidentLevel("INFO").alias,
                 "dimensions": {"bk_cloud_id": 0},
                 "incident_duration": hms_string(3000),
             },
@@ -116,7 +119,6 @@ class IncidentListResource(Resource):
                 "incident_id": 4,
                 "incident_name": "我是故障名占位",
                 "incident_reason": "我是故障原因占位",
-                "bk_biz_id": 10,
                 "create_time": 1700000000,
                 "update_time": 1700000000,
                 "begin_time": 1700000000,
@@ -126,7 +128,9 @@ class IncidentListResource(Resource):
                 "handlers": ["admin3", "admin4"],
                 "labels": ["游戏", "异常", "时序"],
                 "status": "closed",
+                "status_alias": IncidentStatus("closed").alias,
                 "level": "WARN",
+                "level_alias": IncidentLevel("WARN").alias,
                 "dimensions": {"bk_cloud_id": 0},
                 "incident_duration": hms_string(3000),
             },
@@ -190,7 +194,9 @@ class IncidentDetailResource(Resource):
             "handlers": ["admin3", "admin4"],
             "labels": ["游戏", "异常", "时序"],
             "status": "abnormal",
+            "status_alias": "故障中",
             "level": "ERROR",
+            "level_alias": "致命",
             "dimensions": {"bk_cloud_id": 0},
             "incident_duration": hms_string(3000),
             "current_incident_snapshot_id": 1000000,

@@ -13,7 +13,7 @@ from typing import List
 
 import arrow
 
-from bkmonitor.constants.incident import IncidentLevel, IncidentStatus
+from constants.incident import IncidentLevel, IncidentStatus
 
 
 @dataclass
