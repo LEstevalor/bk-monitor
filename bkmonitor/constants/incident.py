@@ -20,6 +20,12 @@ class CustomEnum(Enum):
             excludes = []
         return [m.value for m in cls.__members__.values() if m.value not in excludes]
 
+    @classmethod
+    def get_enum_translate_list(cls, excludes=None):
+        if excludes is None:
+            excludes = []
+        return [(m.value, m.alias) for m in cls.__members__.values() if m.value not in excludes]
+
 
 class IncidentStatus(CustomEnum):
     """故障状态枚举"""
