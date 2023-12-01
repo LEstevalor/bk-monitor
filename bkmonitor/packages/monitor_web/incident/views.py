@@ -26,9 +26,9 @@ class IncidentViewSet(ResourceViewSet):
 
     resource_routes = [
         # 故障列表接口
-        ResourceRoute("GET", resource.incident.incident_list, endpoint="incident_list"),
+        ResourceRoute("POST", resource.incident.incident_list, endpoint="incident_list"),
         # 故障汇总统计接口
-        ResourceRoute("GET", resource.incident.incident_overview, endpoint="incident_overview"),
+        ResourceRoute("POST", resource.incident.incident_overview, endpoint="incident_overview"),
         # 获取故障维度topn频率值
         ResourceRoute("POST", resource.incident.incident_top_n, endpoint="top_n"),
         # 故障详情接口
