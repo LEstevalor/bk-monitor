@@ -154,6 +154,24 @@ class IncidentTopNResource(BaseTopNResource):
         pass
 
 
+class IncidentValidateQueryStringResource(Resource):
+    """
+    校验 query_string 是否合法
+    """
+
+    class RequestSerializer(serializers.Serializer):
+        query_string = serializers.CharField(label="查询字符串", allow_blank=True)
+
+    def perform_request(self, validated_request_data):
+        if not validated_request_data["query_string"]:
+            return ""
+        transformer_cls = {
+            SearchType.INCIDENT: IncidentQueryHandler.query_transformer,
+        }
+        search_type = validated_request_data["search_type"]
+        return transformer_cls[search_type].transform_query_string(query_string=validated_request_data["query_string"])
+
+
 class IncidentDetailResource(Resource):
     """
     故障详情
