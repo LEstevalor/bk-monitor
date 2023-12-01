@@ -61,6 +61,31 @@ const createNodes = () => {
     return {
       id: `node_${i}`,
       comboId: `combo_${comboId.toString()}`,
+      aggregateNode:
+        i === 2
+          ? [
+              {
+                id: `node_${i}_1`,
+                comboId: `child_combo_${comboId.toString()}`,
+                status: NodeStatus.Normal
+              },
+              {
+                id: `node_${i}_2`,
+                comboId: `child_combo_${comboId.toString()}`,
+                status: NodeStatus.Normal
+              },
+              {
+                id: `node_${i}_3`,
+                comboId: `child_combo_${comboId.toString()}`,
+                status: NodeStatus.Error
+              },
+              {
+                id: `node_${i}_4`,
+                comboId: `child_combo_${comboId.toString()}`,
+                status: NodeStatus.Error
+              }
+            ]
+          : [],
       status
     };
   });
@@ -120,7 +145,14 @@ const createCombos = () => {
         groupId: combo.id
       };
     });
-    return [...acc, ...list];
+    return [
+      ...acc,
+      ...list
+      // {
+      //   id: `child_combo_1`,
+      //   parentId: `combo_1`
+      // }
+    ];
   }, []);
 };
 export default {

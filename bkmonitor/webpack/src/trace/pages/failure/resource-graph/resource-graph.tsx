@@ -33,8 +33,10 @@ import resourceData, { EdgeStatus, NodeStatus, StatusNodeMap } from './resource-
 
 import './resource-graph.scss';
 
-console.info('resourceData', resourceData);
-
+// console.info('resourceData', resourceData);
+const getRawData = () => {
+  return JSON.parse(JSON.stringify(resourceData));
+};
 export default defineComponent({
   name: 'ResourceGraph',
   props: {
@@ -242,8 +244,9 @@ export default defineComponent({
             });
             const w = graph.getWidth();
             const height = graph.getHeight();
-            const comboxHeight = height / resourceData.combos.length;
+            const comboxHeight = height / getRawData().combos.length;
             if (cfg.groupName) {
+              console.info('cfg.groupName', cfg.groupName);
               group.addShape('text', {
                 zIndex: 12,
                 attrs: {
@@ -300,6 +303,81 @@ export default defineComponent({
         },
         'rect'
       );
+      registerCombo(
+        'resource-child-combo',
+        {
+          labelPosition: 'left',
+          labelAutoRotate: false
+          // drawShape(cfg, group) {
+          //   const keyShape = group.addShape('rect', {
+          //     zIndex: 10,
+          //     attrs: {
+          //       fill: '#ddd',
+          //       x: 0,
+          //       y: 0
+          //     },
+          //     name: 'resource-combo-shape'
+          //   });
+          //   const w = graph.getWidth();
+          //   const height = graph.getHeight();
+          //   const comboxHeight = height / resourceData.combos.length;
+          //   if (cfg.groupName) {
+          //     group.addShape('text', {
+          //       zIndex: 12,
+          //       attrs: {
+          //         x: -w / 2 + 8,
+          //         y: -comboxHeight / 2,
+          //         textAlign: 'left',
+          //         text: cfg.groupName,
+          //         fontSize: 12,
+          //         fontWeight: 400,
+          //         fill: '#63656E'
+          //       },
+          //       name: 'resource-combo-title'
+          //     });
+          //   }
+          //   group.addShape('text', {
+          //     zIndex: 11,
+          //     attrs: {
+          //       x: -w / 2 + 8,
+          //       y: 0,
+          //       textAlign: 'left',
+          //       text: cfg.title,
+          //       fontSize: 12,
+          //       fontWeight: 700,
+          //       fill: '#fff'
+          //     },
+          //     name: 'resource-combo-text'
+          //   });
+          //   group.addShape('text', {
+          //     zIndex: 11,
+          //     attrs: {
+          //       x: -w / 2 + 8,
+          //       y: 18,
+          //       textAlign: 'left',
+          //       text: cfg.subTitle,
+          //       fontSize: 12,
+          //       fontWeight: 700,
+          //       fill: '#979BA5'
+          //     },
+          //     name: 'resource-combo-text'
+          //   });
+          //   group.addShape('rect', {
+          //     zIndex: 2,
+          //     attrs: {
+          //       x: -w / 2 + 80,
+          //       y: -comboxHeight / 2 - 26,
+          //       width: 2,
+          //       height: comboxHeight + 40,
+          //       fill: 'rgba(0, 0, 0, 0.3)'
+          //     },
+          //     name: 'resource-combo-bg'
+          //   });
+          //   return keyShape;
+          // }
+        },
+        'rect'
+      );
     };
     const registerCustomLayout = () => {
       registerLayout('resource-layout', {
@@ -309,18 +387,36 @@ export default defineComponent({
           const nodeBegin = 80;
           const width = graph.getWidth() - nodeBegin - 100;
           const height = graph.getHeight();
-          const comboxHeight = Math.max(height / combos.length, 100);
+          const comboxHeight = height / combos.length;
+          console.info(
+            combos.filter(item => !item.parentId),
+            height,
+            comboxHeight,
+            '=========='
+          );
           const nodeSize = 46;
-          combos.forEach((combo, comboIndex) => {
-            const comboNodes = nodes.filter(node => node.comboId.toString() === combo.id.toString());
-            const xBegin = nodeBegin + nodeSize / 2;
-            const yBegin = comboxHeight / 2 + comboIndex * comboxHeight;
-            const nodeStep = width / comboNodes.length;
-            comboNodes.forEach((node, index) => {
-              node.x = xBegin + index * nodeStep;
-              node.y = yBegin;
+          combos
+            .filter(item => !item.parentId)
+            .forEach((combo, comboIndex) => {
+              const comboNodes = nodes.filter(node => node.comboId.toString() === combo.id.toString());
+              const xBegin = nodeBegin + nodeSize / 2;
+              const yBegin = comboxHeight / 2 + comboIndex * comboxHeight;
+              const nodeStep = width / comboNodes.length;
+              comboNodes.forEach((node, index) => {
+                // node.fixSize = [width, comboxHeight];
+                node.x = xBegin + index * nodeStep;
+                node.y = yBegin + 22;
+              });
+              const childCombo = combos.find(item => item.parentId === combo.id);
+              if (childCombo) {
+                debugger;
+                const childNodes = nodes.filter(node => node.comboId.toString() === childCombo.id.toString());
+                childNodes.forEach((node, index) => {
+                  node.x = xBegin + index * nodeStep;
+                  node.y = yBegin + 22;
+                });
+              }
             });
-          });
         }
       });
     };
@@ -360,7 +456,7 @@ export default defineComponent({
           }
         },
         modes: {
-          default: []
+          default: ['drag-combo', 'drag-node', 'drag-canvas', 'zoom-canvas']
         }
       });
       graph.node(node => {
@@ -399,6 +495,12 @@ export default defineComponent({
         };
       });
       graph.combo(combo => {
+        if (combo.parentId) {
+          return {
+            ...combo,
+            type: 'resource-child-combo'
+          };
+        }
         return {
           ...combo,
           type: 'resource-combo'
@@ -407,25 +509,82 @@ export default defineComponent({
       graph.on('afterlayout', () => {
         const combos = graph.getCombos();
         const groups = Array.from(new Set(combos.map(combo => combo.get('model').groupId)));
-        combos.forEach(combo => {
-          // 获取 Combo 中包含的节点和边的范围
-          const bbox = combo.getBBox();
-          const height = graph.getHeight();
-          const comboxHeight = Math.max(height / combos.length, 100);
-          const h = bbox.maxY - bbox.minY;
-          const w = graph.getWidth();
-          const fillColor = groups.findIndex(id => id === combo.get('model').groupId) % 2 === 1 ? '#292A2B' : '#1B1C1F';
-          graph.updateItem(combo, {
-            size: [w, Math.max(comboxHeight, h)],
-            x: w / 2,
-            style: {
-              fill: fillColor,
-              stroke: fillColor
+        combos
+          .filter(item => !item.get('model').parentId)
+          .forEach(combo => {
+            // 获取 Combo 中包含的节点和边的范围
+            const bbox = combo.getBBox();
+            const height = graph.getHeight();
+            const comboxHeight = height / combos.length;
+            const h = bbox.maxY - bbox.minY;
+            const w = graph.getWidth();
+            const fillColor =
+              groups.findIndex(id => id === combo.get('model').groupId) % 2 === 1 ? '#292A2B' : '#1B1C1F';
+            graph.updateItem(combo, {
+              fixSize: [w, 108],
+              x: w / 2,
+              style: {
+                fill: fillColor,
+                stroke: fillColor
+              }
+            });
+            const { id, parentId } = combo.get('model');
+            if (parentId) {
+              console.info('parentId', parentId);
+            }
+            const childCombo = combos.find(item => item.get('model').parentId === id);
+            if (childCombo) {
+              graph.updateItem(childCombo, {
+                // fixSize: [w, 108],
+                x: combo.getBBox().width - 30,
+                y: 108 / 2 + 16
+              });
             }
           });
-        });
       });
-      graph.data(resourceData);
+      graph.on('node:click', e => {
+        const { item, target } = e;
+        if (target.cfg.name !== 'resource-node-rect') return;
+        const { comboId, aggregateNode } = item.get('model');
+        const rawData = getRawData();
+        rawData.combos.push({
+          id: 'resource-child-combo',
+          parentId: comboId,
+          zIndex: 13,
+          style: {
+            fill: '#1B1C1F',
+            stroke: '#979797',
+            lineWidth: 1,
+            lineDash: [4, 2]
+          }
+        });
+        rawData.nodes.push(
+          ...aggregateNode.map(node => ({ ...node, type: 'resource-node', comboId: 'resource-child-combo' }))
+        );
+        console.info('node:click', rawData);
+        graph.data(rawData);
+        graph.render();
+        // graph.addItem('combo', {
+        //   id: 'resource-child-combo',
+        //   parentId: comboId,
+        //   zIndex: 13,
+        //   style: {
+        //     fill: '#1B1C1F',
+        //     stroke: '#979797',
+        //     lineWidth: 1,
+        //     lineDash: [4, 2]
+        //   }
+        // });
+        // aggregateNode?.forEach(item => {
+        //   graph.addItem('node', {
+        //     ...item,
+        //     type: 'resource-node',
+        //     comboId: 'resource-child-combo'
+        //   });
+        // });
+        console.info('node:click', e, item);
+      });
+      graph.data(getRawData());
       graph.render();
     });
     return {
