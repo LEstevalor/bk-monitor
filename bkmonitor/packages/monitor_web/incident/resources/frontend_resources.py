@@ -140,15 +140,7 @@ class IncidentOverviewResource(Resource):
     def __init__(self):
         super(IncidentOverviewResource, self).__init__()
 
-    class RequestSerializer(serializers.Serializer):
-        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
-        status = serializers.ChoiceField(
-            required=False,
-            default=None,
-            label="故障状态",
-            choices=IncidentStatus.get_enum_value_list(),
-        )
-        time_range = serializers.CharField(required=False, label="时间范围", allow_blank=True, allow_null=True)
+    RequestSerializer = IncidentSearchSerializer
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         handler = IncidentQueryHandler(**validated_request_data)
