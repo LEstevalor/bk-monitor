@@ -2,6 +2,7 @@ import { request } from '../base';
 
 export const incidentList = request('GET', 'rest/v2/incident/incident_list/');
 export const incidentOverview = request('GET', 'rest/v2/incident/incident_overview/');
+export const incidentTopN = request('POST', 'rest/v2/incident/top_n/');
 export const incidentDetail = request('GET', 'rest/v2/incident/incident_detail/');
 export const incidentTopology = request('GET', 'rest/v2/incident/incident_topology/');
 export const incidentTimeLine = request('GET', 'rest/v2/incident/incident_time_line/');
@@ -14,6 +15,7 @@ export const feedbackIncidentRoot = request('POST', 'rest/v2/incident/feedback_i
 export default {
   incidentList,
   incidentOverview,
+  incidentTopN,
   incidentDetail,
   incidentTopology,
   incidentTimeLine,

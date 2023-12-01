@@ -246,3 +246,6 @@ class IncidentQueryHandler(BaseQueryHandler):
                 ],
             }
         ]
+
+    def top_n(self, fields: List, size=10, translators: dict = None) -> Dict:
+        return super(IncidentQueryHandler, self).top_n(fields, size, translators)
