@@ -17,7 +17,9 @@ from constants.incident import IncidentLevel, IncidentStatus
 from core.drf_resource import api
 from core.drf_resource.base import Resource
 from fta_web.alert.handlers.incident import IncidentQueryHandler
+from fta_web.alert.resources import BaseTopNResource
 from fta_web.models.alert import SearchHistory, SearchType
+from packages.monitor_web.incident.serializers import IncidentSearchSerializer
 
 
 class IncidentListResource(Resource):
@@ -28,19 +30,10 @@ class IncidentListResource(Resource):
     def __init__(self):
         super(IncidentListResource, self).__init__()
 
-    class RequestSerializer(serializers.Serializer):
-        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
-        status = serializers.ChoiceField(
-            required=False,
-            default=None,
-            label="故障状态",
-            choices=IncidentStatus.get_enum_value_list(),
-        )
+    class RequestSerializer(IncidentSearchSerializer):
         level = serializers.ListField(required=False, label="故障级别", default=[])
         assignee = serializers.ListField(required=False, label="故障负责人", default=[])
         handler = serializers.ListField(required=False, label="故障处理人", default=[])
-        query_string = serializers.CharField(required=False, label="故障筛选内容", default='')
-        time_range = serializers.CharField(required=False, label="时间范围", allow_blank=True, allow_null=True)
         record_history = serializers.BooleanField(label="是否保存收藏历史", default=False)
         page = serializers.IntegerField(required=False, label="页码")
         page_size = serializers.IntegerField(required=False, label="每页条数")
@@ -160,6 +153,13 @@ class IncidentOverviewResource(Resource):
     def perform_request(self, validated_request_data: Dict) -> Dict:
         handler = IncidentQueryHandler(**validated_request_data)
         return handler.search(show_overview=True, show_aggs=False)
+
+
+class IncidentTopNResource(BaseTopNResource):
+    handler_cls = IncidentQueryHandler
+
+    class RequestSerializer(IncidentSearchSerializer, BaseTopNResource.RequestSerializer):
+        pass
 
 
 class IncidentDetailResource(Resource):

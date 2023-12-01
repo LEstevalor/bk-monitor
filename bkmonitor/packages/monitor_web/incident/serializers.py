@@ -8,25 +8,15 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 """
+from rest_framework import serializers
 
-from .action import ActionInstanceDocument  # noqa
-from .alert import AlertDocument  # noqa
-from .event import EventDocument  # noqa
-from .incident import (  # noqa
-    IncidentDocument,
-    IncidentNoticeDocument,
-    IncidentOperationDocument,
-    IncidentSnapshotDocument,
-)
-from .log import AlertLog  # noqa
+from fta_web.alert.serializers import SearchConditionSerializer
 
-ALL_DOCUMENTS = [
-    EventDocument,
-    AlertDocument,
-    AlertLog,
-    ActionInstanceDocument,
-    IncidentDocument,
-    IncidentNoticeDocument,
-    IncidentOperationDocument,
-    IncidentSnapshotDocument,
-]
+
+class IncidentSearchSerializer(serializers.Serializer):
+    bk_biz_ids = serializers.ListField(label="业务ID", default=None)
+    status = serializers.ListField(label="状态", required=False, child=serializers.CharField())
+    conditions = SearchConditionSerializer(label="搜索条件", many=True, default=[])
+    query_string = serializers.CharField(label="查询字符串", default="", allow_blank=True)
+    start_time = serializers.IntegerField(label="开始时间")
+    end_time = serializers.IntegerField(label="结束时间")
