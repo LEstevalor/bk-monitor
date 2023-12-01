@@ -58,8 +58,3 @@ class DeepflowComp:
             cls.SERVICE_GRAFANA_REGEX,
             cls.SERVICE_APP_REGEX,
         ]
-
-
-# apm_ebpf_{bk_biz_id}_metric, bk_biz_id 为负值时, apm_ebpf_negative_{abs(bk_biz_id)}_metric
-APM_EBPF_METRIC_DEFAULT_PREFIX = "apm_ebpf"
-APM_EBPF_METRIC_DEFAULT_NEGATIVE_PREFIX = "apm_ebpf_negative"

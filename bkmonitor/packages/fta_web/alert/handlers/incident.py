@@ -28,8 +28,8 @@ from fta_web.alert.handlers.base import (
 class IncidentQueryTransformer(BaseQueryTransformer):
     NESTED_KV_FIELDS = {"tags": "tags"}
     VALUE_TRANSLATE_FIELDS = {
-        "level": IncidentLevel,
-        "status": IncidentStatus,
+        "level": IncidentLevel.get_enum_translate_list(),
+        "status": IncidentStatus.get_enum_translate_list(),
     }
     """
     incident_id = field.Keyword(required=True)
@@ -246,3 +246,6 @@ class IncidentQueryHandler(BaseQueryHandler):
                 ],
             }
         ]
+
+    def top_n(self, fields: List, size=10, translators: dict = None) -> Dict:
+        return super(IncidentQueryHandler, self).top_n(fields, size, translators)

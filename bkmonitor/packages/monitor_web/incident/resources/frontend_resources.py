@@ -11,12 +11,15 @@ specific language governing permissions and limitations under the License.
 from typing import Dict
 
 from bkmonitor.documents.incident import IncidentDocument
+from bkmonitor.utils.time_tools import hms_string
 from bkmonitor.views import serializers
-from constants.incident import IncidentStatus
+from constants.incident import IncidentLevel, IncidentStatus
 from core.drf_resource import api
 from core.drf_resource.base import Resource
 from fta_web.alert.handlers.incident import IncidentQueryHandler
+from fta_web.alert.resources import BaseTopNResource
 from fta_web.models.alert import SearchHistory, SearchType
+from packages.monitor_web.incident.serializers import IncidentSearchSerializer
 
 
 class IncidentListResource(Resource):
@@ -27,19 +30,10 @@ class IncidentListResource(Resource):
     def __init__(self):
         super(IncidentListResource, self).__init__()
 
-    class RequestSerializer(serializers.Serializer):
-        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
-        status = serializers.ChoiceField(
-            required=False,
-            default=None,
-            label="故障状态",
-            choices=IncidentStatus.get_enum_value_list(),
-        )
+    class RequestSerializer(IncidentSearchSerializer):
         level = serializers.ListField(required=False, label="故障级别", default=[])
         assignee = serializers.ListField(required=False, label="故障负责人", default=[])
         handler = serializers.ListField(required=False, label="故障处理人", default=[])
-        query_string = serializers.CharField(required=False, label="故障筛选内容", default='')
-        time_range = serializers.CharField(required=False, label="时间范围", allow_blank=True, allow_null=True)
         record_history = serializers.BooleanField(label="是否保存收藏历史", default=False)
         page = serializers.IntegerField(required=False, label="页码")
         page_size = serializers.IntegerField(required=False, label="每页条数")
@@ -61,7 +55,6 @@ class IncidentListResource(Resource):
                 "incident_id": 1,
                 "incident_name": "我是故障名占位",
                 "incident_reason": "我是故障原因占位",
-                "bk_biz_id": 10,
                 "create_time": 1700000000,
                 "update_time": 1700000000,
                 "begin_time": 1700000000,
@@ -71,14 +64,16 @@ class IncidentListResource(Resource):
                 "handlers": ["admin3", "admin4"],
                 "labels": ["游戏", "异常", "时序"],
                 "status": "abnormal",
+                "status_alias": IncidentStatus("abnormal").alias,
                 "level": "ERROR",
+                "level_alias": IncidentLevel("ERROR").alias,
                 "dimensions": {"bk_cloud_id": 0},
+                "incident_duration": hms_string(3000),
             },
             {
                 "incident_id": 2,
                 "incident_name": "我是故障名占位",
                 "incident_reason": "我是故障原因占位",
-                "bk_biz_id": 10,
                 "create_time": 1700000000,
                 "update_time": 1700000000,
                 "begin_time": 1700000000,
@@ -88,14 +83,16 @@ class IncidentListResource(Resource):
                 "handlers": ["admin3", "admin4"],
                 "labels": ["游戏", "异常", "时序"],
                 "status": "recovering",
+                "status_alias": IncidentStatus("recovering").alias,
                 "level": "WARN",
+                "level_alias": IncidentLevel("WARN").alias,
                 "dimensions": {"bk_cloud_id": 0},
+                "incident_duration": hms_string(3000),
             },
             {
                 "incident_id": 3,
                 "incident_name": "我是故障名占位",
                 "incident_reason": "我是故障原因占位",
-                "bk_biz_id": 10,
                 "create_time": 1700000000,
                 "update_time": 1700000000,
                 "begin_time": 1700000000,
@@ -105,14 +102,16 @@ class IncidentListResource(Resource):
                 "handlers": ["admin3", "admin4"],
                 "labels": ["游戏", "异常", "时序"],
                 "status": "recovered",
+                "status_alias": IncidentStatus("recovered").alias,
                 "level": "INFO",
+                "level_alias": IncidentLevel("INFO").alias,
                 "dimensions": {"bk_cloud_id": 0},
+                "incident_duration": hms_string(3000),
             },
             {
                 "incident_id": 4,
                 "incident_name": "我是故障名占位",
                 "incident_reason": "我是故障原因占位",
-                "bk_biz_id": 10,
                 "create_time": 1700000000,
                 "update_time": 1700000000,
                 "begin_time": 1700000000,
@@ -122,8 +121,11 @@ class IncidentListResource(Resource):
                 "handlers": ["admin3", "admin4"],
                 "labels": ["游戏", "异常", "时序"],
                 "status": "closed",
+                "status_alias": IncidentStatus("closed").alias,
                 "level": "WARN",
+                "level_alias": IncidentLevel("WARN").alias,
                 "dimensions": {"bk_cloud_id": 0},
+                "incident_duration": hms_string(3000),
             },
         ]
 
@@ -138,19 +140,36 @@ class IncidentOverviewResource(Resource):
     def __init__(self):
         super(IncidentOverviewResource, self).__init__()
 
-    class RequestSerializer(serializers.Serializer):
-        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
-        status = serializers.ChoiceField(
-            required=False,
-            default=None,
-            label="故障状态",
-            choices=IncidentStatus.get_enum_value_list(),
-        )
-        time_range = serializers.CharField(required=False, label="时间范围", allow_blank=True, allow_null=True)
+    RequestSerializer = IncidentSearchSerializer
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         handler = IncidentQueryHandler(**validated_request_data)
         return handler.search(show_overview=True, show_aggs=False)
+
+
+class IncidentTopNResource(BaseTopNResource):
+    handler_cls = IncidentQueryHandler
+
+    class RequestSerializer(IncidentSearchSerializer, BaseTopNResource.RequestSerializer):
+        pass
+
+
+class IncidentValidateQueryStringResource(Resource):
+    """
+    校验 query_string 是否合法
+    """
+
+    class RequestSerializer(serializers.Serializer):
+        query_string = serializers.CharField(label="查询字符串", allow_blank=True)
+
+    def perform_request(self, validated_request_data):
+        if not validated_request_data["query_string"]:
+            return ""
+        transformer_cls = {
+            SearchType.INCIDENT: IncidentQueryHandler.query_transformer,
+        }
+        search_type = validated_request_data["search_type"]
+        return transformer_cls[search_type].transform_query_string(query_string=validated_request_data["query_string"])
 
 
 class IncidentDetailResource(Resource):
@@ -185,9 +204,11 @@ class IncidentDetailResource(Resource):
             "handlers": ["admin3", "admin4"],
             "labels": ["游戏", "异常", "时序"],
             "status": "abnormal",
+            "status_alias": "故障中",
             "level": "ERROR",
+            "level_alias": "致命",
             "dimensions": {"bk_cloud_id": 0},
-            "incident_duration": 3000,
+            "incident_duration": hms_string(3000),
             "current_incident_snapshot_id": 1000000,
         }
 

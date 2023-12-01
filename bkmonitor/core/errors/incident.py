@@ -8,21 +8,21 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 """
-from dataclasses import dataclass
-from typing import List
 
-import arrow
+from django.utils.translation import ugettext_lazy as _
 
-from constants.incident import IncidentLevel, IncidentStatus
+from core.errors import Error
 
 
-@dataclass
-class Incident:
-    incident_id: int
-    incident_name: str
-    incident_reason: str
-    status: IncidentStatus
-    level: IncidentLevel
-    labels: List[str]
-    create_time: arrow.Arrow
-    update_time: arrow.Arrow
+class IncidentError(Error):
+    status_code = 500
+    code = 3336001
+    name = _("故障模块错误")
+    message_tpl = _("故障模块错误")
+
+
+class IncidentNotFoundError(Error):
+    status_code = 404
+    code = 3336002
+    name = _("故障不存在")
+    message_tpl = _("故障UUID ({id}) 对应的故障信息不存在")

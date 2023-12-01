@@ -17,9 +17,9 @@ from pika.spec import Basic
 from alarm_backends.core.storage.rabbitmq import RabbitMQClient
 from alarm_backends.service.access.base import BaseAccessProcess
 from bkmonitor.aiops.incident.operation import IncidentOperationManager
-from bkmonitor.bkmonitor.documents.base import BulkActionType
-from bkmonitor.constants.incident import IncidentSyncType
+from bkmonitor.documents.base import BulkActionType
 from bkmonitor.documents.incident import IncidentDocument, IncidentSnapshotDocument
+from constants.incident import IncidentSyncType
 from core.drf_resource import api
 
 
@@ -60,6 +60,7 @@ class AccessIncidentProcess(BaseAccessIncidentProcess):
         """
         # 生成故障归档记录
         incident_info = sync_info["incident_info"]
+        incident_info["incident_id"] = sync_info["incident_id"]
         incident_document = IncidentDocument(**incident_info)
         snapshot_info = api.bkdata.get_incident_snapshot(snapshot_id=sync_info["fpp_snapshot_id"])
         incident_document.generate_handlers(sync_info["scope"]["alerts"])
@@ -86,7 +87,7 @@ class AccessIncidentProcess(BaseAccessIncidentProcess):
         # 记录故障流转
         IncidentOperationManager.record_create_incident(
             incident_id=sync_info["incident_id"],
-            operate_time=incident_info["created_at"],
+            operate_time=incident_info["create_time"],
             alert_count=len(sync_info["scope"]["alerts"]),
             assignees=incident_document.assignees,
         )
