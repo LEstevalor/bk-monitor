@@ -61,7 +61,6 @@ class AccessIncidentProcess(BaseAccessIncidentProcess):
         # 生成故障归档记录
         incident_info = sync_info["incident_info"]
         incident_info["incident_id"] = sync_info["incident_id"]
-        incident_info["id"] = f"{incident_info['create_time']}{sync_info['incident_id']}"
         incident_document = IncidentDocument(**incident_info)
         snapshot_info = api.bkdata.get_incident_snapshot(snapshot_id=sync_info["fpp_snapshot_id"])
         incident_document.generate_handlers(sync_info["scope"]["alerts"])
