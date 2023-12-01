@@ -8,11 +8,14 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 """
+import operator
+from functools import reduce
 from typing import Dict, List
 
 from django.utils.translation import ugettext as _
 from django.utils.translation import ugettext_lazy as _lazy
 from django_elasticsearch_dsl.search import Search
+from elasticsearch_dsl import Q
 from elasticsearch_dsl.response import Response
 from elasticsearch_dsl.utils import AttrList
 
@@ -81,6 +84,11 @@ class IncidentQueryHandler(BaseQueryHandler):
 
     query_transformer = IncidentQueryTransformer
 
+    # “我的故障” 状态名称
+    MINE_STATUS_NAME = "MINE"
+    MY_ASSIGNEE_STATUS_NAME = "MY_ASSIGNEE"
+    MY_HANDLER_STATUS_NAME = "MY_HANDLER"
+
     def __init__(self, dedupe_md5: str = "", **kwargs) -> None:
         super(IncidentQueryHandler, self).__init__(**kwargs)
         self.dedupe_md5 = dedupe_md5
@@ -89,13 +97,42 @@ class IncidentQueryHandler(BaseQueryHandler):
             # 默认排序
             self.ordering = ["-time"]
 
-    def get_search_object(self) -> Search:
-        search_object = IncidentDocument.search(all_indices=True).filter(
-            "range", time={"gte": self.start_time, "lte": self.end_time}
-        )
+    def get_search_object(self, start_time: int = None, end_time: int = None):
+        """
+        获取查询对象
+        """
+        start_time = start_time or self.start_time
+        end_time = end_time or self.end_time
 
-        if self.dedupe_md5:
-            search_object = search_object.filter("term", dedupe_md5=self.dedupe_md5)
+        search_object = IncidentDocument.search(start_time=self.start_time, end_time=self.end_time)
+
+        if start_time and end_time:
+            search_object = search_object.filter(
+                (Q("range", end_time={"gte": start_time}) | ~Q("exists", field="end_time"))
+                & (Q("range", begin_time={"lte": end_time}) | Q("range", create_time={"lte": end_time}))
+            )
+
+        search_object = self.add_biz_condition(search_object)
+
+        if self.status:
+            queries = []
+            for status in self.status:
+                if status == self.MINE_STATUS_NAME:
+                    queries.append(
+                        Q("term", assignees=self.request_username) | Q("term", appointee=self.request_username)
+                    )
+                if status == self.MY_ASSIGNEE_STATUS_NAME:
+                    queries.append(Q("term", assignees=self.request_username))
+                if status == self.MY_HANDLER_STATUS_NAME:
+                    queries.append(Q("term", handlers=self.request_username))
+                else:
+                    queries.append(Q("term", status=status))
+
+            if queries:
+                search_object = search_object.filter(reduce(operator.or_, queries))
+
+        for field in self.must_exists_fields:
+            search_object = search_object.filter("exists", field=field)
 
         return search_object
 
@@ -127,6 +164,28 @@ class IncidentQueryHandler(BaseQueryHandler):
             result["aggs"] = self.handle_aggs(search_result)
 
         return result
+
+    def add_biz_condition(self, search_object: Search) -> Search:
+        queries = []
+        if self.authorized_bizs is not None and self.bk_biz_ids:
+            # 进行我有权限的告警过滤
+            queries.append(Q("terms", **{"bk_biz_id": self.authorized_bizs}))
+
+        user_condition = Q(
+            Q("term", assignee=self.request_username)
+            | Q("term", appointee=self.request_username)
+            | Q("term", supervisor=self.request_username)
+        )
+        if self.bk_biz_ids == []:
+            # 如果不带任何业务信息，表示获取跟自己相关的告警
+            queries.append(user_condition)
+
+        if self.unauthorized_bizs and self.request_username:
+            queries.append(Q(Q("terms", **{"bk_biz_id": self.unauthorized_bizs}) & user_condition))
+
+        if queries:
+            return search_object.filter(reduce(operator.or_, queries))
+        return search_object
 
     @classmethod
     def handle_hit_list(cls, hits: AttrList = None) -> List[Dict]:
