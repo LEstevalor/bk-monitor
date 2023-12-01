@@ -22,7 +22,7 @@ from elasticsearch_dsl.utils import AttrList
 from bkmonitor.documents.incident import IncidentDocument
 from constants.incident import IncidentLevel, IncidentStatus
 from fta_web.alert.handlers.base import (
-    BaseQueryHandler,
+    BaseBizQueryHandler,
     BaseQueryTransformer,
     QueryField,
 )
@@ -77,7 +77,7 @@ class IncidentQueryTransformer(BaseQueryTransformer):
     doc_cls = IncidentDocument
 
 
-class IncidentQueryHandler(BaseQueryHandler):
+class IncidentQueryHandler(BaseBizQueryHandler):
     """
     故障查询
     """
@@ -89,13 +89,12 @@ class IncidentQueryHandler(BaseQueryHandler):
     MY_ASSIGNEE_STATUS_NAME = "MY_ASSIGNEE"
     MY_HANDLER_STATUS_NAME = "MY_HANDLER"
 
-    def __init__(self, dedupe_md5: str = "", **kwargs) -> None:
-        super(IncidentQueryHandler, self).__init__(**kwargs)
-        self.dedupe_md5 = dedupe_md5
-
+    def __init__(self, bk_biz_ids: List[int] = None, username: str = "", status: List[str] = None, **kwargs):
+        super(IncidentQueryHandler, self).__init__(bk_biz_ids, username, **kwargs)
+        self.status = [status] if isinstance(status, str) else status
         if not self.ordering:
             # 默认排序
-            self.ordering = ["-time"]
+            self.ordering = ["status", "-create_time"]
 
     def get_search_object(self, start_time: int = None, end_time: int = None):
         """
@@ -130,9 +129,6 @@ class IncidentQueryHandler(BaseQueryHandler):
 
             if queries:
                 search_object = search_object.filter(reduce(operator.or_, queries))
-
-        for field in self.must_exists_fields:
-            search_object = search_object.filter("exists", field=field)
 
         return search_object
 
