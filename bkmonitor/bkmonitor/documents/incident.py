@@ -53,6 +53,7 @@ class IncidentDocument(IncidentBaseDocument):
     incident_reason = field.Text()  # 故障原因
     status = field.Keyword()  # 故障状态
     level = field.Keyword()  # 故障级别
+    bk_biz_id = field.Keyword()  # 故障业务ID
     assignees = field.Keyword(multi=True)  # 故障负责人
     handlers = field.Keyword(multi=True)  # 故障处理人
     labels = field.Keyword(multi=True)  # 标签
