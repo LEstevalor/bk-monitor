@@ -75,6 +75,7 @@ const createNodes = () => {
               }
             ]
           : [],
+      aggregateEdge: [],
       status
     };
   });
