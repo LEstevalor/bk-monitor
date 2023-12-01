@@ -74,7 +74,7 @@ class IncidentDocument(IncidentBaseDocument):
     extra_info = field.Object(enabled=False)
 
     class Index:
-        name = "bkmonitor_aiops_incident"
+        name = "bkmonitor_aiops_incident_info"
         settings = {"number_of_shards": 3, "number_of_replicas": 1, "refresh_interval": "1s"}
 
     def __init__(self, *args, **kwargs):
