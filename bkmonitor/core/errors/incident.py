@@ -9,24 +9,20 @@ an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express o
 specific language governing permissions and limitations under the License.
 """
 
-from .action import ActionInstanceDocument  # noqa
-from .alert import AlertDocument  # noqa
-from .event import EventDocument  # noqa
-from .incident import (  # noqa
-    IncidentDocument,
-    IncidentNoticeDocument,
-    IncidentOperationDocument,
-    IncidentSnapshotDocument,
-)
-from .log import AlertLog  # noqa
+from django.utils.translation import ugettext_lazy as _
 
-ALL_DOCUMENTS = [
-    EventDocument,
-    AlertDocument,
-    AlertLog,
-    ActionInstanceDocument,
-    IncidentDocument,
-    IncidentNoticeDocument,
-    IncidentOperationDocument,
-    IncidentSnapshotDocument,
-]
+from core.errors import Error
+
+
+class IncidentError(Error):
+    status_code = 500
+    code = 3336001
+    name = _("故障模块错误")
+    message_tpl = _("故障模块错误")
+
+
+class IncidentNotFoundError(Error):
+    status_code = 404
+    code = 3336002
+    name = _("故障不存在")
+    message_tpl = _("故障UUID ({id}) 对应的故障信息不存在")
