@@ -49,4 +49,6 @@ class IncidentViewSet(ResourceViewSet):
         ResourceRoute("POST", resource.incident.edit_incident, endpoint="edit_incident"),
         # 反馈故障根因
         ResourceRoute("POST", resource.incident.feedback_incident_root, endpoint="feedback_incident_root"),
+        # 故障告警明细节藕
+        ResourceRoute("GET", resource.incident.incident_alert_list, endpoint="incident_alert_list"),
     ]
