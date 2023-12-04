@@ -12,6 +12,7 @@ export const incidentHandlers = request('GET', 'rest/v2/incident/incident_handle
 export const incidentOperations = request('GET', 'rest/v2/incident/incident_operations/');
 export const editIncident = request('POST', 'rest/v2/incident/edit_incident/');
 export const feedbackIncidentRoot = request('POST', 'rest/v2/incident/feedback_incident_root/');
+export const incidentAlertList = request('GET', 'rest/v2/incident/incident_alert_list/');
 
 export default {
   incidentList,
@@ -25,5 +26,6 @@ export default {
   incidentHandlers,
   incidentOperations,
   editIncident,
-  feedbackIncidentRoot
+  feedbackIncidentRoot,
+  incidentAlertList
 };
