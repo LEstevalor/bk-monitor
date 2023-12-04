@@ -13,7 +13,6 @@ from typing import Dict
 from bkmonitor.documents.incident import IncidentDocument
 from bkmonitor.utils.time_tools import hms_string
 from bkmonitor.views import serializers
-from constants.incident import IncidentLevel, IncidentStatus
 from core.drf_resource import api
 from core.drf_resource.base import Resource
 from fta_web.alert.handlers.incident import IncidentQueryHandler
@@ -49,85 +48,6 @@ class IncidentListResource(Resource):
             enabled=record_history and validated_request_data.get("query_string"),
         ):
             result = handler.search(show_overview=False, show_aggs=True)
-
-        result["incidents"] = [
-            {
-                "incident_id": 1,
-                "incident_name": "我是故障名占位",
-                "incident_reason": "我是故障原因占位",
-                "create_time": 1700000000,
-                "update_time": 1700000000,
-                "begin_time": 1700000000,
-                "end_time": None,
-                "alert_count": 48,
-                "assignee": ["admin", "admin2"],
-                "handlers": ["admin3", "admin4"],
-                "labels": ["游戏", "异常", "时序"],
-                "status": "abnormal",
-                "status_alias": IncidentStatus("abnormal").alias,
-                "level": "ERROR",
-                "level_alias": IncidentLevel("ERROR").alias,
-                "dimensions": {"bk_cloud_id": 0},
-                "incident_duration": hms_string(3000),
-            },
-            {
-                "incident_id": 2,
-                "incident_name": "我是故障名占位",
-                "incident_reason": "我是故障原因占位",
-                "create_time": 1700000000,
-                "update_time": 1700000000,
-                "begin_time": 1700000000,
-                "end_time": None,
-                "alert_count": 48,
-                "assignee": ["admin", "admin2"],
-                "handlers": ["admin3", "admin4"],
-                "labels": ["游戏", "异常", "时序"],
-                "status": "recovering",
-                "status_alias": IncidentStatus("recovering").alias,
-                "level": "WARN",
-                "level_alias": IncidentLevel("WARN").alias,
-                "dimensions": {"bk_cloud_id": 0},
-                "incident_duration": hms_string(3000),
-            },
-            {
-                "incident_id": 3,
-                "incident_name": "我是故障名占位",
-                "incident_reason": "我是故障原因占位",
-                "create_time": 1700000000,
-                "update_time": 1700000000,
-                "begin_time": 1700000000,
-                "end_time": None,
-                "alert_count": 48,
-                "assignee": ["admin", "admin2"],
-                "handlers": ["admin3", "admin4"],
-                "labels": ["游戏", "异常", "时序"],
-                "status": "recovered",
-                "status_alias": IncidentStatus("recovered").alias,
-                "level": "INFO",
-                "level_alias": IncidentLevel("INFO").alias,
-                "dimensions": {"bk_cloud_id": 0},
-                "incident_duration": hms_string(3000),
-            },
-            {
-                "incident_id": 4,
-                "incident_name": "我是故障名占位",
-                "incident_reason": "我是故障原因占位",
-                "create_time": 1700000000,
-                "update_time": 1700000000,
-                "begin_time": 1700000000,
-                "end_time": 1700031890,
-                "alert_count": 48,
-                "assignee": ["admin", "admin2"],
-                "handlers": ["admin3", "admin4"],
-                "labels": ["游戏", "异常", "时序"],
-                "status": "closed",
-                "status_alias": IncidentStatus("closed").alias,
-                "level": "WARN",
-                "level_alias": IncidentLevel("WARN").alias,
-                "dimensions": {"bk_cloud_id": 0},
-                "incident_duration": hms_string(3000),
-            },
-        ]
 
         return result
 
@@ -165,11 +85,10 @@ class IncidentValidateQueryStringResource(Resource):
     def perform_request(self, validated_request_data):
         if not validated_request_data["query_string"]:
             return ""
-        transformer_cls = {
-            SearchType.INCIDENT: IncidentQueryHandler.query_transformer,
-        }
-        search_type = validated_request_data["search_type"]
-        return transformer_cls[search_type].transform_query_string(query_string=validated_request_data["query_string"])
+
+        return IncidentQueryHandler.query_transformer.transform_query_string(
+            query_string=validated_request_data["query_string"]
+        )
 
 
 class IncidentDetailResource(Resource):
@@ -181,14 +100,14 @@ class IncidentDetailResource(Resource):
         super(IncidentDetailResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        id = serializers.IntegerField(required=False, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        incident_id = validated_request_data["incident_id"]
+        id = validated_request_data["id"]
 
-        incident = IncidentDocument.get(incident_id)
-        # incident["snapshots"] = self.get_incident_snapshots(incident)
+        incident = IncidentDocument.get(id)
+        incident["snapshots"] = self.get_incident_snapshots(incident)
 
         return {
             "incident_id": 1,
@@ -314,7 +233,12 @@ class EditIncidentResource(Resource):
         labels = serializers.ListField(required=False, label="故障标签")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        return {}
+        incident_id = validated_request_data["incident_id"]
+
+        incident_info = api.bkdata.get_incident_detail(incident_id=incident_id)
+        incident_info.update(validated_request_data)
+        api.bkdata.update_incident_detail(incident_id=incident_id, **incident_info)
+        return incident_info
 
 
 class FeedbackIncidentRootResource(Resource):
