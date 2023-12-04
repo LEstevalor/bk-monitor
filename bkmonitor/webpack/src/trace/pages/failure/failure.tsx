@@ -23,32 +23,39 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 import { ResizeLayout } from 'bkui-vue';
 
 import FailureContent from './failure-content/failure-content';
 import FailureHeader from './failure-header/failure-header';
 import FailureNav from './failure-nav/failure-nav';
+import FailureTags from './failure-tags/failure-tags';
 
 import './failure.scss';
 
 export default defineComponent({
-  setup() {},
+  setup() {
+    const tagDomHeight = ref<Number>(40);
+    const collapseTagHandle = (val: boolean, height: Number) => {
+      tagDomHeight.value = height;
+    };
+    return { tagDomHeight, collapseTagHandle };
+  },
   render() {
     return (
       <div class='failure-wrapper'>
         <FailureHeader />
-        <div class='failure-tags'></div>
+        <FailureTags onCollapse={this.collapseTagHandle} />
         <ResizeLayout
           class='failure-content-layout'
-          style={{ height: `calc(100vh - 200px)` }}
+          style={{ height: `calc(100vh - ${160 + Number(this.tagDomHeight)}px)` }}
           auto-minimize={400}
           border={false}
           collapsible
           initial-divide={500}
           v-slots={{
-            aside: <FailureNav></FailureNav>,
-            main: <FailureContent></FailureContent>
+            aside: () => <FailureNav></FailureNav>,
+            main: () => <FailureContent></FailureContent>
           }}
         ></ResizeLayout>
       </div>

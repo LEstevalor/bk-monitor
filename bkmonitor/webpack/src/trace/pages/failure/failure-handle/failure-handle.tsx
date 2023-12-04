@@ -24,40 +24,19 @@
  * IN THE SOFTWARE.
  */
 import { defineComponent } from 'vue';
-import { useI18n } from 'vue-i18n';
 
-import FailureHandle from '../failure-handle/failure-handle';
-import FailureMenu from '../failure-menu/failure-menu';
+import HandleSearch from './handle-search';
+import HandlerList from './handler-list';
 
-import './failure-nav.scss';
+import './failure-handle.scss';
 
 export default defineComponent({
-  setup() {
-    const { t } = useI18n();
-    const tabList = [
-      {
-        name: 'DealWith',
-        label: t('故障处理')
-      },
-      {
-        name: 'Circulation',
-        label: t('故障流转')
-      }
-    ];
-    return {
-      tabList
-    };
-  },
+  setup() {},
   render() {
     return (
-      <div class='failure-nav'>
-        <FailureMenu
-          tabList={this.tabList}
-          active='DealWith'
-        ></FailureMenu>
-        <div class='failure-nav-main'>
-          <FailureHandle />
-        </div>
+      <div class='failure-handle'>
+        <HandlerList />
+        <HandleSearch />
       </div>
     );
   }
