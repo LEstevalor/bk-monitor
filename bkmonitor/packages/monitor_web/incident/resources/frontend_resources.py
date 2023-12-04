@@ -10,7 +10,7 @@ specific language governing permissions and limitations under the License.
 """
 from typing import Dict
 
-from bkmonitor.documents.incident import IncidentDocument
+from bkmonitor.documents.incident import IncidentDocument, IncidentSnapshotDocument
 from bkmonitor.utils.time_tools import hms_string
 from bkmonitor.views import serializers
 from core.drf_resource import api
@@ -132,6 +132,15 @@ class IncidentDetailResource(Resource):
         }
 
         return incident
+
+    def get_incident_snapshots(self, incident: IncidentDocument) -> Dict:
+        """根据故障详情获取故障快照
+
+        :param incident: 故障详情
+        :return: 故障快照信息
+        """
+        snapshots = IncidentSnapshotDocument.list_by_incident_id(incident["incident_id"])
+        return snapshots
 
 
 class IncidentTopologyResource(Resource):
