@@ -238,6 +238,16 @@ class IncidentQueryHandler(BaseBizQueryHandler):
         return {
             "children": [
                 {
+                    "id": self.MY_ASSIGNEE_STATUS_NAME,
+                    "name": _("我负责的"),
+                    "count": 100,
+                },
+                {
+                    "id": self.MY_HANDLER_STATUS_NAME,
+                    "name": _("我收到的"),
+                    "count": 100,
+                },
+                {
                     "id": "abnormal",
                     "name": _("未恢复"),
                     "count": 60,
