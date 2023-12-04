@@ -10,12 +10,14 @@ specific language governing permissions and limitations under the License.
 """
 from typing import Dict
 
+from bkmonitor.documents.alert import AlertDocument
 from bkmonitor.documents.incident import IncidentDocument, IncidentSnapshotDocument
 from bkmonitor.utils.time_tools import hms_string
 from bkmonitor.views import serializers
 from core.drf_resource import api
 from core.drf_resource.base import Resource
 from fta_web.alert.handlers.incident import IncidentQueryHandler
+from fta_web.alert.handlers.translator import CategoryTranslator
 from fta_web.alert.resources import BaseTopNResource
 from fta_web.models.alert import SearchHistory, SearchType
 from packages.monitor_web.incident.serializers import IncidentSearchSerializer
@@ -270,3 +272,40 @@ class FeedbackIncidentRootResource(Resource):
         incident_info["feedback"].update(validated_request_data["contents"])
         api.bkdata.update_incident_detail(incident_id=incident_id, feedback=incident_info["feedback"])
         return incident_info["feedback"]
+
+
+class IncidentAlertListResource(Resource):
+    """
+    故障告警列表
+    """
+
+    def __init__(self):
+        super(IncidentAlertListResource, self).__init__()
+
+    class RequestSerializer(serializers.Serializer):
+        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+
+    def perform_request(self, validated_request_data: Dict) -> Dict:
+        # incident_id = validated_request_data["incident_id"]
+
+        # incident_info = api.bkdata.get_incident_detail(incident_id=incident_id)
+        alerts = [
+            item.to_dict()
+            for item in AlertDocument.mget(ids=[170133033522966, 170130957522861, 170128740522571, 170124544222458])
+        ]
+        for alert in alerts:
+            alert["category"] = alert["event"]["category"]
+        CategoryTranslator().translate_from_dict(alerts, "category", "category_display")
+
+        incident_alerts = {}
+        for alert in alerts:
+            if alert["category"] not in incident_alerts:
+                incident_alerts[alert["category"]] = {
+                    "category": alert["category"],
+                    "category_display": alert["category_display"],
+                    "alerts": [],
+                }
+            incident_alerts[alert["category"]]["alerts"].append(alert)
+
+        return incident_alerts
