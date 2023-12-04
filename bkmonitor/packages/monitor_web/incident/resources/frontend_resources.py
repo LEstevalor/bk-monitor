@@ -14,10 +14,9 @@ from bkmonitor.documents.alert import AlertDocument
 from bkmonitor.documents.incident import IncidentDocument, IncidentSnapshotDocument
 from bkmonitor.utils.time_tools import hms_string
 from bkmonitor.views import serializers
-from core.drf_resource import api
+from core.drf_resource import api, resource
 from core.drf_resource.base import Resource
 from fta_web.alert.handlers.incident import IncidentQueryHandler
-from fta_web.alert.handlers.translator import CategoryTranslator
 from fta_web.alert.resources import BaseTopNResource
 from fta_web.models.alert import SearchHistory, SearchType
 from packages.monitor_web.incident.serializers import IncidentSearchSerializer
@@ -290,22 +289,18 @@ class IncidentAlertListResource(Resource):
         # incident_id = validated_request_data["incident_id"]
 
         # incident_info = api.bkdata.get_incident_detail(incident_id=incident_id)
+        incident_alerts = resource.commons.get_label()
+        for category in incident_alerts:
+            category["alerts"] = []
+            category["sub_categories"] = [item["id"] for item in category["children"]]
+
         alerts = [
             item.to_dict()
             for item in AlertDocument.mget(ids=[170133033522966, 170130957522861, 170128740522571, 170124544222458])
         ]
         for alert in alerts:
-            alert["category"] = alert["event"]["category"]
-        CategoryTranslator().translate_from_dict(alerts, "category", "category_display")
-
-        incident_alerts = {}
-        for alert in alerts:
-            if alert["category"] not in incident_alerts:
-                incident_alerts[alert["category"]] = {
-                    "category": alert["category"],
-                    "category_display": alert["category_display"],
-                    "alerts": [],
-                }
-            incident_alerts[alert["category"]]["alerts"].append(alert)
+            for category in incident_alerts:
+                if alert["event"]["category"] in category["sub_categories"]:
+                    category["alerts"].append(alert)
 
         return incident_alerts
