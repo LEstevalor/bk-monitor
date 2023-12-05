@@ -17,11 +17,11 @@ from bkmonitor.views import serializers
 from constants.incident import IncidentLevel, IncidentStatus
 from core.drf_resource import api, resource
 from core.drf_resource.base import Resource
-from packages.fta_web.alert.handlers.incident import IncidentQueryHandler
-from packages.fta_web.alert.handlers.translator import BizTranslator
-from packages.fta_web.alert.resources import BaseTopNResource
-from packages.fta_web.models.alert import SearchHistory, SearchType
-from packages.monitor_web.incident.serializers import IncidentSearchSerializer
+from fta_web.alert.handlers.incident import IncidentQueryHandler
+from fta_web.alert.handlers.translator import BizTranslator
+from fta_web.alert.resources import BaseTopNResource
+from fta_web.models.alert import SearchHistory, SearchType
+from monitor_web.incident.serializers import IncidentSearchSerializer
 
 
 class IncidentListResource(Resource):
