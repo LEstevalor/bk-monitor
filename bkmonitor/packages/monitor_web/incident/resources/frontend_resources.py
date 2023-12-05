@@ -108,7 +108,7 @@ class IncidentDetailResource(Resource):
         id = validated_request_data["id"]
 
         incident = IncidentDocument.get(id)
-        incident["snapshots"] = self.get_incident_snapshots(incident)
+        incident["snapshots"] = [item.to_dict() for item in self.get_incident_snapshots(incident)]
 
         return {
             "incident_id": 1,
