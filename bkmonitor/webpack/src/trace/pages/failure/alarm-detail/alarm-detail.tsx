@@ -23,13 +23,17 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, onBeforeMount, reactive, ref } from 'vue';
+import { defineComponent, onBeforeMount, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Table } from 'bkui-vue';
+import { useRoute } from 'vue-router';
+import { Loading, Popover, Table } from 'bkui-vue';
 import { $bkPopover } from 'bkui-vue/lib/popover';
+import moment from 'moment';
 
+import { incidentAlertList } from '../../../../monitor-api/modules/incident';
 import { random } from '../../../../monitor-common/utils/utils.js';
 import SetMealAdd from '../../../store/modules/set-meal-add';
+import StatusTag from '../components/status-tag';
 
 import ChatGroup from './chat-group/chat-group';
 import AlarmConfirm from './alarm-confirm';
@@ -47,29 +51,15 @@ export enum EBatchAction {
 }
 export default defineComponent({
   setup() {
+    const route = useRoute();
     const { t } = useI18n();
     const setMealAddModule = SetMealAdd();
     onBeforeMount(async () => await setMealAddModule.getVariableDataList());
-    const eventStatusMap = {
-      ABNORMAL: {
-        color: '#EA3536',
-        bgColor: '#FEEBEA',
-        name: t('未恢复'),
-        icon: 'icon-mind-fill'
-      },
-      RECOVERED: {
-        color: '#14A568',
-        bgColor: '#E4FAF0',
-        name: t('已恢复')
-      },
-      CLOSED: {
-        color: '#63656E',
-        bgColor: '#F0F1F5',
-        name: t('已关闭')
-      }
-    };
     const scrollLoading = ref(false);
+    const tableLoading = ref(false);
     const queryString = ref('');
+    const tableData = ref([]);
+    const alertData = ref([]);
     const dialog = reactive({
       quickShield: {
         show: false,
@@ -118,6 +108,7 @@ export default defineComponent({
       assignee: [],
       alertIds: []
     });
+    const collapseId = ref(null);
     const moreItems = ref(null);
     const popoperOperateInstance = ref(null);
     const opetateRow = ref({});
@@ -131,6 +122,12 @@ export default defineComponent({
         name: t('一键拉群')
       });
     }
+    const formatterTime = (time: number | string): string => {
+      if (!time) return '--';
+      if (typeof time !== 'number') return time;
+      if (time.toString().length < 13) return moment(time * 1000).format('YYYY-MM-DD HH:mm:ss');
+      return moment(time).format('YYYY-MM-DD HH:mm:ss');
+    };
     const handleQuickShield = v => {
       dialog.quickShield.bizIds = [v.bk_biz_id];
       dialog.quickShield.show = true;
@@ -221,14 +218,18 @@ export default defineComponent({
     const columns = reactive([
       {
         label: '#',
-        type: 'index'
+        type: 'index',
+        width: 40,
+        minWidth: 40
       },
       {
         label: t('告警ID'),
         field: 'id',
         render: ({ data }) => {
+          console.log(data);
           return (
             <span
+              v-overflow-title
               class={`event-status status-${data.severity} id-column`}
               onClick={() => handleShowDetail(data)}
             >
@@ -239,11 +240,14 @@ export default defineComponent({
       },
       {
         label: t('告警名称'),
-        field: 'name',
+        field: 'alert_name',
         render: ({ data }) => {
           return (
-            <span class='name-column'>
-              {data.name}
+            <span
+              class='name-column'
+              v-overflow-title
+            >
+              {data.alert_name}
               {/* <span class='root-cause'>{t('根因')}</span> */}
             </span>
           );
@@ -251,107 +255,107 @@ export default defineComponent({
       },
       {
         label: t('业务名称'),
-        filed: 'project'
+        field: 'project'
       },
       {
         label: t('分类'),
-        filed: 'type'
+        field: 'category_display',
+        render: ({ data }) => {
+          return data.category_display;
+        }
       },
       {
         label: t('告警指标'),
-        filed: 'index',
+        field: 'index',
         render: ({ data }) => {
           const isEmpt = !data?.metric_display?.length;
           if (isEmpt) return '--';
           const key = random(10);
+          const content = (
+            <div
+              class='tag-column'
+              id={key}
+            >
+              {data.metric_display.map(item => (
+                <div
+                  key={item.id}
+                  class='tag-item set-item'
+                >
+                  {item.name || item.id}
+                </div>
+              ))}
+            </div>
+          );
           return (
             <div class='tag-column-wrap'>
-              <div
-                class='tag-column'
-                id={key}
-                v-bk-tooltip={{
-                  allowHTML: true,
-                  theme: 'light common-table',
-                  interactive: true
+              <Popover
+                extCls='tag-column-popover'
+                maxWidth={400}
+                theme='light common-table'
+                placement='top-center'
+                arrow={true}
+                v-slots={{
+                  default: () => content,
+                  content: () => content
                 }}
-              >
-                {data.metric_display.map(item => (
-                  <div
-                    key={item.id}
-                    class='tag-item set-item'
-                  >
-                    {item.name || item.id}
-                  </div>
-                ))}
-              </div>
+              ></Popover>
             </div>
           );
         }
       },
       {
         label: t('告警状态'),
-        filed: 'status',
+        field: 'status',
         minWidth: 134,
         render: ({ data }) => {
           // is_ack: isAck, ack_operator: ackOperator
           const { status } = data;
           return (
             <div class='status-column'>
-              <span
-                class='status-label'
-                style={{
-                  color: eventStatusMap?.[status]?.color,
-                  backgroundColor: eventStatusMap?.[status]?.bgColor
-                }}
-              >
-                {eventStatusMap?.[status]?.icon ? (
-                  <i
-                    style={{ color: eventStatusMap?.[status]?.color }}
-                    class={['icon-monitor item-icon', eventStatusMap?.[status]?.icon ?? '']}
-                  ></i>
-                ) : (
-                  ''
-                )}
-                {eventStatusMap?.[status]?.name || '--'}
-              </span>
+              <StatusTag status={status}></StatusTag>
             </div>
           );
         }
       },
       {
         label: t('告警阶段'),
-        filed: 'stage_display',
+        field: 'stage_display',
         render: ({ data }) => {
           return data?.stage_display ?? '--';
         }
       },
       {
         label: t('告警开始/结束时间'),
-        filed: 'time',
+        field: 'time',
         render: ({ data }) => {
           console.log(data, '...');
           return (
             <span class='time-column'>
-              {data.start_time}/ <br></br>
-              {data.start_time}
+              {formatterTime(data.begin_time)} / <br></br>
+              {formatterTime(data.end_time)}
             </span>
           );
         }
       },
       {
         label: t('持续时间'),
-        filed: 'project',
+        field: 'duration',
         width: 136,
         render: ({ data, index: $index }) => {
           const { status, is_ack: isAck, ack_operator: ackOperator } = data;
           return (
             <div class='status-column'>
-              <span>{data.chixu}</span>
+              <span>{data.duration}</span>
+              <div
+                class='operate-panel-border'
+                style={{
+                  display: hoverRowIndex.value === $index || popoperOperateIndex.value === $index ? 'flex' : 'none'
+                }}
+              ></div>
               <div
                 class='operate-panel'
                 style={{
-                  display:
-                    'flex' || hoverRowIndex.value === $index || popoperOperateIndex.value === $index ? 'flex' : 'none'
+                  display: hoverRowIndex.value === $index || popoperOperateIndex.value === $index ? 'flex' : 'none'
                 }}
               >
                 <span
@@ -374,7 +378,7 @@ export default defineComponent({
                 </span>
                 <span
                   class={['operate-more', { active: popoperOperateIndex.value === $index }]}
-                  onClick={e => handleShowMoreOperate(e, $index)}
+                  onClick={e => handleShowMoreOperate(e, $index, data)}
                 >
                   <span class='icon-monitor icon-mc-more'></span>
                 </span>
@@ -384,8 +388,20 @@ export default defineComponent({
         }
       }
     ]);
-    const tableData = reactive([{ xx: 1 }]);
+
+    const settings = ref({
+      fields: columns.slice(1, columns.length - 1).map(({ label, field }) => {
+        return {
+          label,
+          disabled: field === 'id',
+          field
+        };
+      }),
+      checked: columns.slice(1, columns.length - 1).map(({ field }) => field)
+    });
     const getMoreOperate = () => {
+      const { status, is_ack: isAck, ack_operator: ackOperator } = opetateRow.value;
+      console.log(opetateRow.value);
       return (
         <div style={{ display: 'none' }}>
           <div
@@ -400,8 +416,16 @@ export default defineComponent({
               <span>{window.i18n.t('一键拉群')}</span>
             </div>
             <div
-              class={['more-item', { 'is-disable': false }]}
-              onClick={() => handleAlertConfirm(opetateRow.value)}
+              class={['more-item', { 'is-disable': isAck || ['RECOVERED', 'CLOSED'].includes(status) }]}
+              onClick={() =>
+                !isAck && !['RECOVERED', 'CLOSED'].includes(status) && handleAlertConfirm(opetateRow.value)
+              }
+              v-bk-tooltips={{
+                disabled: !(isAck || ['RECOVERED', 'CLOSED'].includes(status)),
+                content: askTipMsg(isAck, status, ackOperator),
+                delay: 200,
+                appendTo: 'parent'
+              }}
             >
               <span class='icon-monitor icon-duihao'></span>
               <span>{window.i18n.t('告警确认')}</span>
@@ -414,15 +438,16 @@ export default defineComponent({
               <span>{window.i18n.t('手动处理')}</span>
             </div>
             <div
-              class={['more-item', { 'is-disable': false }]}
-              // v-bk-tooltips={{
-              //   content: opetateRow?.value?.is_shielded
-              //     ? `${opetateRow?.value.shield_operator?.[0] || ''}${this.$t('已屏蔽')}`
-              //     : '',
-              //   delay: 200,
-              //   appendTo: () => document.body
-              // }}
-              onClick={() => handleQuickShield(opetateRow.value)}
+              class={['more-item', { 'is-disable': opetateRow.value?.is_shielded }]}
+              v-bk-tooltips={{
+                disabled: !opetateRow.value?.is_shielded,
+                content: opetateRow?.value?.is_shielded
+                  ? `${opetateRow?.value.shield_operator?.[0] || ''}${this.$t('已屏蔽')}`
+                  : '',
+                delay: 200,
+                appendTo: () => document.body
+              }}
+              onClick={() => !opetateRow.value?.is_shielded && handleQuickShield(opetateRow.value)}
             >
               <span class='icon-monitor icon-mc-notice-shield'></span>
               <span>{window.i18n.t('快捷屏蔽')}</span>
@@ -437,10 +462,10 @@ export default defineComponent({
       popoperOperateInstance.value = null;
       popoperOperateIndex.value = -1;
     };
-    const handleShowMoreOperate = (e, index) => {
+    const handleShowMoreOperate = (e, index, data) => {
       console.log(moreItems, moreItems.value);
       popoperOperateIndex.value = index;
-      opetateRow.value = tableData[index];
+      opetateRow.value = data;
       if (!popoperOperateInstance.value) {
         popoperOperateInstance.value = $bkPopover({
           target: e.target,
@@ -469,7 +494,6 @@ export default defineComponent({
       dialog.alarmConfirm.show = v;
     };
     const handleAlarmDispatchShowChange = v => {
-      console.log('handleAlarmDispatchShowChange', v);
       dialog.alarmDispatch.show = v;
     };
     /* 手动处理轮询状态 */
@@ -487,7 +511,7 @@ export default defineComponent({
      */
     const quickShieldSucces = (v: boolean) => {
       if (v) {
-        // tableData.value.forEach(item => {
+        // tableData.value.value.forEach(item => {
         //   if (dialog.quickShield.ids.includes(item.id)) {
         //     item.is_shielded = true;
         //     item.shield_operator = [window.username || window.user_name];
@@ -523,8 +547,23 @@ export default defineComponent({
         batchUrlUpdate('');
       }
     };
+    const handleGetTable = async () => {
+      const { biz_id: bizId = 2, incident_id: id = 3 } = route.query;
+      tableLoading.value = true;
+      const params = {
+        incident_id: id,
+        bk_biz_id: bizId
+      };
+      const data = await incidentAlertList(params);
+      tableLoading.value = false;
+      alertData.value = data;
+      console.log(alertData.value, '........');
+    };
+    onMounted(() => {
+      handleGetTable();
+    });
     const handleAlarmDispatchSuccess = data => {
-      // tableData.forEach(item => {
+      // tableData.value.forEach(item => {
       //   if (data.ids.includes(item.id)) {
       //     if (item.appointee) {
       //       const usersSet = new Set();
@@ -538,16 +577,34 @@ export default defineComponent({
       //   }
       // });
     };
+    const handleChangeCollapse = ({ id, isCollapse }) => {
+      if (isCollapse) {
+        collapseId.value = null;
+        return;
+      }
+      collapseId.value = id;
+    };
+
+    const handleSettingChange = ({ checked }) => {
+      console.log(checked, settings.value);
+    };
     return {
+      alertData,
       moreItems,
+      collapseId,
       dialog,
+      opetateRow,
+      tableLoading,
       hoverRowIndex,
       columns,
       tableData,
       scrollLoading,
       chatGroupDialog,
+      settings,
+      handleSettingChange,
       quickShieldChange,
       getMoreOperate,
+      handleChangeCollapse,
       alarmConfirmChange,
       quickShieldSucces,
       handleConfirmAfter,
@@ -564,59 +621,77 @@ export default defineComponent({
   },
   render() {
     return (
-      <div class='alarm-detail'>
-        <ChatGroup
-          show={this.chatGroupDialog.show}
-          assignee={this.chatGroupDialog.assignee}
-          alarmEventName={this.chatGroupDialog.alertName}
-          alertIds={this.chatGroupDialog.alertIds}
-          onShowChange={this.chatGroupShowChange}
-        />
-        <QuickShield
-          details={this.dialog.quickShield.details}
-          ids={this.dialog.quickShield.ids}
-          bizIds={this.dialog.quickShield.bizIds}
-          show={this.dialog.quickShield.show}
-          onChange={this.quickShieldChange}
-          onSucces={this.quickShieldSucces}
-        ></QuickShield>
-        <ManualProcess
-          show={this.dialog.manualProcess.show}
-          bizIds={this.dialog.manualProcess.bizIds}
-          alertIds={this.dialog.manualProcess.alertIds}
-          onShowChange={this.manualProcessShowChange}
-          onDebugStatus={this.handleDebugStatus}
-          onMealInfo={this.handleMealInfo}
-        ></ManualProcess>
-        <AlarmDispatch
-          show={this.dialog.alarmDispatch.show}
-          alertIds={this.dialog.alarmDispatch.alertIds}
-          bizIds={this.dialog.alarmDispatch.bizIds}
-          onShow={this.handleAlarmDispatchShowChange}
-          onSuccess={this.handleAlarmDispatchSuccess}
-        ></AlarmDispatch>
-        <AlarmConfirm
-          show={this.dialog.alarmConfirm.show}
-          ids={this.dialog.alarmConfirm.ids}
-          bizIds={this.dialog.alarmConfirm.bizIds}
-          onConfirm={this.handleConfirmAfter}
-          onChange={this.alarmConfirmChange}
-        ></AlarmConfirm>
-        {this.getMoreOperate()}
-        <Collapse title='用户体验'>
-          <div class='alarm-detail-table'>
-            <Table
-              columns={this.columns}
-              data={this.tableData}
-              max-height={616}
-              scroll-loading={this.scrollLoading}
-              onRowMouseEnter={this.handleEnter}
-              onRowMouseLeave={() => (this.hoverRowIndex = -1)}
-              onScrollBottom={this.handleLoadData}
-            ></Table>
-          </div>
-        </Collapse>
-      </div>
+      <Loading loading={this.tableLoading}>
+        <div class='alarm-detail bk-scroll-y'>
+          <ChatGroup
+            show={this.chatGroupDialog.show}
+            assignee={this.chatGroupDialog.assignee}
+            alarmEventName={this.chatGroupDialog.alertName}
+            alertIds={this.chatGroupDialog.alertIds}
+            onShowChange={this.chatGroupShowChange}
+          />
+          <QuickShield
+            details={this.dialog.quickShield.details}
+            ids={this.dialog.quickShield.ids}
+            bizIds={this.dialog.quickShield.bizIds}
+            show={this.dialog.quickShield.show}
+            onChange={this.quickShieldChange}
+            onSucces={this.quickShieldSucces}
+          ></QuickShield>
+          <ManualProcess
+            show={this.dialog.manualProcess.show}
+            bizIds={this.dialog.manualProcess.bizIds}
+            alertIds={this.dialog.manualProcess.alertIds}
+            onShowChange={this.manualProcessShowChange}
+            onDebugStatus={this.handleDebugStatus}
+            onMealInfo={this.handleMealInfo}
+          ></ManualProcess>
+          <AlarmDispatch
+            show={this.dialog.alarmDispatch.show}
+            alertIds={this.dialog.alarmDispatch.alertIds}
+            bizIds={this.dialog.alarmDispatch.bizIds}
+            onShow={this.handleAlarmDispatchShowChange}
+            onSuccess={this.handleAlarmDispatchSuccess}
+          ></AlarmDispatch>
+          <AlarmConfirm
+            show={this.dialog.alarmConfirm.show}
+            ids={this.dialog.alarmConfirm.ids}
+            bizIds={this.dialog.alarmConfirm.bizIds}
+            onConfirm={this.handleConfirmAfter}
+            onChange={this.alarmConfirmChange}
+          ></AlarmConfirm>
+          {this.getMoreOperate()}
+          {this.alertData.map(item => {
+            return item.alerts.length > 0 ? (
+              <Collapse
+                title={item.name}
+                id={item.id}
+                num={item.alerts.length}
+                key={item.id}
+                collapse={this.collapseId !== item.id}
+                onChangeCollapse={this.handleChangeCollapse}
+              >
+                <div class='alarm-detail-table'>
+                  <Table
+                    columns={this.columns}
+                    data={item.alerts}
+                    max-height={616}
+                    show-overflow-tooltip
+                    settings={this.settings}
+                    scroll-loading={this.scrollLoading}
+                    onRowMouseEnter={this.handleEnter}
+                    onSettingChange={this.handleSettingChange}
+                    onRowMouseLeave={() => (this.hoverRowIndex = -1)}
+                    // onScrollBottom={this.handleLoadData}
+                  ></Table>
+                </div>
+              </Collapse>
+            ) : (
+              ''
+            );
+          })}
+        </div>
+      </Loading>
     );
   }
 });

@@ -817,6 +817,7 @@ export default defineComponent({
     };
     return {
       data,
+      validator,
       httpData,
       errorMsg,
       methodList,

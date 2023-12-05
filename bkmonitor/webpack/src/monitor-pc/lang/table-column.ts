@@ -67,6 +67,7 @@ export default {
   屏蔽内容: 'Mute Content',
   结束时间: 'End Time',
   告警ID: 'Alarm ID',
+  故障ID: 'incident ID',
   业务名: 'Business Name',
   告警名称: 'Alarm Name',
   告警来源: 'Alarm Source',

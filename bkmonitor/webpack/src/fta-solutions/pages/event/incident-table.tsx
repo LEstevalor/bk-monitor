@@ -38,10 +38,10 @@ import { transformLogUrlQuery } from '../../../monitor-pc/utils';
 
 import { handleToAlertList } from './event-detail/action-detail';
 import { TType as TSliderType } from './event-detail/event-detail-slider';
-import { getStatusInfo } from './event-detail/type';
+// import { getStatusInfo } from './event-detail/type';
 import { eventPanelType, IEventItem, IPagination, SearchType } from './typings/event';
 
-import './fault-table.scss';
+import './incident-table.scss';
 
 const alertStoreKey = '__ALERT_EVENT_COLUMN__';
 const actionStoreKey = '__ACTION_EVENT_COLUMN__';
@@ -97,7 +97,7 @@ export interface IShowDetail {
 @Component({
   components: { Popover, Pagination, Checkbox }
 })
-export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> {
+export default class IncidentTable extends tsc<IEventTableProps, IEventTableEvent> {
   @Prop({ required: true }) tableData: IEventItem[];
   @Prop({ required: true }) pagination: IPagination;
   @Prop({ default: false }) loading: boolean;
@@ -142,8 +142,8 @@ export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> 
     return (
       [
         {
-          id: 'incident_id',
-          name: 'ID',
+          id: 'id',
+          name: this.$t('故障ID'),
           checked: false,
           disabled: true,
           props: {
@@ -157,7 +157,7 @@ export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> 
           checked: true,
           disabled: true,
           props: {
-            width: 180,
+            // width: 180,
             minWidth: 180,
             // sortable: 'curstom',
             showOverflowTooltip: true
@@ -169,19 +169,7 @@ export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> 
           checked: true,
           disabled: true,
           props: {
-            width: 130,
-            // sortable: 'curstom',
-            formatter: (row: IEventItem) => {
-              const statusInfo = getStatusInfo(row.status, row.level);
-              return (
-                <span
-                  v-bk-overflow-tips
-                  class={['action-status', statusInfo.status]}
-                >
-                  {statusInfo.text || '--'}
-                </span>
-              );
-            }
+            width: 130
           }
         },
         {
@@ -191,8 +179,8 @@ export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> 
           disabled: true,
           props: {
             width: 120,
-            minWidth: 120
-            // sortable: 'curstom'
+            minWidth: 120,
+            sortable: 'curstom'
           }
         },
         {
@@ -201,7 +189,7 @@ export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> 
           disabled: false,
           checked: true,
           props: {
-            width: 200,
+            // width: 200,
             minWidth: 200,
             formatter: (row: IEventItem) =>
               row.labels?.map(item => <span class='tag-item'>{item.key ? `${item.key}: ${item.value}` : item}</span>) ||
@@ -221,7 +209,7 @@ export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> 
               console.log(row);
               return (
                 <span>
-                  {this.formatterTime(row.begin_time)}/<br></br>
+                  {this.formatterTime(row.begin_time)} / <br></br>
                   {this.formatterTime(row.end_time)}
                 </span>
               );
@@ -229,12 +217,14 @@ export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> 
           }
         },
         {
-          id: 'duration',
+          id: 'incident_duration',
           name: this.$t('持续时间'),
           disabled: true,
           checked: false,
           props: {
-            // sortable: 'curstom'
+            width: 130,
+            minWidth: 118,
+            sortable: 'curstom'
           }
         },
         {
@@ -268,7 +258,7 @@ export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> 
           disabled: false,
           props: {
             showOverflowTooltip: true,
-            formatter: (row: IEventItem) => row.description // row.content.text || '--'
+            formatter: (row: IEventItem) => row.incident_reason || '--' // row.content.text || '--'
           }
         }
       ] as IColumnItem[]
@@ -285,6 +275,30 @@ export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> 
    */
   created() {
     this.eventStatusMap = {
+      abnormal: {
+        color: '#EA3536',
+        bgColor: '#FFEEEE',
+        name: this.$t('未恢复'),
+        icon: 'icon-mind-fill'
+      },
+      recovering: {
+        color: '#FF9C01',
+        bgColor: '#FFF3E1',
+        name: this.$t('观察中'),
+        icon: 'icon-mc-visual'
+      },
+      recovered: {
+        color: '#1CAB88',
+        bgColor: '#E8FFF5',
+        name: this.$t('已恢复'),
+        icon: 'icon-mc-check-fill'
+      },
+      closed: {
+        color: '#979ba5',
+        bgColor: '#F5F7FA',
+        name: this.$t('已解决'),
+        icon: 'icon-mc-solved'
+      },
       ABNORMAL: {
         color: '#EA3536',
         bgColor: '#FEEBEA',
@@ -598,7 +612,7 @@ export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> 
         scopedSlots={{
           default: ({ row }: { row: IEventItem }) => (
             <span
-              class={`event-status status-${row.severity} id-column`}
+              class={`event-status status-${row.severity} id-column ${row.status}_id`}
               v-bk-overflow-tips
               onClick={() => this.handleShowDetail(row)}
             >
@@ -663,12 +677,12 @@ export default class EventTable extends tsc<IEventTableProps, IEventTableEvent> 
         {...{ props: column.props }}
         scopedSlots={{
           default: ({ row }: { row: IEventItem }) =>
-            row.event_count > -1 ? (
+            row.alert_count > -1 ? (
               <Button
                 onClick={() => this.handleClickEventCount(row)}
                 text={true}
               >
-                {row.event_count}
+                {row.alert_count}
               </Button>
             ) : (
               '--'

@@ -23,13 +23,22 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, ref } from 'vue';
+import { defineComponent, ref, watch } from 'vue';
+import { AngleUpFill, RightShape } from 'bkui-vue/lib/icon';
 
 // import { Transition } from 'bkui-vue';
 import './collapse.scss';
 
 export default defineComponent({
   props: {
+    collapse: {
+      type: Boolean,
+      default: false
+    },
+    id: {
+      type: String,
+      default: ''
+    },
     title: {
       type: String,
       default: ''
@@ -39,11 +48,22 @@ export default defineComponent({
       default: 0
     }
   },
-  setup() {
-    const isCollapse = ref(false);
+  emits: ['changeCollapse'],
+  setup(props, { emit }) {
+    const isCollapse = ref(true);
     const handleToggleCollapse = () => {
       isCollapse.value = !isCollapse.value;
+      emit('changeCollapse', { id: props.id, isCollapse: isCollapse.value });
     };
+
+    watch(
+      () => props.collapse,
+      () => {
+        console.log(props.id, props.collapse);
+        isCollapse.value = props.collapse;
+      }
+    );
+
     return {
       isCollapse,
       handleToggleCollapse
@@ -54,13 +74,12 @@ export default defineComponent({
       <div class='aiops-correlation-metrics'>
         <div class='correlation-metrics-collapse'>
           <div class={['correlation-metrics-collapse-head', 'correlation-metrics-collapse-head-show']}>
-            <i
+            <span
               onClick={this.handleToggleCollapse}
-              class={[
-                'bk-icon bk-card-head-icon collapse-icon',
-                this.isCollapse ? 'icon-right-shape' : 'icon-down-shape'
-              ]}
-            ></i>
+              class={['bk-icon bk-card-head-icon collapse-icon']}
+            >
+              {!this.isCollapse ? <AngleUpFill /> : <RightShape />}
+            </span>
             <span
               class='correlation-metrics-title'
               onClick={this.handleToggleCollapse}

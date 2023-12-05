@@ -422,6 +422,8 @@ export default defineComponent({
     );
     return {
       confirmLoading,
+      httpCallBack,
+      dynamicform,
       groupSelectKey,
       curMeal,
       webhookKey,
