@@ -18,6 +18,8 @@ from bkmonitor.documents.base import BaseDocument, Date
 from constants.incident import IncidentStatus
 from core.errors.incident import IncidentNotFoundError
 
+MAX_INCIDENT_CONTENTS_SIZE = 10000
+
 
 class IncidentBaseDocument(BaseDocument):
     def get_index_time(self):
@@ -55,7 +57,7 @@ class IncidentItemsMixin:
         :return: 故障关联的内容
         """
         search = cls.search(all_indices=True).filter("term", incident_id=incident_id)
-        search = search.sort("create_time")
+        search = search.sort("create_time").params(size=MAX_INCIDENT_CONTENTS_SIZE)
         hits = search.execute().hits
         return [cls(**hit.to_dict()) for hit in hits]
 

@@ -125,12 +125,12 @@ class IncidentOperationManager(object):
         :return: 故障流转记录
         """
         return cls.record_operation(
-            incident_id, IncidentOperationType.C, operate_time, merged_incident_name=merged_incident_name
+            incident_id, IncidentOperationType.MERGE, operate_time, merged_incident_name=merged_incident_name
         )
 
     @classmethod
     def record_incident_alert_trigger(
-        cls, incident_id: int, operate_time: int, alert_name: str
+        cls, incident_id: int, operate_time: int, alert_name: str, alert_id: int
     ) -> IncidentOperationDocument:
         """记录故障检测到新告警
         文案: 检测到新告警（{alert_name}）
@@ -141,12 +141,12 @@ class IncidentOperationManager(object):
         :return: 故障流转记录
         """
         return cls.record_operation(
-            incident_id, IncidentOperationType.ALERT_TRIGGER, operate_time, alert_name=alert_name
+            incident_id, IncidentOperationType.ALERT_TRIGGER, operate_time, alert_name=alert_name, alert_id=alert_id
         )
 
     @classmethod
     def record_incident_alert_recover(
-        cls, incident_id: int, operate_time: int, alert_name: str
+        cls, incident_id: int, operate_time: int, alert_name: str, alert_id: int
     ) -> IncidentOperationDocument:
         """记录故障告警恢复
         文案: 告警已恢复（{alert_name}）
@@ -157,12 +157,12 @@ class IncidentOperationManager(object):
         :return: 故障流转记录
         """
         return cls.record_operation(
-            incident_id, IncidentOperationType.ALERT_RECOVER, operate_time, alert_name=alert_name
+            incident_id, IncidentOperationType.ALERT_RECOVER, operate_time, alert_name=alert_name, alert_id=alert_id
         )
 
     @classmethod
     def record_incident_alert_invalid(
-        cls, incident_id: int, operate_time: int, alert_name: str
+        cls, incident_id: int, operate_time: int, alert_name: str, alert_id: int
     ) -> IncidentOperationDocument:
         """记录故障告警失效
         文案: 告警已失效（{alert_name}）
@@ -173,12 +173,16 @@ class IncidentOperationManager(object):
         :return: 故障流转记录
         """
         return cls.record_operation(
-            incident_id, IncidentOperationType.ALERT_INVALID, operate_time, alert_name=alert_name
+            incident_id,
+            IncidentOperationType.ALERT_INVALID,
+            operate_time,
+            alert_name=alert_name,
+            alert_id=alert_id,
         )
 
     @classmethod
     def record_incident_alert_notice(
-        cls, incident_id: int, operate_time: int, alert_name: str, receivers: List[str]
+        cls, incident_id: int, operate_time: int, alert_name: str, alert_id: int, receivers: List[str]
     ) -> IncidentOperationDocument:
         """记录故障告警通知
         文案: 告警通知已发送（{alert_name}；接收人：{recievers}）
@@ -189,7 +193,12 @@ class IncidentOperationManager(object):
         :return: 故障流转记录
         """
         return cls.record_operation(
-            incident_id, IncidentOperationType.ALERT_NOTICE, operate_time, alert_name=alert_name, receivers=receivers
+            incident_id,
+            IncidentOperationType.ALERT_NOTICE,
+            operate_time,
+            alert_name=alert_name,
+            receivers=receivers,
+            alert_id=alert_id,
         )
 
     @classmethod
@@ -279,7 +288,7 @@ class IncidentOperationManager(object):
 
     @classmethod
     def record_incident_alert_confirm(
-        cls, incident_id: int, operate_time: int, alert_name: str
+        cls, incident_id: int, operate_time: int, alert_name: str, alert_id: int
     ) -> IncidentOperationDocument:
         """记录故障告警确认
         文案: 告警已确认（{alert_name}）
@@ -290,12 +299,12 @@ class IncidentOperationManager(object):
         :return: 故障流转记录
         """
         return cls.record_operation(
-            incident_id, IncidentOperationType.ALERT_CONFIRM, operate_time, alert_name=alert_name
+            incident_id, IncidentOperationType.ALERT_CONFIRM, operate_time, alert_name=alert_name, alert_id=alert_id
         )
 
     @classmethod
     def record_incident_alert_shield(
-        cls, incident_id: int, operate_time: int, alert_name: str
+        cls, incident_id: int, operate_time: int, alert_name: str, alert_id: int
     ) -> IncidentOperationDocument:
         """记录故障告警屏蔽
         文案: 告警已屏蔽（{alert_name}）
@@ -306,12 +315,12 @@ class IncidentOperationManager(object):
         :return: 故障流转记录
         """
         return cls.record_operation(
-            incident_id, IncidentOperationType.ALERT_SHIELD, operate_time, alert_name=alert_name
+            incident_id, IncidentOperationType.ALERT_SHIELD, operate_time, alert_name=alert_name, alert_id=alert_id
         )
 
     @classmethod
     def record_incident_alert_handle(
-        cls, incident_id: int, operate_time: int, alert_name: str
+        cls, incident_id: int, operate_time: int, alert_name: str, alert_id: int
     ) -> IncidentOperationDocument:
         """记录故障告警手动处理
         文案: 告警已被手动处理（{alert_name}）
@@ -322,12 +331,12 @@ class IncidentOperationManager(object):
         :return: 故障流转记录
         """
         return cls.record_operation(
-            incident_id, IncidentOperationType.ALERT_HANDLE, operate_time, alert_name=alert_name
+            incident_id, IncidentOperationType.ALERT_HANDLE, operate_time, alert_name=alert_name, alert_id=alert_id
         )
 
     @classmethod
     def record_incident_alert_dispatch(
-        cls, incident_id: int, operate_time: int, alert_name: str, handlers: List[str]
+        cls, incident_id: int, operate_time: int, alert_name: str, alert_id: int, handlers: List[str]
     ) -> IncidentOperationDocument:
         """记录故障告警分派
         文案: 告警已分派（{alert_name}；处理人：{handlers}）
@@ -339,12 +348,17 @@ class IncidentOperationManager(object):
         :return: 故障流转记录
         """
         return cls.record_operation(
-            incident_id, IncidentOperationType.ALERT_DISPATCH, operate_time, alert_name=alert_name, handlers=handlers
+            incident_id,
+            IncidentOperationType.ALERT_DISPATCH,
+            operate_time,
+            alert_name=alert_name,
+            alert_id=alert_id,
+            handlers=handlers,
         )
 
     @classmethod
     def record_incident_alert_close(
-        cls, incident_id: int, operate_time: int, alert_name: str
+        cls, incident_id: int, operate_time: int, alert_name: str, alert_id: int
     ) -> IncidentOperationDocument:
         """记录故障告警关闭
         文案: 告警已被关闭（{alert_name}）
@@ -354,4 +368,10 @@ class IncidentOperationManager(object):
         :param alert_name: 告警名称
         :return: 故障流转记录
         """
-        return cls.record_operation(incident_id, IncidentOperationType.ALERT_CLOSE, operate_time, alert_name=alert_name)
+        return cls.record_operation(
+            incident_id,
+            IncidentOperationType.ALERT_CLOSE,
+            operate_time,
+            alert_name=alert_name,
+            alert_id=alert_id,
+        )
