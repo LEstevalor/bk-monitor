@@ -8,6 +8,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 """
+from collections import Counter
 from typing import Dict
 
 from bkmonitor.documents.incident import (
@@ -15,11 +16,11 @@ from bkmonitor.documents.incident import (
     IncidentOperationDocument,
     IncidentSnapshotDocument,
 )
+from bkmonitor.utils.request import get_request_username
 from bkmonitor.views import serializers
 from constants.incident import IncidentOperationClass, IncidentOperationType
 from core.drf_resource import api, resource
 from core.drf_resource.base import Resource
-from fta_web.alert.handlers.alert import AlertQueryHandler
 from fta_web.alert.handlers.incident import IncidentQueryHandler
 from fta_web.alert.resources import BaseTopNResource
 from fta_web.models.alert import SearchHistory, SearchType
@@ -188,11 +189,55 @@ class IncidentHandlersResource(Resource):
         super(IncidentHandlersResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        id = serializers.IntegerField(required=False, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        return {}
+        incident_document = IncidentDocument.get(validated_request_data["id"])
+        alerts = incident_document.get_related_alerts()
+        current_username = get_request_username()
+
+        alert_agg_results = Counter()
+        for alert in alerts:
+            for username in alert["assignee"]:
+                alert_agg_results[username] += 1
+
+        handlers = {
+            "all": {
+                "id": "all",
+                "name": "全部",
+                "index": 1,
+                "alert_count": len(alerts),
+            },
+            "not_dispatch": {
+                "id": "not_dispatch",
+                "name": "未分派",
+                "index": 2,
+                "alert_count": 0,
+            },
+            "mine": {
+                "id": current_username,
+                "name": "我负责",
+                "index": 3,
+                "alert_count": alert_agg_results.get(current_username, 0),
+            },
+            "other": {
+                "id": "other",
+                "name": "其他",
+                "index": 4,
+                "children": [
+                    {
+                        "id": username,
+                        "name": username,
+                        "alert_count": alert_count,
+                    }
+                    for username, alert_count in alert_agg_results.items()
+                    if username != current_username
+                ],
+            },
+        }
+
+        return handlers
 
 
 class IncidentOperationsResource(Resource):
@@ -212,13 +257,13 @@ class IncidentOperationsResource(Resource):
         return [operation.to_dict() for operation in operations]
 
 
-class IncidentOperationTypeResource(Resource):
+class IncidentOperationTypesResource(Resource):
     """
     故障流转列表
     """
 
     def __init__(self):
-        super(IncidentOperationTypeResource, self).__init__()
+        super(IncidentOperationTypesResource, self).__init__()
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         operation_types = {
@@ -237,7 +282,7 @@ class IncidentOperationTypeResource(Resource):
                     "operation_type_alias": operation_type.alias,
                 }
             )
-        return operation_types
+        return list(operation_types.values())
 
 
 class EditIncidentResource(Resource):
@@ -298,20 +343,17 @@ class IncidentAlertListResource(Resource):
         super(IncidentAlertListResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        id = serializers.IntegerField(required=False, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        # incident_id = validated_request_data["incident_id"]
+        incident_document = IncidentDocument.get(validated_request_data["id"])
+        alerts = incident_document.get_related_alerts()
 
-        # incident_info = api.bkdata.get_incident_detail(incident_id=incident_id)
         incident_alerts = resource.commons.get_label()
         for category in incident_alerts:
             category["alerts"] = []
             category["sub_categories"] = [item["id"] for item in category["children"]]
-
-        ids = [170133033522966, 170130957522861, 170128740522571, 170124544222458]
-        alerts = AlertQueryHandler(conditions=[{'key': 'id', 'value': ids, 'method': 'eq'}]).search()["alerts"]
 
         for alert in alerts:
             alert["is_incident_root"] = False
