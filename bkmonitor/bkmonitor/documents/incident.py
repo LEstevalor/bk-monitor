@@ -33,13 +33,16 @@ class IncidentBaseDocument(BaseDocument):
 
 class IncidentItemsMixin:
     @classmethod
-    def list_by_incident_id(cls, incident_id: str) -> List:
+    def list_by_incident_id(cls, incident_id: int) -> List:
         """根据故障ID获取故障关联的内容(故障根因结果快照、故障操作记录、故障通知记录)
 
         :param incident_id: 故障ID
         :return: 故障关联的内容
         """
-        return []
+        search = cls.search(all_indices=True).filter("term", incident_id=incident_id)
+        search = search.sort("create_time")
+        hits = search.execute().hits
+        return [cls(**hit.to_dict()) for hit in hits]
 
 
 @registry.register_document
