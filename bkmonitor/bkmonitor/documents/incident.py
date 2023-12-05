@@ -30,6 +30,21 @@ class IncidentBaseDocument(BaseDocument):
         """
         return int(str(id)[:10])
 
+    def to_dict(self, include_meta: bool = False, skip_empty: bool = True):
+        """
+        补充值没有值的字段
+        """
+        result = super().to_dict(include_meta=include_meta, skip_empty=skip_empty)
+        for name, field_type in self._fields.items():
+            if name not in result:
+                if isinstance(field_type, field.Keyword) and field_type._multi:
+                    result[name] = []
+                elif isinstance(field_type, field.Object):
+                    result[name] = {}
+                else:
+                    result[name] = None
+        return result
+
 
 class IncidentItemsMixin:
     @classmethod
