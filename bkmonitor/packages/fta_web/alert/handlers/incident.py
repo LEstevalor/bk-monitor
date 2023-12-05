@@ -21,11 +21,12 @@ from elasticsearch_dsl.utils import AttrList
 
 from bkmonitor.documents.incident import IncidentDocument
 from constants.incident import IncidentLevel, IncidentStatus
-from fta_web.alert.handlers.base import (
+from packages.fta_web.alert.handlers.base import (
     BaseBizQueryHandler,
     BaseQueryTransformer,
     QueryField,
 )
+from packages.fta_web.alert.handlers.translator import BizTranslator
 
 
 class IncidentQueryTransformer(BaseQueryTransformer):
@@ -147,6 +148,7 @@ class IncidentQueryHandler(BaseBizQueryHandler):
 
         search_result = search_object.execute()
         incidents = self.handle_hit_list(search_result.hits)
+        BizTranslator().translate_from_dict(incidents, "bk_biz_id", "bk_biz_name")
 
         result = {
             "total": min(search_result.hits.total.value, 10000),
