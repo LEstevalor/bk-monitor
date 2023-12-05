@@ -45,6 +45,8 @@ class IncidentViewSet(ResourceViewSet):
         ResourceRoute("GET", resource.incident.incident_handlers, endpoint="incident_handlers"),
         # 故障流转列表接口
         ResourceRoute("GET", resource.incident.incident_operations, endpoint="incident_operations"),
+        # 故障流转类型接口
+        ResourceRoute("GET", resource.incident.incident_operation_types, endpoint="incident_operation_types"),
         # 编辑故障
         ResourceRoute("POST", resource.incident.edit_incident, endpoint="edit_incident"),
         # 反馈故障根因
