@@ -10,15 +10,17 @@ specific language governing permissions and limitations under the License.
 """
 from typing import Dict
 
+from bkmonitor.constants.incident import IncidentLevel, IncidentStatus
 from bkmonitor.documents.alert import AlertDocument
 from bkmonitor.documents.incident import IncidentDocument, IncidentSnapshotDocument
 from bkmonitor.utils.time_tools import hms_string
 from bkmonitor.views import serializers
 from core.drf_resource import api, resource
 from core.drf_resource.base import Resource
-from fta_web.alert.handlers.incident import IncidentQueryHandler
-from fta_web.alert.resources import BaseTopNResource
-from fta_web.models.alert import SearchHistory, SearchType
+from packages.fta_web.alert.handlers.incident import IncidentQueryHandler
+from packages.fta_web.alert.handlers.translator import BizTranslator
+from packages.fta_web.alert.resources import BaseTopNResource
+from packages.fta_web.models.alert import SearchHistory, SearchType
 from packages.monitor_web.incident.serializers import IncidentSearchSerializer
 
 
@@ -107,30 +109,18 @@ class IncidentDetailResource(Resource):
     def perform_request(self, validated_request_data: Dict) -> Dict:
         id = validated_request_data["id"]
 
-        incident = IncidentDocument.get(id)
+        incident = IncidentDocument.get(id).to_dict()
         incident["snapshots"] = [item.to_dict() for item in self.get_incident_snapshots(incident)]
-
-        return {
-            "incident_id": 1,
-            "incident_name": "我是故障名占位",
-            "incident_reason": "我是故障原因占位",
-            "bk_biz_id": 10,
-            "create_time": 1700000000,
-            "update_time": 1700000000,
-            "begin_time": 1700000000,
-            "end_time": None,
-            "alert_count": 48,
-            "assignee": ["admin", "admin2"],
-            "handlers": ["admin3", "admin4"],
-            "labels": ["游戏", "异常", "时序"],
-            "status": "abnormal",
-            "status_alias": "故障中",
-            "level": "ERROR",
-            "level_alias": "致命",
-            "dimensions": {"bk_cloud_id": 0},
-            "incident_duration": hms_string(3000),
-            "current_incident_snapshot_id": 1000000,
-        }
+        incident["status_alias"] = IncidentStatus(incident["status"]).alias
+        incident["level_alias"] = IncidentLevel(incident["level"]).alias
+        if incident["end_time"]:
+            incident["duration"] = hms_string(incident["end_time"] - incident["start_time"])
+        else:
+            incident["duration"] = None
+        incident["bk_biz_name"] = resource.cc.get_app_by_id(2).name
+        if len(incident["snapshots"]) > 0:
+            incident["current_snapshot"] = incident["snapshots"][-1]
+            incident["alert_count"] = len(incident["current_snapshot"]["alerts"])
 
         return incident
 
@@ -298,9 +288,12 @@ class IncidentAlertListResource(Resource):
             item.to_dict()
             for item in AlertDocument.mget(ids=[170133033522966, 170130957522861, 170128740522571, 170124544222458])
         ]
+        BizTranslator.translate_from_dict(alerts, "bk_biz_id", "bk_biz_name")
         for alert in alerts:
+            alert["is_incident_root"] = False
             for category in incident_alerts:
                 if alert["event"]["category"] in category["sub_categories"]:
                     category["alerts"].append(alert)
+        alerts[0]["is_incident_root"] = True
 
         return incident_alerts
