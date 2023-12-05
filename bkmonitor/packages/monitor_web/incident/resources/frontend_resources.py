@@ -10,18 +10,20 @@ specific language governing permissions and limitations under the License.
 """
 from typing import Dict
 
-from bkmonitor.documents.alert import AlertDocument
-from bkmonitor.documents.incident import IncidentDocument, IncidentSnapshotDocument
-from bkmonitor.utils.time_tools import hms_string
+from bkmonitor.documents.incident import (
+    IncidentDocument,
+    IncidentOperationDocument,
+    IncidentSnapshotDocument,
+)
 from bkmonitor.views import serializers
-from constants.incident import IncidentLevel, IncidentStatus
+from constants.incident import IncidentOperationClass, IncidentOperationType
 from core.drf_resource import api, resource
 from core.drf_resource.base import Resource
-from packages.fta_web.alert.handlers.incident import IncidentQueryHandler
-from packages.fta_web.alert.handlers.translator import BizTranslator
-from packages.fta_web.alert.resources import BaseTopNResource
-from packages.fta_web.models.alert import SearchHistory, SearchType
-from packages.monitor_web.incident.serializers import IncidentSearchSerializer
+from fta_web.alert.handlers.alert import AlertQueryHandler
+from fta_web.alert.handlers.incident import IncidentQueryHandler
+from fta_web.alert.resources import BaseTopNResource
+from fta_web.models.alert import SearchHistory, SearchType
+from monitor_web.incident.serializers import IncidentSearchSerializer
 
 
 class IncidentListResource(Resource):
@@ -110,13 +112,8 @@ class IncidentDetailResource(Resource):
         id = validated_request_data["id"]
 
         incident = IncidentDocument.get(id).to_dict()
+        incident = IncidentQueryHandler.handle_hit(incident)
         incident["snapshots"] = [item.to_dict() for item in self.get_incident_snapshots(incident)]
-        incident["status_alias"] = IncidentStatus(incident["status"]).alias
-        incident["level_alias"] = IncidentLevel(incident["level"]).alias
-        if incident["end_time"]:
-            incident["duration"] = hms_string(incident["end_time"] - incident["start_time"])
-        else:
-            incident["duration"] = None
         incident["bk_biz_name"] = resource.cc.get_app_by_id(2).name
         if len(incident["snapshots"]) > 0:
             incident["current_snapshot"] = incident["snapshots"][-1]
@@ -211,7 +208,36 @@ class IncidentOperationsResource(Resource):
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        return {}
+        operations = IncidentOperationDocument.list_by_incident_id(validated_request_data["incident_id"])
+        return [operation.to_dict() for operation in operations]
+
+
+class IncidentOperationTypeResource(Resource):
+    """
+    故障流转列表
+    """
+
+    def __init__(self):
+        super(IncidentOperationTypeResource, self).__init__()
+
+    def perform_request(self, validated_request_data: Dict) -> Dict:
+        operation_types = {
+            operation_class: {
+                "operation_class": operation_class.value,
+                "operation_class_alias": operation_class.alias,
+                "operation_types": [],
+            }
+            for operation_class in IncidentOperationClass.__members__.values()
+        }
+
+        for operation_type in IncidentOperationType.__members__.values():
+            operation_types[operation_type.operation_class]["operation_types"].append(
+                {
+                    "operation_type": operation_type.value,
+                    "operation_type_alias": operation_type.alias,
+                }
+            )
+        return operation_types
 
 
 class EditIncidentResource(Resource):
@@ -284,15 +310,13 @@ class IncidentAlertListResource(Resource):
             category["alerts"] = []
             category["sub_categories"] = [item["id"] for item in category["children"]]
 
-        alerts = [
-            item.to_dict()
-            for item in AlertDocument.mget(ids=[170133033522966, 170130957522861, 170128740522571, 170124544222458])
-        ]
-        BizTranslator.translate_from_dict(alerts, "bk_biz_id", "bk_biz_name")
+        ids = [170133033522966, 170130957522861, 170128740522571, 170124544222458]
+        alerts = AlertQueryHandler(conditions=[{'key': 'id', 'value': ids, 'method': 'eq'}]).search()["alerts"]
+
         for alert in alerts:
             alert["is_incident_root"] = False
             for category in incident_alerts:
-                if alert["event"]["category"] in category["sub_categories"]:
+                if alert["category"] in category["sub_categories"]:
                     category["alerts"].append(alert)
         alerts[0]["is_incident_root"] = True
 

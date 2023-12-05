@@ -20,13 +20,14 @@ from elasticsearch_dsl.response import Response
 from elasticsearch_dsl.utils import AttrList
 
 from bkmonitor.documents.incident import IncidentDocument
+from bkmonitor.utils.time_tools import hms_string
 from constants.incident import IncidentLevel, IncidentStatus
-from packages.fta_web.alert.handlers.base import (
+from fta_web.alert.handlers.base import (
     BaseBizQueryHandler,
     BaseQueryTransformer,
     QueryField,
 )
-from packages.fta_web.alert.handlers.translator import BizTranslator
+from fta_web.alert.handlers.translator import BizTranslator
 
 
 class IncidentQueryTransformer(BaseQueryTransformer):
@@ -62,9 +63,11 @@ class IncidentQueryTransformer(BaseQueryTransformer):
     extra_info = field.Object(enabled=False)
     """
     query_fields = [
-        QueryField("incident_id", _lazy("故障ID")),
+        QueryField("id", _lazy("故障UUID")),
+        QueryField("incident_id", _lazy("故障内部ID")),
         QueryField("incident_name", _lazy("故障名称")),
         QueryField("incident_reason", _lazy("故障原因")),
+        QueryField("bk_biz_id", _lazy("业务ID")),
         QueryField("status", _lazy("故障状态")),
         QueryField("level", _lazy("故障级别")),
         QueryField("assignees", _lazy("负责人")),
@@ -190,6 +193,17 @@ class IncidentQueryHandler(BaseBizQueryHandler):
         hits = hits or []
         incidents = [cls.handle_hit(hit) for hit in hits]
         return incidents
+
+    @classmethod
+    def handle_hit(cls, hit) -> Dict:
+        incident = super().handle_hit(hit)
+        incident["status_alias"] = IncidentStatus(incident["status"]).alias
+        incident["level_alias"] = IncidentLevel(incident["level"]).alias
+        if incident["end_time"]:
+            incident["duration"] = hms_string(incident["end_time"] - incident["start_time"])
+        else:
+            incident["duration"] = None
+        return incident
 
     def date_histogram(self, interval: str = "auto") -> Dict:
         interval = self.calculate_agg_interval(self.start_time, self.end_time, interval)
