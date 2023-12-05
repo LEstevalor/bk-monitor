@@ -205,11 +205,13 @@ class IncidentHandlersResource(IncidentBaseResource):
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        alerts = alerts = self.get_incident_alerts(validated_request_data["id"])
+        alerts = self.get_incident_alerts(validated_request_data["id"])
         current_username = get_request_username()
 
         alert_agg_results = Counter()
         for alert in alerts:
+            if not alert["assignee"]:
+                continue
             for username in alert["assignee"]:
                 alert_agg_results[username] += 1
 
