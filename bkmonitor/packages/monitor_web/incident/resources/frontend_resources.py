@@ -10,11 +10,11 @@ specific language governing permissions and limitations under the License.
 """
 from typing import Dict
 
-from bkmonitor.constants.incident import IncidentLevel, IncidentStatus
 from bkmonitor.documents.alert import AlertDocument
 from bkmonitor.documents.incident import IncidentDocument, IncidentSnapshotDocument
 from bkmonitor.utils.time_tools import hms_string
 from bkmonitor.views import serializers
+from constants.incident import IncidentLevel, IncidentStatus
 from core.drf_resource import api, resource
 from core.drf_resource.base import Resource
 from packages.fta_web.alert.handlers.incident import IncidentQueryHandler
