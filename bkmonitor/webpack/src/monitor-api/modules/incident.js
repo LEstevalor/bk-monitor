@@ -10,6 +10,7 @@ export const incidentTimeLine = request('GET', 'rest/v2/incident/incident_time_l
 export const incidentTargets = request('GET', 'rest/v2/incident/incident_targets/');
 export const incidentHandlers = request('GET', 'rest/v2/incident/incident_handlers/');
 export const incidentOperations = request('GET', 'rest/v2/incident/incident_operations/');
+export const incidentOperationTypes = request('GET', 'rest/v2/incident/incident_operation_types/');
 export const editIncident = request('POST', 'rest/v2/incident/edit_incident/');
 export const feedbackIncidentRoot = request('POST', 'rest/v2/incident/feedback_incident_root/');
 export const incidentAlertList = request('GET', 'rest/v2/incident/incident_alert_list/');
@@ -25,6 +26,7 @@ export default {
   incidentTargets,
   incidentHandlers,
   incidentOperations,
+  incidentOperationTypes,
   editIncident,
   feedbackIncidentRoot,
   incidentAlertList
