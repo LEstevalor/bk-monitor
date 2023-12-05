@@ -26,7 +26,9 @@
   height: 100%;
   color: #63656e;
   background-color: #f5f7fa;
-
+  .icon-xiazai {
+    font-size: 16px;
+  }
   .event-filter {
     position: relative;
     display: flex;
@@ -57,7 +59,7 @@
         flex: 0 0 32px;
         align-items: center;
         height: 32px;
-        padding: 0 12px 0 16px;
+        padding: 0 12px 0 18px;
         margin: 0;
         i {
           margin-right: 5px;
@@ -102,7 +104,7 @@
           height: 100%;
           background: #dcdee5;
           position: absolute;
-          left: 20px;
+          left: 22px;
           transform: translateX(1px) scaleX(0.5);
           z-index: 1;
         }
@@ -118,7 +120,7 @@
           @include item-count();
 
           .item-icon {
-            margin-right: 8px;
+            margin-right: 5px;
             @include icon-size(16px);
           }
 
@@ -143,15 +145,15 @@
           }
           .icon-inform-circle {
             position: relative;
-            font-size: 12px;
-            background: #ff9c01;
-            border-radius: 50%;
+            font-size: 16px;
+            // background: #ff9c01;
+            // border-radius: 50%;
 
-            &::before {
-              position: absolute;
-              top: 1px;
-              left: 2px;
-            }
+            // &::before {
+            //   position: absolute;
+            //   top: 1px;
+            //   left: 2px;
+            // }
           }
         }
       }

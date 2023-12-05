@@ -32,6 +32,8 @@ $statusColors: #ea3635 #ff9c00 #699df4;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    .incident_id {
+    }
   }
 
   .status-column {
@@ -152,8 +154,19 @@ $statusColors: #ea3635 #ff9c00 #699df4;
     line-height: 16px;
     color: #3a84ff;
     cursor: pointer;
-    border-left: 4px solid #699df4;
-
+    border-left: 3px solid #699df4;
+    &.recovered_id {
+      border-left-color: #3a84ff;
+    }
+    &.recovering_id {
+      border-left-color: #ffb848;
+    }
+    &.abnormal_id {
+      border-left-color: #ea3636;
+    }
+    &.closed_id {
+      border-left-color: #3a84ff;
+    }
     @for $i from 1 through length($statusColors) {
       &.status-#{$i} {
         border-left-color: nth($statusColors, $i);
@@ -177,12 +190,26 @@ $statusColors: #ea3635 #ff9c00 #699df4;
       color: #3a84ff;
       background-color: #edf4ff;
     }
-
+    &.recovered {
+      color: #1cab88;
+      background-color: #e8fff5;
+    }
     &.success {
       color: #14a568;
       background-color: #e4faf0;
     }
-
+    &.abnormal {
+      color: #ea3536;
+      background-color: #ffeeee;
+    }
+    &.closed {
+      color: #979ba5;
+      background-color: #ffeeee;
+    }
+    &.recovering {
+      color: #ff9c01;
+      background-color: #f5f7fa;
+    }
     &.failure {
       color: #ea3536;
       background-color: #feebea;
@@ -202,7 +229,9 @@ $statusColors: #ea3635 #ff9c00 #699df4;
   .tag-item {
     display: inline-block;
     max-width: 100%;
-    padding: 6px 11px;
+    height: 22px;
+    line-height: 22px;
+    padding: 0px 8px;
     margin-right: 3px;
     overflow: hidden;
     text-overflow: ellipsis;

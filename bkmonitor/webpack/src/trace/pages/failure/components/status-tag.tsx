@@ -42,14 +42,22 @@ export default defineComponent({
         name: t('未恢复'),
         icon: 'icon-mind-fill'
       },
+      RECOVERING: {
+        color: '#FFB848',
+        icon: 'icon-mc-visual',
+        name: t('观察中'),
+        bgColor: '#FFF3E1'
+      },
       RECOVERED: {
+        icon: 'icon-mc-check-fill',
         color: '#14A568',
         bgColor: '#E4FAF0',
         name: t('已恢复')
       },
       CLOSED: {
-        color: '#63656E',
-        bgColor: '#F0F1F5',
+        color: '#C4C6CC',
+        bgColor: '#F5F7FA',
+        icon: 'icon-mc-solved',
         name: t('已关闭')
       }
     };

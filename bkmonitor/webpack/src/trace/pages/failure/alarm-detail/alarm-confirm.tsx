@@ -28,9 +28,9 @@ import { defineComponent, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Alert, Button, Dialog, Input, Loading, Message } from 'bkui-vue';
 
-// import { getActionConfigByAlerts } from '../../../../monitor-api/modules/action';
-// import { ackAlert } from '../../../../monitor-api/modules/alert';
-// import MonitorDialog from '../../../../monitor-ui/monitor-dialog/monitor-dialog.vue';
+import { getActionConfigByAlerts } from '../../../../monitor-api/modules/action';
+import { ackAlert } from '../../../../monitor-api/modules/alert';
+
 import './alarm-confirm.scss';
 
 // import { FtaAlertAck } from './mock'
@@ -64,11 +64,10 @@ export default defineComponent({
     const handleConfirm = v => emit('change', v);
     // 获取关联的套餐信息
     const getInfoData = () => {
-      return;
       loading.value = true;
       getActionConfigByAlerts({
-        alert_ids: this.ids,
-        bk_biz_id: this.bizIds?.[0] || this.$store.getters.bizId
+        alert_ids: props.ids,
+        bk_biz_id: props.bizIds?.[0] //|| this.$store.getters.bizId
       })
         .then(data => {
           infoContent.value = data
@@ -83,7 +82,6 @@ export default defineComponent({
         .finally(() => (loading.value = false));
     };
     const handleAlarmConfirm = async () => {
-      return;
       loading.value = true;
       const params = {
         ids: props.ids,

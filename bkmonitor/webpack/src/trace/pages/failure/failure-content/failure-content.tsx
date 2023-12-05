@@ -23,7 +23,7 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import AlarmDetail from '../alarm-detail/alarm-detail';
@@ -35,18 +35,25 @@ import './failure-content.scss';
 export default defineComponent({
   setup() {
     const { t } = useI18n();
+    const active = ref('FailureTopo');
     const tabList = [
       {
-        name: 'DealWith',
-        label: t('故障处理')
+        name: 'FailureTopo',
+        label: t('故障拓扑')
       },
       {
-        name: 'Circulation',
-        label: t('故障流转')
+        name: 'AlarmDetail',
+        label: t('告警明细')
       }
     ];
+
+    const handleChangeActive = (activeName: string) => {
+      active.value = activeName;
+    };
     return {
-      tabList
+      tabList,
+      active,
+      handleChangeActive
     };
   },
   render() {
@@ -54,9 +61,11 @@ export default defineComponent({
       <div class='failure-content'>
         <FailureMenu
           tabList={this.tabList}
-          active='DealWith'
+          active={this.active}
+          onChange={this.handleChangeActive}
         ></FailureMenu>
-        <FailureTopo />
+        {/* {this.active === 'FailureTopo' && <FailureTopo></FailureTopo>} */}
+        {this.active === 'AlarmDetail' && <AlarmDetail></AlarmDetail>}
       </div>
     );
   }
