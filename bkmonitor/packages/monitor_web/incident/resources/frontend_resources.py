@@ -9,7 +9,7 @@ an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express o
 specific language governing permissions and limitations under the License.
 """
 from collections import Counter
-from typing import Dict
+from typing import Dict, List
 
 from bkmonitor.documents.incident import (
     IncidentDocument,
@@ -21,13 +21,25 @@ from bkmonitor.views import serializers
 from constants.incident import IncidentOperationClass, IncidentOperationType
 from core.drf_resource import api, resource
 from core.drf_resource.base import Resource
+from fta_web.alert.handlers.alert import AlertQueryHandler
 from fta_web.alert.handlers.incident import IncidentQueryHandler
 from fta_web.alert.resources import BaseTopNResource
 from fta_web.models.alert import SearchHistory, SearchType
 from monitor_web.incident.serializers import IncidentSearchSerializer
 
 
-class IncidentListResource(Resource):
+class IncidentBaseResource(Resource):
+    """
+    故障相关资源基类
+    """
+
+    def get_incident_alerts(self, incident_id: int) -> List[Dict]:
+        ids = [170133033522966, 170130957522861, 170128740522571, 170124544222458]
+        alerts = AlertQueryHandler(conditions=[{'key': 'id', 'value': ids, 'method': 'eq'}]).search()["alerts"]
+        return alerts
+
+
+class IncidentListResource(IncidentBaseResource):
     """
     故障列表
     """
@@ -58,7 +70,7 @@ class IncidentListResource(Resource):
         return result
 
 
-class IncidentOverviewResource(Resource):
+class IncidentOverviewResource(IncidentBaseResource):
     """
     故障汇总统计
     """
@@ -97,7 +109,7 @@ class IncidentValidateQueryStringResource(Resource):
         )
 
 
-class IncidentDetailResource(Resource):
+class IncidentDetailResource(IncidentBaseResource):
     """
     故障详情
     """
@@ -132,7 +144,7 @@ class IncidentDetailResource(Resource):
         return snapshots
 
 
-class IncidentTopologyResource(Resource):
+class IncidentTopologyResource(IncidentBaseResource):
     """
     故障拓扑图
     """
@@ -148,7 +160,7 @@ class IncidentTopologyResource(Resource):
         return {}
 
 
-class IncidentTimeLineResource(Resource):
+class IncidentTimeLineResource(IncidentBaseResource):
     """
     故障时序图
     """
@@ -164,7 +176,7 @@ class IncidentTimeLineResource(Resource):
         return {}
 
 
-class IncidentTargetsResource(Resource):
+class IncidentTargetsResource(IncidentBaseResource):
     """
     故障告警对象列表
     """
@@ -180,7 +192,7 @@ class IncidentTargetsResource(Resource):
         return {}
 
 
-class IncidentHandlersResource(Resource):
+class IncidentHandlersResource(IncidentBaseResource):
     """
     故障处理人列表
     """
@@ -193,8 +205,7 @@ class IncidentHandlersResource(Resource):
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        incident_document = IncidentDocument.get(validated_request_data["id"])
-        alerts = incident_document.get_related_alerts()
+        alerts = alerts = self.get_incident_alerts(validated_request_data["id"])
         current_username = get_request_username()
 
         alert_agg_results = Counter()
@@ -240,7 +251,7 @@ class IncidentHandlersResource(Resource):
         return handlers
 
 
-class IncidentOperationsResource(Resource):
+class IncidentOperationsResource(IncidentBaseResource):
     """
     故障流转列表
     """
@@ -257,7 +268,7 @@ class IncidentOperationsResource(Resource):
         return [operation.to_dict() for operation in operations]
 
 
-class IncidentOperationTypesResource(Resource):
+class IncidentOperationTypesResource(IncidentBaseResource):
     """
     故障流转列表
     """
@@ -285,7 +296,7 @@ class IncidentOperationTypesResource(Resource):
         return list(operation_types.values())
 
 
-class EditIncidentResource(Resource):
+class EditIncidentResource(IncidentBaseResource):
     """
     故障修改接口
     """
@@ -312,7 +323,7 @@ class EditIncidentResource(Resource):
         return incident_info
 
 
-class FeedbackIncidentRootResource(Resource):
+class FeedbackIncidentRootResource(IncidentBaseResource):
     """
     反馈故障根因
     """
@@ -334,7 +345,7 @@ class FeedbackIncidentRootResource(Resource):
         return incident_info["feedback"]
 
 
-class IncidentAlertListResource(Resource):
+class IncidentAlertListResource(IncidentBaseResource):
     """
     故障告警列表
     """
@@ -347,8 +358,7 @@ class IncidentAlertListResource(Resource):
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        incident_document = IncidentDocument.get(validated_request_data["id"])
-        alerts = incident_document.get_related_alerts()
+        alerts = self.get_incident_alerts(validated_request_data["id"])
 
         incident_alerts = resource.commons.get_label()
         for category in incident_alerts:

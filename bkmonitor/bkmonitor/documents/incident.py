@@ -17,7 +17,6 @@ from elasticsearch_dsl import Search, field
 from bkmonitor.documents.base import BaseDocument, Date
 from constants.incident import IncidentStatus
 from core.errors.incident import IncidentNotFoundError
-from packages.fta_web.alert.handlers.alert import AlertQueryHandler
 
 
 class IncidentBaseDocument(BaseDocument):
@@ -160,15 +159,6 @@ class IncidentDocument(IncidentBaseDocument):
             search = search.source(fields=fields)
 
         return [cls(**hit.to_dict()) for hit in search.params(size=5000).scan()]
-
-    def get_related_alerts(self) -> List[Dict]:
-        """获取故障关联的告警列表
-
-        :return: 告警列表
-        """
-        ids = [170133033522966, 170130957522861, 170128740522571, 170124544222458]
-        alerts = AlertQueryHandler(conditions=[{'key': 'id', 'value': ids, 'method': 'eq'}]).search()["alerts"]
-        return alerts
 
 
 @registry.register_document
