@@ -125,5 +125,6 @@ export default {
   故障名称: 'Fault Name',
   故障状态: 'Fault Status',
   告警数量: 'Alarm Count',
-  故障原因: 'Fault Reason'
+  故障原因: 'Fault Reason',
+  告警: 'Alarm'
 };
