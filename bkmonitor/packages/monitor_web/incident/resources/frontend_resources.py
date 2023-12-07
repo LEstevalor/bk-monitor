@@ -9,8 +9,10 @@ an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express o
 specific language governing permissions and limitations under the License.
 """
 from collections import Counter
+from dataclasses import asdict
 from typing import Dict, List
 
+from bkmonitor.aiops.incident.models import IncidentSnapshot
 from bkmonitor.documents.incident import (
     IncidentDocument,
     IncidentOperationDocument,
@@ -33,9 +35,9 @@ class IncidentBaseResource(Resource):
     故障相关资源基类
     """
 
-    def get_incident_alerts(self, incident_id: int) -> List[Dict]:
-        ids = [170133033522966, 170130957522861, 170128740522571, 170124544222458]
-        alerts = AlertQueryHandler(conditions=[{'key': 'id', 'value': ids, 'method': 'eq'}]).search()["alerts"]
+    def get_snapshot_alerts(self, snapshot: IncidentSnapshot) -> List[Dict]:
+        alert_ids = snapshot.get_related_alert_ids()
+        alerts = AlertQueryHandler(conditions=[{'key': 'id', 'value': alert_ids, 'method': 'eq'}]).search()["alerts"]
         return alerts
 
 
@@ -189,9 +191,10 @@ class IncidentTargetsResource(IncidentBaseResource):
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        # alerts = self.get_incident_alerts(validated_request_data["id"])
-        # incident = IncidentDocument.get(validated_request_data["id"])
-        return {}
+        incident = IncidentDocument.get(validated_request_data["id"])
+        snapshot = IncidentSnapshot(incident.snapshot.content)
+        alerts = self.get_snapshot_alerts(snapshot)
+        return alerts
 
 
 class IncidentHandlersResource(IncidentBaseResource):
@@ -207,11 +210,15 @@ class IncidentHandlersResource(IncidentBaseResource):
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        alerts = self.get_incident_alerts(validated_request_data["id"])
+        incident = IncidentDocument.get(validated_request_data["id"])
+        snapshot = IncidentSnapshot(incident.snapshot.content)
+        alerts = self.get_snapshot_alerts(snapshot)
         current_username = get_request_username()
 
         alert_agg_results = Counter()
         for alert in alerts:
+            alert_entity = snapshot.alert_entity_mapping.get(alert["id"])
+            alert["entity"] = asdict(alert_entity) if alert_entity else None
             if not alert["assignee"]:
                 continue
             for username in alert["assignee"]:
@@ -272,7 +279,7 @@ class IncidentOperationsResource(IncidentBaseResource):
         operations = [operation.to_dict() for operation in operations]
         for operation in operations:
             operation["operation_class"] = IncidentOperationType(operation["operation_type"]).operation_class.value
-        return
+        return operations
 
 
 class IncidentOperationTypesResource(IncidentBaseResource):
@@ -342,6 +349,7 @@ class FeedbackIncidentRootResource(IncidentBaseResource):
         incident_id = serializers.IntegerField(required=False, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
         contents = serializers.JSONField(required=True, label="反馈的内容")
+        is_cancel = serializers.BooleanField(required=False, default=False)
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         incident_id = validated_request_data["incident_id"]
