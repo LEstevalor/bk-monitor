@@ -79,7 +79,7 @@ class IncidentAlert:
     """
     "id": "170191709725733",
     "strategy_id": "25",
-    "entity_id": "BCS-K8S-26245#k8s-idc-br#uid-0"
+    "entity_id": "BCS-K8S-xxxx#k8s-idc-br#uid-0"
     """
 
     id: int
