@@ -9,20 +9,50 @@ an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express o
 specific language governing permissions and limitations under the License.
 """
 from dataclasses import dataclass
-from typing import List
-
-import arrow
-
-from constants.incident import IncidentLevel, IncidentStatus
 
 
 @dataclass
-class Incident:
-    incident_id: int
-    incident_name: str
-    incident_reason: str
-    status: IncidentStatus
-    level: IncidentLevel
-    labels: List[str]
-    create_time: arrow.Arrow
-    update_time: arrow.Arrow
+class IncidentGraphRank:
+    """
+    "rank_id": 0,
+    "rank_name": "service_module",
+    "rank_alias": "服务模块"
+    """
+
+    rank_id: int
+    rank_name: str
+    rank_alias: str
+
+
+@dataclass
+class IncidentGraphEntity:
+    """
+    "entity_id": "BCS-K8S-26245#k8s-idc-br#uid-0",
+    "entity_type": "BcsPod",
+    "is_anomaly": false,
+    "anomaly_score": 0.3333333333333333,
+    "anomaly_type": "死机/重启",
+    "is_root": false,
+    "product_hierarchy_rank": "rank_0"
+    """
+
+    entity_id: str
+    entity_type: str
+    is_anomaly: bool
+    anomaly_score: float
+    anomaly_type: str
+    is_root: bool
+    product_hierarchy_rank: IncidentGraphRank
+
+
+@dataclass
+class IncidentGraphEdge:
+    """
+    "source_type": "BkNodeHost",
+    "target_type": "BcsPod",
+    "source_id": "0#xx.xx.xx.xx",
+    "target_id": "BCS-K8S-26245#k8s-idc-br#uid-0"
+    """
+
+    source: IncidentGraphEntity
+    target: IncidentGraphEntity

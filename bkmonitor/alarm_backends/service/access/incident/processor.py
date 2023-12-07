@@ -65,24 +65,24 @@ class AccessIncidentProcess(BaseAccessIncidentProcess):
         snapshot_info = api.bkdata.get_incident_snapshot(snapshot_id=sync_info["fpp_snapshot_id"])
         incident_document.generate_handlers(sync_info["scope"]["alerts"])
         incident_document.generate_assignees(snapshot_info)
-        IncidentDocument.bulk_create([incident_document], action=BulkActionType.CREATE)
+
+        snapshot = IncidentSnapshotDocument(
+            incident_id=sync_info["incident_id"],
+            bk_biz_id=sync_info["scope"]["bk_biz_ids"],
+            status=incident_info["status"],
+            alerts=sync_info["scope"]["alerts"],
+            events=sync_info["scope"]["events"],
+            create_time=sync_info["sync_time"],
+            content=snapshot_info,
+            fpp_snapshot_id=sync_info["fpp_snapshot_id"],
+        )
 
         # 生成故障快照记录
-        IncidentSnapshotDocument.bulk_create(
-            [
-                IncidentSnapshotDocument(
-                    incident_id=sync_info["incident_id"],
-                    bk_biz_id=sync_info["scope"]["bk_biz_ids"],
-                    status=incident_info["status"],
-                    alerts=sync_info["scope"]["alerts"],
-                    events=sync_info["scope"]["events"],
-                    create_time=sync_info["sync_time"],
-                    content=snapshot_info,
-                    fpp_snapshot_id=sync_info["fpp_snapshot_id"],
-                )
-            ],
-            action=BulkActionType.CREATE,
-        )
+        IncidentSnapshotDocument.bulk_create([snapshot], action=BulkActionType.CREATE)
+
+        # 补充快照记录并写入ES
+        incident_document.snapshot = snapshot
+        IncidentDocument.bulk_create([incident_document], action=BulkActionType.CREATE)
 
         # 记录故障流转
         IncidentOperationManager.record_create_incident(
@@ -103,24 +103,24 @@ class AccessIncidentProcess(BaseAccessIncidentProcess):
         snapshot_info = api.bkdata.get_incident_snapshot(snapshot_id=sync_info["fpp_snapshot_id"])
         incident_document.generate_handlers(sync_info["scope"]["alerts"])
         incident_document.generate_assignees(snapshot_info)
-        IncidentDocument.bulk_create([incident_document], action=BulkActionType.UPDATE)
+
+        snapshot = IncidentSnapshotDocument(
+            incident_id=sync_info["incident_id"],
+            bk_biz_id=sync_info["scope"]["bk_biz_ids"],
+            status=incident_info["status"],
+            alerts=sync_info["scope"]["alerts"],
+            events=sync_info["scope"]["events"],
+            create_time=sync_info["sync_time"],
+            content=snapshot_info,
+            fpp_snapshot_id=sync_info["fpp_snapshot_id"],
+        )
 
         # 生成故障快照记录
-        IncidentSnapshotDocument.bulk_create(
-            [
-                IncidentSnapshotDocument(
-                    incident_id=sync_info["incident_id"],
-                    bk_biz_id=sync_info["scope"]["bk_biz_ids"],
-                    status=incident_info["status"],
-                    alerts=sync_info["scope"]["alerts"],
-                    events=sync_info["scope"]["events"],
-                    create_time=sync_info["sync_time"],
-                    content=snapshot_info,
-                    fpp_snapshot_id=sync_info["fpp_snapshot_id"],
-                )
-            ],
-            action=BulkActionType.CREATE,
-        )
+        IncidentSnapshotDocument.bulk_create([snapshot], action=BulkActionType.CREATE)
+
+        # 补充快照记录并写入ES
+        incident_document.snapshot = snapshot
+        IncidentDocument.bulk_create([incident_document], action=BulkActionType.UPDATE)
 
         # 记录故障流转
         for incident_key, update_info in sync_info["update_attributes"].items():

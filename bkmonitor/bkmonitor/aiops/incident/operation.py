@@ -247,7 +247,7 @@ class IncidentOperationManager(object):
 
     @classmethod
     def record_feedback_incident(
-        cls, incident_id: int, operate_time: int, feedback_incident_root: str
+        cls, incident_id: int, operate_time: int, feedback_incident_root: str, is_cancel: bool
     ) -> IncidentOperationDocument:
         """记录用户反馈/取消反馈故障根因
         文案: 反馈根因：{feedback_incident_root}
@@ -258,7 +258,11 @@ class IncidentOperationManager(object):
         :return: 故障流转记录
         """
         return cls.record_operation(
-            incident_id, IncidentOperationType.FEEDBACK, operate_time, feedback_incident_root=feedback_incident_root
+            incident_id,
+            IncidentOperationType.FEEDBACK,
+            operate_time,
+            feedback_incident_root=feedback_incident_root,
+            is_cancel=is_cancel,
         )
 
     @classmethod
@@ -284,7 +288,12 @@ class IncidentOperationManager(object):
         :param group_name: 群名称
         :return: 故障流转记录
         """
-        return cls.record_operation(incident_id, IncidentOperationType.GROUP_GATHER, operate_time)
+        return cls.record_operation(
+            incident_id,
+            IncidentOperationType.GROUP_GATHER,
+            operate_time,
+            group_name=group_name,
+        )
 
     @classmethod
     def record_incident_alert_confirm(

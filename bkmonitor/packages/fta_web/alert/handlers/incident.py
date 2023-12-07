@@ -89,9 +89,9 @@ class IncidentQueryHandler(BaseBizQueryHandler):
     query_transformer = IncidentQueryTransformer
 
     # “我的故障” 状态名称
-    MINE_STATUS_NAME = "MINE"
-    MY_ASSIGNEE_STATUS_NAME = "MY_ASSIGNEE"
-    MY_HANDLER_STATUS_NAME = "MY_HANDLER"
+    MINE_STATUS_NAME = "MY_INCIDENT"
+    MY_ASSIGNEE_STATUS_NAME = "MY_ASSIGNEE_INCIDENT"
+    MY_HANDLER_STATUS_NAME = "MY_HANDLER_INCIDENT"
 
     def __init__(self, bk_biz_ids: List[int] = None, username: str = "", status: List[str] = None, **kwargs):
         super(IncidentQueryHandler, self).__init__(bk_biz_ids, username, **kwargs)

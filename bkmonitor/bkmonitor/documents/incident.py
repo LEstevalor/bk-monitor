@@ -12,7 +12,7 @@ import uuid
 from typing import Dict, List
 
 from django_elasticsearch_dsl.registries import registry
-from elasticsearch_dsl import Search, field
+from elasticsearch_dsl import InnerDoc, Search, field
 
 from bkmonitor.documents.base import BaseDocument, Date
 from constants.incident import IncidentStatus
@@ -63,6 +63,35 @@ class IncidentItemsMixin:
 
 
 @registry.register_document
+class IncidentSnapshotDocument(IncidentItemsMixin, IncidentBaseDocument):
+    id = field.Keyword(required=True)
+    incident_id = field.Keyword()  # 故障ID
+    bk_biz_ids = field.Keyword(multi=True)  # 故障影响的业务列表
+    status = field.Keyword()  # 故障当前快照状态
+    alerts = field.Keyword(multi=True)  # 故障关联的告警
+    events = field.Keyword(multi=True)  # 故障关联的事件
+
+    # 故障快照创建时间(服务器时间)
+    create_time = Date(format=BaseDocument.DATE_FORMAT)
+    update_time = Date(format=BaseDocument.DATE_FORMAT)
+
+    content = field.Object()  # 故障内容
+    fpp_snapshot_id = field.Keyword()  # 故障当前快照的图谱快照ID
+
+    # 故障额外信息，用于存放其他内容
+    extra_info = field.Object(enabled=False)
+
+    class Index:
+        name = "bkmonitor_aiops_incident_snapshot"
+        settings = {"number_of_shards": 3, "number_of_replicas": 1, "refresh_interval": "1s"}
+
+    def __init__(self, *args, **kwargs):
+        super(IncidentSnapshotDocument, self).__init__(*args, **kwargs)
+        if self.id is None:
+            self.id = f"{self.create_time}{uuid.uuid4().hex[:8]}"
+
+
+@registry.register_document
 class IncidentDocument(IncidentBaseDocument):
     REINDEX_ENABLED = True
     REINDEX_QUERY = Search().filter("term", status=IncidentStatus.ABNORMAL.value).to_dict()
@@ -77,6 +106,9 @@ class IncidentDocument(IncidentBaseDocument):
     assignees = field.Keyword(multi=True)  # 故障负责人
     handlers = field.Keyword(multi=True)  # 故障处理人
     labels = field.Keyword(multi=True)  # 标签
+
+    # 最新故障根因定位结果
+    snapshot = field.Object(doc_class=type("IncidentSnapshotInnerDoc", (IncidentSnapshotDocument, InnerDoc), {}))
 
     # 故障创建时间(服务器时间)
     create_time = Date(format=BaseDocument.DATE_FORMAT)
@@ -161,35 +193,6 @@ class IncidentDocument(IncidentBaseDocument):
             search = search.source(fields=fields)
 
         return [cls(**hit.to_dict()) for hit in search.params(size=5000).scan()]
-
-
-@registry.register_document
-class IncidentSnapshotDocument(IncidentItemsMixin, IncidentBaseDocument):
-    id = field.Keyword(required=True)
-    incident_id = field.Keyword()  # 故障ID
-    bk_biz_ids = field.Keyword(multi=True)  # 故障影响的业务列表
-    status = field.Keyword()  # 故障当前快照状态
-    alerts = field.Keyword(multi=True)  # 故障关联的告警
-    events = field.Keyword(multi=True)  # 故障关联的事件
-
-    # 故障快照创建时间(服务器时间)
-    create_time = Date(format=BaseDocument.DATE_FORMAT)
-    update_time = Date(format=BaseDocument.DATE_FORMAT)
-
-    content = field.Object()  # 故障内容
-    fpp_snapshot_id = field.Keyword()  # 故障当前快照的图谱快照ID
-
-    # 故障额外信息，用于存放其他内容
-    extra_info = field.Object(enabled=False)
-
-    class Index:
-        name = "bkmonitor_aiops_incident_snapshot"
-        settings = {"number_of_shards": 3, "number_of_replicas": 1, "refresh_interval": "1s"}
-
-    def __init__(self, *args, **kwargs):
-        super(IncidentSnapshotDocument, self).__init__(*args, **kwargs)
-        if self.id is None:
-            self.id = f"{self.create_time}{uuid.uuid4().hex[:8]}"
 
 
 @registry.register_document
