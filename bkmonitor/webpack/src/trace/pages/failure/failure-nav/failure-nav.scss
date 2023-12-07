@@ -1,9 +1,15 @@
 .failure-nav {
-  max-height: calc(100vh - 200px);
   height: 100%;
+  max-height: calc(100vh - 200px);
 
   .failure-menu {
     position: absolute;
     top: -40px;
+  }
+
+  .failure-nav-main {
+    width: 100%;
+    height: 100%;
+    background: #fff;
   }
 }

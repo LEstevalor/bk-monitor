@@ -23,41 +23,20 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, ref } from 'vue';
-import { ResizeLayout } from 'bkui-vue';
+import { defineComponent } from 'vue';
 
-import FailureContent from './failure-content/failure-content';
-import FailureHeader from './failure-header/failure-header';
-import FailureNav from './failure-nav/failure-nav';
-import FailureTags from './failure-tags/failure-tags';
+import HandleSearch from './handle-search';
+import HandlerList from './handler-list';
 
-import './failure.scss';
+import './failure-handle.scss';
 
 export default defineComponent({
-  setup() {
-    const tagDomHeight = ref<Number>(40);
-    const collapseTagHandle = (val: boolean, height: Number) => {
-      tagDomHeight.value = height;
-    };
-    return { tagDomHeight, collapseTagHandle };
-  },
+  setup() {},
   render() {
     return (
-      <div class='failure-wrapper'>
-        <FailureHeader />
-        <FailureTags onCollapse={this.collapseTagHandle} />
-        <ResizeLayout
-          class='failure-content-layout'
-          style={{ height: `calc(100vh - ${160 + Number(this.tagDomHeight)}px)` }}
-          auto-minimize={400}
-          border={false}
-          collapsible
-          initial-divide={500}
-          v-slots={{
-            aside: () => <FailureNav></FailureNav>,
-            main: () => <FailureContent></FailureContent>
-          }}
-        ></ResizeLayout>
+      <div class='failure-handle'>
+        <HandlerList />
+        <HandleSearch />
       </div>
     );
   }

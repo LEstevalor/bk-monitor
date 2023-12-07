@@ -27,6 +27,7 @@ import { defineComponent } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import AlarmProcess from '../alarm-process/alarm-process';
+import FailureHandle from '../failure-handle/failure-handle';
 import FailureMenu from '../failure-menu/failure-menu';
 
 import './failure-nav.scss';
@@ -56,6 +57,9 @@ export default defineComponent({
           active='DealWith'
         ></FailureMenu>
         <AlarmProcess></AlarmProcess>
+        <div class='failure-nav-main'>
+          <FailureHandle />
+        </div>
       </div>
     );
   }
