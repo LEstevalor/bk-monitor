@@ -118,7 +118,7 @@ class IncidentDetailResource(IncidentBaseResource):
         super(IncidentDetailResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        id = serializers.IntegerField(required=False, label="故障ID")
+        id = serializers.IntegerField(required=False, label="故障UUID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
@@ -185,10 +185,12 @@ class IncidentTargetsResource(IncidentBaseResource):
         super(IncidentTargetsResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        id = serializers.IntegerField(required=False, label="故障UUID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
+        # alerts = self.get_incident_alerts(validated_request_data["id"])
+        # incident = IncidentDocument.get(validated_request_data["id"])
         return {}
 
 
@@ -201,7 +203,7 @@ class IncidentHandlersResource(IncidentBaseResource):
         super(IncidentHandlersResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        id = serializers.IntegerField(required=False, label="故障ID")
+        id = serializers.IntegerField(required=False, label="故障UUID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
@@ -267,7 +269,10 @@ class IncidentOperationsResource(IncidentBaseResource):
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         operations = IncidentOperationDocument.list_by_incident_id(validated_request_data["incident_id"])
-        return [operation.to_dict() for operation in operations]
+        operations = [operation.to_dict() for operation in operations]
+        for operation in operations:
+            operation["operation_class"] = IncidentOperationType(operation["operation_type"]).operation_class.value
+        return
 
 
 class IncidentOperationTypesResource(IncidentBaseResource):
@@ -356,7 +361,7 @@ class IncidentAlertListResource(IncidentBaseResource):
         super(IncidentAlertListResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        id = serializers.IntegerField(required=False, label="故障ID")
+        id = serializers.IntegerField(required=False, label="故障UUID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
