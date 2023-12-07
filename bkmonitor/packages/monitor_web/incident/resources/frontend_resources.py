@@ -192,7 +192,7 @@ class IncidentTargetsResource(IncidentBaseResource):
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         incident = IncidentDocument.get(validated_request_data["id"])
-        snapshot = IncidentSnapshot(incident.snapshot.content)
+        snapshot = IncidentSnapshot(incident.snapshot.content.to_dict())
         alerts = self.get_snapshot_alerts(snapshot)
         return alerts
 
@@ -211,14 +211,12 @@ class IncidentHandlersResource(IncidentBaseResource):
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         incident = IncidentDocument.get(validated_request_data["id"])
-        snapshot = IncidentSnapshot(incident.snapshot.content)
+        snapshot = IncidentSnapshot(incident.snapshot.content.to_dict())
         alerts = self.get_snapshot_alerts(snapshot)
         current_username = get_request_username()
 
         alert_agg_results = Counter()
         for alert in alerts:
-            alert_entity = snapshot.alert_entity_mapping.get(alert["id"])
-            alert["entity"] = asdict(alert_entity) if alert_entity else None
             if not alert["assignee"]:
                 continue
             for username in alert["assignee"]:
@@ -373,7 +371,9 @@ class IncidentAlertListResource(IncidentBaseResource):
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        alerts = self.get_incident_alerts(validated_request_data["id"])
+        incident = IncidentDocument.get(validated_request_data["id"])
+        snapshot = IncidentSnapshot(incident.snapshot.content.to_dict())
+        alerts = self.get_snapshot_alerts(snapshot)
 
         incident_alerts = resource.commons.get_label()
         for category in incident_alerts:
@@ -381,10 +381,10 @@ class IncidentAlertListResource(IncidentBaseResource):
             category["sub_categories"] = [item["id"] for item in category["children"]]
 
         for alert in alerts:
-            alert["is_incident_root"] = False
+            alert_entity = snapshot.alert_entity_mapping.get(alert["id"])
+            alert["entity"] = asdict(alert_entity.entity) if alert_entity else None
             for category in incident_alerts:
                 if alert["category"] in category["sub_categories"]:
                     category["alerts"].append(alert)
-        alerts[0]["is_incident_root"] = True
 
         return incident_alerts
