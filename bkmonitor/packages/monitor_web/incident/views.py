@@ -40,11 +40,13 @@ class IncidentViewSet(ResourceViewSet):
         # 故障时序图接口
         ResourceRoute("GET", resource.incident.incident_time_line, endpoint="incident_time_line"),
         # 故障告警对象接口
-        ResourceRoute("GET", resource.incident.incident_targets, endpoint="incident_targets"),
+        ResourceRoute("POST", resource.incident.incident_alert_aggregate, endpoint="incident_alert_aggregate"),
         # 故障告警处理人接口
         ResourceRoute("GET", resource.incident.incident_handlers, endpoint="incident_handlers"),
         # 故障流转列表接口
         ResourceRoute("GET", resource.incident.incident_operations, endpoint="incident_operations"),
+        # 故障流转记录接口
+        ResourceRoute("POST", resource.incident.incident_record_operation, endpoint="incident_record_operation"),
         # 故障流转类型接口
         ResourceRoute("GET", resource.incident.incident_operation_types, endpoint="incident_operation_types"),
         # 编辑故障
