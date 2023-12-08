@@ -1,5 +1,3 @@
-import { RouteRecordRaw } from 'vue-router';
-
 /*
  * Tencent is pleased to support the open source community by making
  * 蓝鲸智云PaaS平台社区版 (BlueKing PaaS Community Edition) available.
@@ -25,6 +23,8 @@ import { RouteRecordRaw } from 'vue-router';
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
+import { RouteRecordRaw } from 'vue-router';
+
 export default [
   {
     path: '/home',

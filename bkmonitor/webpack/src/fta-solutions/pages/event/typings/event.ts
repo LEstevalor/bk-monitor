@@ -45,6 +45,7 @@ export interface IDimensionItem {
   display_key: string;
 }
 export interface IEventItem {
+  incident_id: string;
   alert_name: string;
   assignee: string[];
   begin_time: number;
@@ -110,7 +111,7 @@ export interface IChatGroupDialogOptions {
   alertIds?: string[];
 }
 
-export type SearchType = 'event' | 'alert' | 'action';
+export type SearchType = 'event' | 'alert' | 'action' | 'incident';
 export type FilterInputStatus = 'success' | 'error';
 export type anlyzeChartType = 'process' | 'pie';
 export type eventPanelType = 'list' | 'analyze';
