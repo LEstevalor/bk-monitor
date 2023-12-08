@@ -11,7 +11,7 @@ specific language governing permissions and limitations under the License.
 import time
 from collections import Counter
 from dataclasses import asdict
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from bkmonitor.aiops.incident.models import IncidentSnapshot
 from bkmonitor.aiops.incident.operation import IncidentOperationManager
@@ -22,7 +22,11 @@ from bkmonitor.documents.incident import (
 )
 from bkmonitor.utils.request import get_request_username
 from bkmonitor.views import serializers
-from constants.incident import IncidentOperationClass, IncidentOperationType
+from constants.incident import (
+    IncidentAlertAggregateDimension,
+    IncidentOperationClass,
+    IncidentOperationType,
+)
 from core.drf_resource import api, resource
 from core.drf_resource.base import Resource
 from fta_web.alert.handlers.alert import AlertQueryHandler
@@ -42,8 +46,19 @@ class IncidentBaseResource(Resource):
         alert_ids = snapshot.get_related_alert_ids()
         if "conditions" in kwargs:
             kwargs["conditions"].append({'key': 'id', 'value': alert_ids, 'method': 'eq'})
+        else:
+            kwargs["conditions"] = [{'key': 'id', 'value': alert_ids, 'method': 'eq'}]
         alerts = AlertQueryHandler(**kwargs).search()["alerts"]
         return alerts
+
+    def get_item_by_chain_key(self, data: Dict, chain_key: str) -> Any:
+        keys = chain_key.split(".")
+        for key in keys:
+            if not data or not isinstance(data, dict):
+                return None
+
+            data = data.get(key)
+        return data
 
 
 class IncidentListResource(IncidentBaseResource):
@@ -125,7 +140,7 @@ class IncidentDetailResource(IncidentBaseResource):
         super(IncidentDetailResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        id = serializers.IntegerField(required=False, label="故障UUID")
+        id = serializers.IntegerField(required=True, label="故障UUID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
@@ -160,7 +175,7 @@ class IncidentTopologyResource(IncidentBaseResource):
         super(IncidentTopologyResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        incident_id = serializers.IntegerField(required=True, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
@@ -176,7 +191,7 @@ class IncidentTimeLineResource(IncidentBaseResource):
         super(IncidentTimeLineResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        id = serializers.IntegerField(required=False, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
@@ -192,7 +207,10 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
         super(IncidentAlertAggregateResource, self).__init__()
 
     class RequestSerializer(AlertSearchSerializer):
-        id = serializers.IntegerField(required=False, label="故障UUID")
+        id = serializers.IntegerField(required=True, label="故障UUID")
+        aggregate_bys = serializers.MultipleChoiceField(
+            required=True, choices=IncidentAlertAggregateDimension.get_enum_value_list(), label="聚合维度"
+        )
         ordering = serializers.ListField(label="排序", child=serializers.CharField(), default=[])
         page = serializers.IntegerField(label="页数", min_value=1, default=1)
         page_size = serializers.IntegerField(label="每页大小", min_value=0, max_value=5000, default=300)
@@ -214,6 +232,13 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
 
         return alerts
 
+    def aggregate_alerts(self, alerts: Dict, aggregate_bys: List[str]) -> Dict:
+        """对故障的告警进行聚合.
+
+        :param alerts: _description_
+        :return: _description_
+        """
+
 
 class IncidentHandlersResource(IncidentBaseResource):
     """
@@ -224,7 +249,7 @@ class IncidentHandlersResource(IncidentBaseResource):
         super(IncidentHandlersResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        id = serializers.IntegerField(required=False, label="故障UUID")
+        id = serializers.IntegerField(required=True, label="故障UUID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
@@ -360,7 +385,8 @@ class EditIncidentResource(IncidentBaseResource):
         super(EditIncidentResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        id = serializers.IntegerField(required=True, label="故障UUID")
+        incident_id = serializers.IntegerField(required=True, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
         incident_name = serializers.CharField(required=False, label="故障名称")
         incident_reason = serializers.CharField(required=False, label="故障原因")
@@ -387,7 +413,8 @@ class FeedbackIncidentRootResource(IncidentBaseResource):
         super(FeedbackIncidentRootResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        incident_id = serializers.IntegerField(required=False, label="故障ID")
+        id = serializers.IntegerField(required=True, label="故障UUID")
+        incident_id = serializers.IntegerField(required=True, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
         contents = serializers.JSONField(required=True, label="反馈的内容")
         is_cancel = serializers.BooleanField(required=False, default=False)
@@ -410,7 +437,7 @@ class IncidentAlertListResource(IncidentBaseResource):
         super(IncidentAlertListResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        id = serializers.IntegerField(required=False, label="故障UUID")
+        id = serializers.IntegerField(required=True, label="故障UUID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
