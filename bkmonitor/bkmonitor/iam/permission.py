@@ -14,6 +14,14 @@ from collections import defaultdict
 from typing import Dict, List, Union
 
 from django.conf import settings
+from iam import (
+    MultiActionRequest,
+    ObjectSet,
+    Request,
+    Resource,
+    Subject,
+    make_expression,
+)
 from iam.apply.models import (
     ActionWithoutResources,
     ActionWithResources,
@@ -47,14 +55,6 @@ from core.drf_resource import api
 from core.errors.api import BKAPIError
 from core.errors.iam import ActionNotExistError, PermissionDeniedError
 from core.errors.share import TokenValidatedError
-from iam import (
-    MultiActionRequest,
-    ObjectSet,
-    Request,
-    Resource,
-    Subject,
-    make_expression,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +76,8 @@ ActionIdMap = {
     "dashboard": [ActionEnum.VIEW_SINGLE_DASHBOARD],
     # APM
     "apm": [ActionEnum.VIEW_APM_APPLICATION],
+    # 故障根因定位
+    "incident": [ActionEnum.VIEW_INCIDENT],
 }
 
 api_paths = ["/time_series/unify_query/", "log/query/", "time_series/unify_trace_query/"]
@@ -185,7 +187,6 @@ class Permission(object):
     def _make_application(
         self, action_ids: List[str], resources: List[Resource] = None, system_id: str = settings.BK_IAM_SYSTEM_ID
     ) -> Application:
-
         resources = resources or []
         actions = []
 
