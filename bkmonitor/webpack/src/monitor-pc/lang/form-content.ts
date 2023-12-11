@@ -101,5 +101,25 @@ export default {
   '已选择{0}个静态主机': '{0} static hosts selected',
   '已动态选择{0}个节点': '{0} nodes have been dynamically selected',
   '已选择{0}个服务模板': '{0} service templates selected',
-  '已选择{0}个集群模板': '{0} cluster templates selected'
+  '已选择{0}个集群模板': '{0} cluster templates selected',
+  '生成故障，包含{alert_count}个告警，故障负责人：{assignees}': '',
+  '故障观察中，剩余观察时间{last_minutes}分钟': '',
+  '故障通知已发送（接收人：{receivers}）': '',
+  故障已恢复: '',
+  '故障{merged_incident_name}被合并入当前故障': '',
+  '故障属性{incident_key}: 从{from_value}被修改为{to_value}': '',
+  '检测到新告警（{alert_name}）': '',
+  '告警已恢复（{alert_name}）': '',
+  '告警已失效（{alert_name}）': '',
+  '告警通知已发送（{alert_name}；接收人：{receivers}）':
+    'The notification has been sent (alert name: {alert_name}; receivers: {receivers})',
+  '告警已收敛（{alert_name}，共包含{converged_count}个关联的告警事件）': '',
+  '反馈根因：{feedback_incident_root}': '',
+  故障已关闭: '',
+  '一键拉群（{group_name}）': '',
+  '告警已确认（{alert_name}）': '',
+  '告警已屏蔽（{alert_name}）': '',
+  '告警已被手动处理（{alert_name}）': '',
+  '告警已被关闭（{alert_name}）': '',
+  '告警已分派（{alert_name}；处理人：{handlers}）': ''
 };

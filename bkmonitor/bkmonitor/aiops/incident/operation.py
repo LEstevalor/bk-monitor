@@ -138,6 +138,7 @@ class IncidentOperationManager(object):
         :param incident_id: 故障ID
         :param operate_time: 流转生成时间
         :param alert_name: 新告警名称
+        :param alert_id: 告警ID
         :return: 故障流转记录
         """
         return cls.record_operation(
@@ -154,6 +155,7 @@ class IncidentOperationManager(object):
         :param incident_id: 故障ID
         :param operate_time: 流转生成时间
         :param alert_name: 新告警名称
+        :param alert_id: 告警ID
         :return: 故障流转记录
         """
         return cls.record_operation(
@@ -170,6 +172,7 @@ class IncidentOperationManager(object):
         :param incident_id: 故障ID
         :param operate_time: 流转生成时间
         :param alert_name: 新告警名称
+        :param alert_id: 告警ID
         :return: 故障流转记录
         """
         return cls.record_operation(
@@ -190,6 +193,7 @@ class IncidentOperationManager(object):
         :param incident_id: 故障ID
         :param operate_time: 流转生成时间
         :param alert_name: 新告警名称
+        :param alert_id: 告警ID
         :return: 故障流转记录
         """
         return cls.record_operation(
@@ -203,7 +207,7 @@ class IncidentOperationManager(object):
 
     @classmethod
     def record_incident_alert_convergence(
-        cls, incident_id: int, operate_time: int, alert_name: str, converged_count: int
+        cls, incident_id: int, operate_time: int, alert_name: str, alert_id, converged_count: int
     ) -> IncidentOperationDocument:
         """记录故障告警收敛
         文案: 告警已收敛（{alert_name}，共包含{converged_count}个关联的告警事件）
@@ -211,6 +215,7 @@ class IncidentOperationManager(object):
         :param incident_id: 故障ID
         :param operate_time: 流转生成时间
         :param alert_name: 新告警名称
+        :param alert_id: 告警ID
         :param converged_count: 被收敛的告警事件个数
         :return: 故障流转记录
         """
@@ -219,6 +224,7 @@ class IncidentOperationManager(object):
             IncidentOperationType.ALERT_CONVERGENCE,
             operate_time,
             alert_name=alert_name,
+            alert_id=alert_id,
             converged_count=converged_count,
         )
 
@@ -247,7 +253,7 @@ class IncidentOperationManager(object):
 
     @classmethod
     def record_feedback_incident(
-        cls, incident_id: int, operate_time: int, feedback_incident_root: str
+        cls, incident_id: int, operate_time: int, feedback_incident_root: str, is_cancel: bool = False
     ) -> IncidentOperationDocument:
         """记录用户反馈/取消反馈故障根因
         文案: 反馈根因：{feedback_incident_root}
@@ -258,11 +264,11 @@ class IncidentOperationManager(object):
         :return: 故障流转记录
         """
         return cls.record_operation(
-            incident_id, IncidentOperationType.FEEDBACK, operate_time, feedback_incident_root=feedback_incident_root
+            incident_id,
+            is_cancel=is_cancel,
         )
 
     @classmethod
-    def record_close_incident(cls, incident_id: int, operate_time: int) -> IncidentOperationDocument:
         """记录用户关闭故障
         文案: 故障已关闭
 
@@ -284,7 +290,12 @@ class IncidentOperationManager(object):
         :param group_name: 群名称
         :return: 故障流转记录
         """
-        return cls.record_operation(incident_id, IncidentOperationType.GROUP_GATHER, operate_time)
+        return cls.record_operation(
+            incident_id,
+            IncidentOperationType.GROUP_GATHER,
+            operate_time,
+            group_name=group_name,
+        )
 
     @classmethod
     def record_incident_alert_confirm(
@@ -296,6 +307,7 @@ class IncidentOperationManager(object):
         :param incident_id: 故障ID
         :param operate_time: 流转生成时间
         :param alert_name: 告警名称
+        :param alert_id: 告警ID
         :return: 故障流转记录
         """
         return cls.record_operation(
@@ -312,6 +324,7 @@ class IncidentOperationManager(object):
         :param incident_id: 故障ID
         :param operate_time: 流转生成时间
         :param alert_name: 告警名称
+        :param alert_id: 告警ID
         :return: 故障流转记录
         """
         return cls.record_operation(
@@ -328,6 +341,7 @@ class IncidentOperationManager(object):
         :param incident_id: 故障ID
         :param operate_time: 流转生成时间
         :param alert_name: 告警名称
+        :param alert_id: 告警ID
         :return: 故障流转记录
         """
         return cls.record_operation(
@@ -344,6 +358,7 @@ class IncidentOperationManager(object):
         :param incident_id: 故障ID
         :param operate_time: 流转生成时间
         :param alert_name: 告警名称
+        :param alert_id: 告警ID
         :param handlers: 处理人
         :return: 故障流转记录
         """
@@ -366,6 +381,7 @@ class IncidentOperationManager(object):
         :param incident_id: 故障ID
         :param operate_time: 流转生成时间
         :param alert_name: 告警名称
+        :param alert_id: 告警ID
         :return: 故障流转记录
         """
         return cls.record_operation(

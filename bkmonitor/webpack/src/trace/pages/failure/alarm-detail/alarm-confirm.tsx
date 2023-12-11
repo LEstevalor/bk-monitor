@@ -67,7 +67,7 @@ export default defineComponent({
       loading.value = true;
       getActionConfigByAlerts({
         alert_ids: props.ids,
-        bk_biz_id: props.bizIds?.[0] //|| this.$store.getters.bizId
+        bk_biz_id: props.bizIds?.[0] // || this.$store.getters.bizId
       })
         .then(data => {
           infoContent.value = data

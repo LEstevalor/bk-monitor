@@ -23,12 +23,12 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import AlarmProcess from '../alarm-process/alarm-process';
 import FailureHandle from '../failure-handle/failure-handle';
 import FailureMenu from '../failure-menu/failure-menu';
+import FailureProcess from '../failure-process/failure-process';
 
 import './failure-nav.scss';
 
@@ -37,26 +37,36 @@ export default defineComponent({
     const { t } = useI18n();
     const tabList = [
       {
-        name: 'DealWith',
+        name: 'FailureHandle',
         label: t('故障处理')
       },
       {
-        name: 'Circulation',
+        name: 'FailureProcess',
         label: t('故障流转')
       }
     ];
+    const active = ref('FailureHandle');
+    const handleChange = (name: string) => {
+      if (active.value !== name) {
+        active.value = name;
+      }
+    };
     return {
-      tabList
+      active,
+      tabList,
+      handleChange
     };
   },
   render() {
+    const Component = this.active === 'FailureHandle' ? FailureHandle : FailureProcess;
     return (
       <div class='failure-nav'>
         <FailureMenu
           tabList={this.tabList}
-          active='DealWith'
+          active={this.active}
+          onChange={this.handleChange}
         ></FailureMenu>
-        <AlarmProcess></AlarmProcess>
+        <Component></Component>
         <div class='failure-nav-main'>
           <FailureHandle />
         </div>

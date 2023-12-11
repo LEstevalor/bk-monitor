@@ -225,12 +225,20 @@ const filterIconMap = {
   //   icon: 'icon-mc-user-one'
   // },
   MY_ASSIGNEE: {
-    color: '#699DF4',
-    icon: 'icon-mc-user-one'
+    color: '#979BA5',
+    icon: 'icon-inform-circle'
   },
   MY_APPOINTEE: {
     color: '#699DF4',
     icon: 'icon-mc-user-one'
+  },
+  MY_ASSIGNEE_INCIDENT: {
+    color: '#699DF4',
+    icon: 'icon-mc-user-one'
+  },
+  MY_HANDLER_INCIDENT: {
+    color: '#979BA5',
+    icon: 'icon-inform-circle'
   },
   MY_HANDLER: {
     color: '#979BA5',
@@ -1535,6 +1543,7 @@ class Event extends Mixins(authorityMixinCreate(eventAuth)) {
     }
     this.activeFilterId = item.id;
     this.activeFilterName = item.name;
+    console.log(this.activeFilterId, '=====>');
     this.pagination.current = 1;
     this.chartKey = random(10);
     this.handleGetTableData(isTypeChange);

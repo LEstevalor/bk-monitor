@@ -346,11 +346,7 @@ export default defineComponent({
           default: this.getContentComponent(),
           footer: [
             <Button
-              onClick={() =>
-                this.getAuthority()?.ALARM_SHIELD_MANAGE_AUTH
-                  ? this.handleSubmit()
-                  : this.getHandleShowAuthorityDetail(this.getAuthority()?.ALARM_SHIELD_MANAGE_AUTH)
-              }
+              onClick={this.handleSubmit}
               theme='primary'
               style='margin-right: 10px'
               disabled={this.loading}

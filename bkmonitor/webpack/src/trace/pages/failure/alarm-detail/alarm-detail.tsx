@@ -30,10 +30,11 @@ import { Loading, Popover, Table } from 'bkui-vue';
 import { $bkPopover } from 'bkui-vue/lib/popover';
 import moment from 'moment';
 
-import { incidentAlertList } from '../../../../monitor-api/modules/incident';
+import { feedbackIncidentRoot, incidentAlertList } from '../../../../monitor-api/modules/incident';
 import { random } from '../../../../monitor-common/utils/utils.js';
 import SetMealAdd from '../../../store/modules/set-meal-add';
 import StatusTag from '../components/status-tag';
+import FeedbackCauseDialog from '../failure-topo/feedback-cause-dialog';
 
 import ChatGroup from './chat-group/chat-group';
 import AlarmConfirm from './alarm-confirm';
@@ -85,6 +86,7 @@ export default defineComponent({
       rootCauseConfirm: {
         show: false,
         ids: [],
+        data: {},
         bizIds: []
       },
       alarmDispatch: {
@@ -105,6 +107,7 @@ export default defineComponent({
     const chatGroupDialog = reactive({
       show: false,
       alertName: '',
+      bizId: [],
       assignee: [],
       alertIds: []
     });
@@ -113,7 +116,7 @@ export default defineComponent({
     const popoperOperateInstance = ref(null);
     const opetateRow = ref({});
     const popoperOperateIndex = ref(-1);
-    const hoverRowIndex = ref(0);
+    const hoverRowIndex = ref(999999);
     const tableToolList = ref([]);
     const enableCreateChatGroup = ref((window as any).enable_create_chat_group || false);
     if (enableCreateChatGroup.value) {
@@ -146,7 +149,6 @@ export default defineComponent({
       handleHideMoreOperate();
     };
     const handleManualProcess = v => {
-      console.log(v);
       dialog.manualProcess.alertIds = [v.id] as any;
       dialog.manualProcess.bizIds = [2]; // [v.bk_biz_id];
       manualProcessShowChange(true);
@@ -170,9 +172,11 @@ export default defineComponent({
      * @return {*}
      */
     const handleChatGroup = v => {
-      const { id, assignee, alert_name } = v;
+      console.log(v);
+      const { id, assignee, alert_name, bk_biz_id } = v;
       chatGroupDialog.assignee = assignee || [];
       chatGroupDialog.alertName = alert_name;
+      chatGroupDialog.bizId = [bk_biz_id];
       chatGroupDialog.alertIds.splice(0, chatGroupDialog.alertIds.length, id);
       chatGroupShowChange(true);
       handleHideMoreOperate();
@@ -185,7 +189,22 @@ export default defineComponent({
     const chatGroupShowChange = (show: boolean) => {
       chatGroupDialog.show = show;
     };
+    const feedbackIncidentRootApi = (isCancel = false) => {
+      let params = {
+        content: '',
+        id: ''
+      };
+      if (isCancel) {
+        params.is_cancel = true;
+      }
+      feedbackIncidentRoot(params);
+    };
     const handleRootCauseConfirm = v => {
+      if (v.entity.is_root) {
+        feedbackIncidentRootApi(true);
+        return;
+      }
+      dialog.rootCauseConfirm.data = v;
       dialog.rootCauseConfirm.ids = [v.id];
       dialog.rootCauseConfirm.bizIds = [v.bk_biz_id];
       dialog.rootCauseConfirm.show = true;
@@ -226,7 +245,6 @@ export default defineComponent({
         label: t('告警ID'),
         field: 'id',
         render: ({ data }) => {
-          console.log(data);
           return (
             <span
               v-overflow-title
@@ -248,14 +266,17 @@ export default defineComponent({
               v-overflow-title
             >
               {data.alert_name}
-              {/* <span class='root-cause'>{t('根因')}</span> */}
+              {/* {data.entity.is_root && <span class='root-cause'>{t('根因')}</span>} */}
             </span>
           );
         }
       },
       {
         label: t('业务名称'),
-        field: 'project'
+        field: 'project',
+        render: ({ data }) => {
+          return `[${data.bk_biz_id}] ${data.bk_biz_name || '--'}`;
+        }
       },
       {
         label: t('分类'),
@@ -328,7 +349,6 @@ export default defineComponent({
         label: t('告警开始/结束时间'),
         field: 'time',
         render: ({ data }) => {
-          console.log(data, '...');
           return (
             <span class='time-column'>
               {formatterTime(data.begin_time)} / <br></br>
@@ -362,12 +382,14 @@ export default defineComponent({
                   class={['operate-panel-item']}
                   onClick={() => handleRootCauseConfirm(data)}
                   v-bk-tooltips={{
-                    content: t(data.fankui ? '反馈根因' : '取消反馈根因'),
+                    content: t(!data.entity.is_root ? '反馈根因' : '取消反馈根因'),
                     trigger: 'hover',
                     delay: 200
                   }}
                 >
-                  <i class={['icon-monitor', data.fankui ? 'icon-fankuixingenyin' : 'icon-mc-cancel-feedback']}></i>
+                  <i
+                    class={['icon-monitor', !data.entity.is_root ? 'icon-fankuixingenyin' : 'icon-mc-cancel-feedback']}
+                  ></i>
                 </span>
                 <span
                   class='operate-panel-item'
@@ -401,7 +423,6 @@ export default defineComponent({
     });
     const getMoreOperate = () => {
       const { status, is_ack: isAck, ack_operator: ackOperator } = opetateRow.value;
-      console.log(opetateRow.value);
       return (
         <div style={{ display: 'none' }}>
           <div
@@ -442,7 +463,7 @@ export default defineComponent({
               v-bk-tooltips={{
                 disabled: !opetateRow.value?.is_shielded,
                 content: opetateRow?.value?.is_shielded
-                  ? `${opetateRow?.value.shield_operator?.[0] || ''}${this.$t('已屏蔽')}`
+                  ? `${opetateRow?.value.shield_operator?.[0] || ''}${t('已屏蔽')}`
                   : '',
                 delay: 200,
                 appendTo: () => document.body
@@ -463,8 +484,8 @@ export default defineComponent({
       popoperOperateIndex.value = -1;
     };
     const handleShowMoreOperate = (e, index, data) => {
-      console.log(moreItems, moreItems.value);
       popoperOperateIndex.value = index;
+      console.log(e.target);
       opetateRow.value = data;
       if (!popoperOperateInstance.value) {
         popoperOperateInstance.value = $bkPopover({
@@ -492,6 +513,7 @@ export default defineComponent({
     const handleConfirmAfter = v => {};
     const alarmConfirmChange = v => {
       dialog.alarmConfirm.show = v;
+      handleGetTable();
     };
     const handleAlarmDispatchShowChange = v => {
       dialog.alarmDispatch.show = v;
@@ -548,16 +570,15 @@ export default defineComponent({
       }
     };
     const handleGetTable = async () => {
-      const { biz_id: bizId = 2, incident_id: id = 3 } = route.query;
+      const { biz_id: bizId = 2, incident_id: id = 17019496696 } = route.query;
       tableLoading.value = true;
       const params = {
-        incident_id: id,
+        id,
         bk_biz_id: bizId
       };
       const data = await incidentAlertList(params);
       tableLoading.value = false;
       alertData.value = data;
-      console.log(alertData.value, '........');
     };
     onMounted(() => {
       handleGetTable();
@@ -623,6 +644,7 @@ export default defineComponent({
     return (
       <Loading loading={this.tableLoading}>
         <div class='alarm-detail bk-scroll-y'>
+          <FeedbackCauseDialog visible={this.dialog.rootCauseConfirm.show}></FeedbackCauseDialog>
           <ChatGroup
             show={this.chatGroupDialog.show}
             assignee={this.chatGroupDialog.assignee}

@@ -699,7 +699,7 @@ export default class IncidentTable extends tsc<IEventTableProps, IEventTableEven
         if (!(column.disabled || column.checked)) return undefined;
 
         switch (column.id) {
-          case 'id':
+          case 'incident_id':
             return this.handleRenderIdColumn(column);
             break;
           case 'status':
