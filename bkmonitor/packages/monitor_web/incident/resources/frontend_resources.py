@@ -13,7 +13,7 @@ from collections import Counter
 from dataclasses import asdict
 from typing import Any, Dict, List
 
-from bkmonitor.aiops.incident.models import IncidentSnapshot
+from bkmonitor.aiops.incident.models import IncidentGraphEntity, IncidentSnapshot
 from bkmonitor.aiops.incident.operation import IncidentOperationManager
 from bkmonitor.documents.incident import (
     IncidentDocument,
@@ -175,11 +175,62 @@ class IncidentTopologyResource(IncidentBaseResource):
         super(IncidentTopologyResource, self).__init__()
 
     class RequestSerializer(serializers.Serializer):
-        incident_id = serializers.IntegerField(required=True, label="故障ID")
+        id = serializers.IntegerField(required=True, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
-        return {}
+        incident = IncidentDocument.get(validated_request_data.pop("id"))
+        snapshot = IncidentSnapshot(incident.snapshot.content.to_dict())
+
+        topology_data = self.generate_topology_data_from_snapshot(snapshot)
+
+        return topology_data
+
+    def generate_topology_data_from_snapshot(self, snapshot: IncidentSnapshot) -> Dict:
+        """根据快照内容生成拓扑图数据
+
+        :param snapshot: 快照内容
+        :return: 拓扑图数据
+        """
+        topology_data = {
+            "nodes": [
+                {
+                    "id": entity.entity_id,
+                    "comboId": entity.rank.rank_category.category_id,
+                    "status": self.generate_topo_node_status(entity),
+                    "aggregateNode": [],
+                    "entity": asdict(entity),
+                }
+                for entity in snapshot.incident_graph_entities.values()
+            ],
+            "edges": [
+                {"source": edge.source.entity_id, "target": edge.target.entity_id, "count": 1, "type": "include"}
+                for edge in snapshot.incident_graph_edges
+            ],
+            "combos": [
+                {
+                    "id": category.category_id,
+                    "label": category.category_alias,
+                    "dataType": category.category_name,
+                }
+                for category in snapshot.incident_graph_categories.values()
+            ],
+        }
+        return topology_data
+
+    def generate_topo_node_status(self, entity: IncidentGraphEntity) -> str:
+        """根据图谱实体的配置生成拓扑节点的状态
+
+        :param entity: 图谱实体
+        :return: 拓扑图节点状态
+        """
+        if entity.is_root:
+            return "root"
+
+        if entity.is_anomaly:
+            return "error"
+
+        return "normal"
 
 
 class IncidentTimeLineResource(IncidentBaseResource):
@@ -230,7 +281,9 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
         ):
             alerts = self.get_snapshot_alerts(snapshot, **validated_request_data)
 
-        return alerts
+        aggregate_results = self.aggregate_alerts(alerts, validated_request_data["aggregate_bys"])
+
+        return aggregate_results
 
     def aggregate_alerts(self, alerts: Dict, aggregate_bys: List[str]) -> Dict:
         """对故障的告警进行聚合.
@@ -238,6 +291,7 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
         :param alerts: _description_
         :return: _description_
         """
+        pass
 
 
 class IncidentHandlersResource(IncidentBaseResource):
