@@ -22,6 +22,7 @@ from bkmonitor.documents.incident import (
 )
 from bkmonitor.utils.request import get_request_username
 from bkmonitor.views import serializers
+from constants.alert import EVENT_STATUS_DICT, EventStatus
 from constants.incident import (
     IncidentAlertAggregateDimension,
     IncidentOperationClass,
@@ -59,6 +60,16 @@ class IncidentBaseResource(Resource):
 
             data = data.get(key)
         return data
+
+    def expand_children_dict_as_list(self, aggregate_results: Dict) -> Dict:
+        for agg_value in aggregate_results.values():
+            if isinstance(agg_value["children"], dict):
+                if agg_value["children"]:
+                    self.expand_children_dict_as_list(agg_value["children"])
+
+                agg_value["children"] = list(agg_value["children"].values())
+
+        return aggregate_results
 
 
 class IncidentListResource(IncidentBaseResource):
@@ -196,7 +207,7 @@ class IncidentTopologyResource(IncidentBaseResource):
             "nodes": [
                 {
                     "id": entity.entity_id,
-                    "comboId": entity.rank.rank_category.category_id,
+                    "comboId": entity.rank.rank_category.category_name,
                     "status": self.generate_topo_node_status(entity),
                     "aggregateNode": [],
                     "entity": asdict(entity),
@@ -281,17 +292,48 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
         ):
             alerts = self.get_snapshot_alerts(snapshot, **validated_request_data)
 
-        aggregate_results = self.aggregate_alerts(alerts, validated_request_data["aggregate_bys"])
+        aggregate_results = self.aggregate_alerts(
+            alerts,
+            ["status", *validated_request_data["aggregate_bys"]],
+        )
 
         return aggregate_results
 
-    def aggregate_alerts(self, alerts: Dict, aggregate_bys: List[str]) -> Dict:
+    def aggregate_alerts(self, alerts: List[Dict], aggregate_bys: List[str]) -> Dict:
         """对故障的告警进行聚合.
 
-        :param alerts: _description_
-        :return: _description_
+        :param alerts: 告警列表
+        :return: 告警聚合结果
         """
-        pass
+        aggregate_results = {}
+
+        for status in [EventStatus.ABNORMAL, EventStatus.RECOVERED, EventStatus.CLOSED]:
+            aggregate_results[status] = {
+                "id": status,
+                "name": str(EVENT_STATUS_DICT[status]),
+                "count": 0,
+                "children": {},
+            }
+
+        for alert in alerts:
+            aggregate_layer_results = aggregate_results
+            for aggregate_by in aggregate_bys:
+                chain_key = IncidentAlertAggregateDimension(aggregate_by).chain_key
+                aggregate_by_value = IncidentAlertAggregateResource().get_item_by_chain_key(alert, chain_key)
+                if not aggregate_by_value:
+                    continue
+                if aggregate_by_value not in aggregate_layer_results:
+                    aggregate_layer_results[aggregate_by_value] = {
+                        "id": aggregate_by_value,
+                        "name": aggregate_by_value,
+                        "count": 1,
+                        "children": {},
+                    }
+                else:
+                    aggregate_layer_results[aggregate_by_value]["count"] += 1
+                aggregate_layer_results = aggregate_layer_results[aggregate_by_value]["children"]
+
+        return self.expand_children_dict_as_list(aggregate_results)
 
 
 class IncidentHandlersResource(IncidentBaseResource):

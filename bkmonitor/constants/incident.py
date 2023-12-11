@@ -158,6 +158,7 @@ class IncidentSyncType(CustomEnum):
 class IncidentAlertAggregateDimension(CustomEnum):
     """故障告警聚合维度."""
 
+    STATUS = "status"
     NODE_LEVEL = "node_level"
     NODE_TYPE = "node_type"
     ALERT_NAME = "alert_name"
@@ -167,6 +168,7 @@ class IncidentAlertAggregateDimension(CustomEnum):
     @property
     def alias(self) -> str:
         aggregate_dimension_map = {
+            "status": _lazy("节点状态"),
             "node_level": _lazy("节点层级"),
             "node_type": _lazy("节点类型"),
             "alert_name": _lazy("告警名称"),
@@ -178,6 +180,7 @@ class IncidentAlertAggregateDimension(CustomEnum):
     @property
     def chain_key(self) -> str:
         aggregate_dimension_map = {
+            "status": "status",
             "node_level": "entity.rank.rank_category.category_name",
             "node_type": "entity.rank.rank_name",
             "alert_name": "alert_name",
