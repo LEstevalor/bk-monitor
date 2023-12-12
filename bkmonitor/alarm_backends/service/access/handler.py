@@ -194,8 +194,8 @@ class AccessHandler(base.BaseHandler):
     def handle_incident(self) -> None:
         self.run_access(
             run_access_incident_handler,
-            settings.AIOPS_INCIDENT_BROKER_URL,
-            settings.AIOPS_INCIDENT_SYNC_QUEUE,
+            settings.BK_DATA_AIOPS_INCIDENT_BROKER_URL,
+            settings.BK_DATA_AIOPS_INCIDENT_SYNC_QUEUE,
         )
 
     def handle(self):
