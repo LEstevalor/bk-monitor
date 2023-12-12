@@ -8,6 +8,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 """
+import copy
 import time
 from collections import Counter
 from dataclasses import asdict
@@ -94,16 +95,16 @@ class IncidentBaseResource(Resource):
         aggregated_nodes = []
         normal_node = None
         for node_entity_info in nodes:
-            if node_entity_info["is_anomaly"]:
+            if node_entity_info["entity"]["is_anomaly"]:
                 node_entity_info["aggreagte_nodes"] = []
-                aggregated_nodes.append(node_entity_info)
+                aggregated_nodes.append(copy.deepcopy(node_entity_info))
             else:
                 if not normal_node:
                     node_entity_info["aggreagte_nodes"] = []
                     normal_node = node_entity_info
-                    aggregated_nodes.append(normal_node)
+                    aggregated_nodes.append(copy.deepcopy(normal_node))
 
-                normal_node["aggreagte_nodes"].append(node_entity_info)
+                normal_node["aggreagte_nodes"].append(copy.deepcopy(node_entity_info))
 
         return aggregated_nodes
 
@@ -297,7 +298,7 @@ class IncidentTopologyUpstreamResource(IncidentBaseResource):
             nodes = self.generate_nodes_by_entites(rank_info.pop("entities"))
             rank_info["nodes"] = self.aggregate_nodes(nodes)
 
-        return ranks
+        return [rank_info for rank_info in ranks if len(rank_info["nodes"]) > 0]
 
 
 class IncidentTimeLineResource(IncidentBaseResource):
