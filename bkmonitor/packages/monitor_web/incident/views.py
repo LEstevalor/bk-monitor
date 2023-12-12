@@ -37,6 +37,8 @@ class IncidentViewSet(ResourceViewSet):
         ResourceRoute("GET", resource.incident.incident_detail, endpoint="incident_detail"),
         # 故障拓扑图接口
         ResourceRoute("GET", resource.incident.incident_topology, endpoint="incident_topology"),
+        # 故障拓扑图上下游接口
+        ResourceRoute("GET", resource.incident.incident_topology_upstream, endpoint="incident_topology_upstream"),
         # 故障时序图接口
         ResourceRoute("GET", resource.incident.incident_time_line, endpoint="incident_time_line"),
         # 故障告警对象接口
