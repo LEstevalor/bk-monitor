@@ -214,7 +214,7 @@ class IncidentDetailResource(IncidentBaseResource):
         incident = IncidentDocument.get(id).to_dict()
         incident = IncidentQueryHandler.handle_hit(incident)
         incident["snapshots"] = [item.to_dict() for item in self.get_incident_snapshots(incident)]
-        incident["bk_biz_name"] = resource.cc.get_app_by_id(2).name
+        incident["bk_biz_name"] = resource.cc.get_app_by_id(incident["bk_biz_id"]).name
         if len(incident["snapshots"]) > 0:
             incident["current_snapshot"] = incident["snapshots"][-1]
             incident["alert_count"] = len(incident["current_snapshot"]["alerts"])
@@ -228,6 +228,14 @@ class IncidentDetailResource(IncidentBaseResource):
         :return: 故障快照信息
         """
         snapshots = IncidentSnapshotDocument.list_by_incident_id(incident["incident_id"])
+        for snapshot in snapshots:
+            snapshot["bk_biz_ids"] = [
+                {
+                    "bk_biz_id": bk_biz_id,
+                    "bk_biz_name": resource.cc.get_app_by_id(bk_biz_id).name,
+                }
+                for bk_biz_id in snapshot["bk_biz_id"]
+            ]
         return snapshots
 
 
@@ -352,13 +360,12 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
             alerts = self.get_snapshot_alerts(snapshot, **validated_request_data)
 
         aggregate_results = self.aggregate_alerts(
-            alerts,
-            ["status", *validated_request_data["aggregate_bys"]],
+            alerts, ["status", *validated_request_data["aggregate_bys"]], snapshot
         )
 
         return aggregate_results
 
-    def aggregate_alerts(self, alerts: List[Dict], aggregate_bys: List[str]) -> Dict:
+    def aggregate_alerts(self, alerts: List[Dict], aggregate_bys: List[str], snapshot: IncidentSnapshot) -> Dict:
         """对故障的告警进行聚合.
 
         :param alerts: 告警列表
@@ -372,9 +379,18 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
                 "name": str(EVENT_STATUS_DICT[status]),
                 "count": 0,
                 "children": {},
+                "alert_ids": [],
+                "is_root": False,
             }
 
         for alert in alerts:
+            if (
+                alert["id"] in snapshot.alert_entity_mapping
+                and snapshot.alert_entity_mapping[alert["id"]].entity.is_root
+            ):
+                is_root = True
+            else:
+                is_root = False
             aggregate_layer_results = aggregate_results
             for aggregate_by in aggregate_bys:
                 chain_key = IncidentAlertAggregateDimension(aggregate_by).chain_key
@@ -387,9 +403,15 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
                         "name": aggregate_by_value,
                         "count": 1,
                         "children": {},
+                        "alert_ids": [alert["id"]],
+                        "is_root": is_root,
                     }
                 else:
                     aggregate_layer_results[aggregate_by_value]["count"] += 1
+                    aggregate_layer_results[aggregate_by_value]["alert_ids"].append(alert["id"])
+                    aggregate_layer_results[aggregate_by_value]["is_root"] = (
+                        aggregate_layer_results[aggregate_by_value]["is_root"] or is_root
+                    )
                 aggregate_layer_results = aggregate_layer_results[aggregate_by_value]["children"]
 
         return self.expand_children_dict_as_list(aggregate_results)
