@@ -99,6 +99,17 @@ ADVANCED_OPTIONS = OrderedDict(
             "BK_DATA_METRIC_RECOMMEND_SOURCE_PROCESSING_ID",
             slz.CharField(label=_("指标推荐 FLOW 数据源"), default="ieod_system_multivariate_delay"),
         ),
+        (
+            "BK_DATA_AIOPS_INCIDENT_BROKER_URL",
+            slz.CharField(
+                label=_("故障接入的 RabbitMQ 地址"),
+                default="amqp://bkbase-rabbitmq.bkbase.svc.cluster.local:5672/aiops_incident",
+            ),
+        ),
+        (
+            "BK_DATA_AIOPS_INCIDENT_SYNC_QUEUE",
+            slz.CharField(label=_("故障接入队列名"), default="aiops_incident_access"),
+        ),
         # === AIOPS 相关配置 结束 ===
         ("EVENT_NO_DATA_TOLERANCE_WINDOW_SIZE", slz.IntegerField(label=_("Event 模块最大容忍无数据周期数"), default=5)),
         (
