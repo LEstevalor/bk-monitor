@@ -8,8 +8,10 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 """
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Dict, List
+
+from core.errors.incident import IncidentEntityNotFoundError
 
 
 @dataclass
@@ -140,3 +142,46 @@ class IncidentSnapshot(object):
         :return: 告警详情列表
         """
         return [int(item["id"]) for item in self.incident_snapshot_content["incident_alerts"]]
+
+    def upstreams_group_by_rank(self, entity_id: str) -> List[Dict]:
+        """根据实体ID找到所有上下游全链路，并按照rank维度分层
+
+        :param entity_id: 实体ID
+        :return: 按rank分层的上下游
+        """
+        if entity_id not in self.incident_graph_entities:
+            raise IncidentEntityNotFoundError({"entity_id": entity_id})
+        entity = self.incident_graph_entities[entity_id]
+
+        ranks = {
+            rank.rank_id: {
+                **asdict(rank),
+                "entities": {},
+            }
+            for rank in self.incident_graph_ranks.values()
+        }
+
+        self.move_upstreams_into_ranks(entity, "source", ranks)
+        self.move_upstreams_into_ranks(entity, "target", ranks)
+
+        for rank in ranks.values():
+            rank["entities"] = list(rank["entities"].values())
+
+        return list(ranks.values())
+
+    def move_upstreams_into_ranks(self, entity: IncidentGraphEntity, direct_key: str, ranks: Dict) -> None:
+        """把节点关联的上游或下游加入到ranks层级中
+
+        :param entity: 故障实体
+        :param direct_key: 上游或下游的方向key
+        :param ranks: 层级
+        """
+        for edge in self.incident_graph_edges:
+            if direct_key == "source" and edge.target.entity_id == entity.entity_id:
+                self.move_upstreams_into_ranks(edge.source, direct_key, ranks)
+
+            if direct_key == "target" and edge.source.entity_id == entity.entity_id:
+                self.move_upstreams_into_ranks(edge.target, direct_key, ranks)
+
+        if entity.entity_id not in ranks[entity.rank.rank_id]["entities"]:
+            ranks[entity.rank.rank_id]["entities"][entity.entity_id] = entity
