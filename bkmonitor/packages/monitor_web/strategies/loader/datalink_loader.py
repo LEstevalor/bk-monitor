@@ -252,7 +252,7 @@ class RuleGroupTool:
                 new_rule["assign_group_id"] = self.group_id
                 slz = AssignRuleSlz(data=new_rule)
                 slz.is_valid(raise_exception=True)
-                AlertAssignRule.objects.create_(**slz.validated_data)
+                AlertAssignRule.objects.create(**slz.validated_data)
                 logger.info("Succeed to create assign rule, {}".format(slz.validated_data))
             # 目前强制更新只支持用户组ID列表
             elif force_update:
