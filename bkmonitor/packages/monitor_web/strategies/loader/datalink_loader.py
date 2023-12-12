@@ -110,7 +110,7 @@ class DatalinkDefaultAlarmStrategyLoader:
 
         # 添加告警分派规则
         try:
-            self.update_rule_group([notice_group_id], strategy_ids)
+            self.update_rule_group([notice_group_id], strategy_ids, force_update=False)
             logger.info("Succeed to update rule group, {}".format(strategy_ids))
         except Exception as err:
             logger.exception("Fail to save rule groups according to strategies({}), {}".format(strategy_ids, err))
@@ -146,7 +146,7 @@ class DatalinkDefaultAlarmStrategyLoader:
         # 保存策略
         return resource.strategies.save_strategy_v2(**strategy_config)["id"]
 
-    def update_rule_group(self, user_group_ids: List[int], strategy_ids: List[int]):
+    def update_rule_group(self, user_group_ids: List[int], strategy_ids: List[int], force_update: bool = True):
         """保存告警分派组"""
         rules = []
         for strategy_id in strategy_ids:
@@ -176,7 +176,7 @@ class DatalinkDefaultAlarmStrategyLoader:
             )
         tool = RuleGroupTool(bk_biz_id=self.bk_biz_id)
         tool.ensure_group()
-        tool.ensure_rules(rules)
+        tool.ensure_rules(rules, force_update)
 
     def build_rule_idx(self, strategy_id: int):
         """构建分派规则唯一标识"""
@@ -199,7 +199,7 @@ class DatalinkDefaultAlarmStrategyLoader:
                 continue
             if not tool.ensure_group(auto_create=False):
                 continue
-            strategy_id = strategy_label.id
+            strategy_id = strategy_label.strategy_id
             rule = tool.get_rule_by_idx(self.build_rule_idx(strategy_id))
             if rule is None:
                 continue
@@ -243,16 +243,21 @@ class RuleGroupTool:
             self.rules = []
         return True
 
-    def ensure_rules(self, new_rules: List[Dict]):
+    def ensure_rules(self, new_rules: List[Dict], force_update: bool = True):
         """确保分配规则生效"""
         for new_rule in new_rules:
             new_idx = new_rule["additional_tags"][0]["value"]
-            if self.get_rule_by_idx(new_idx) is None:
+            existed_rule = self.get_rule_by_idx(new_idx)
+            if existed_rule is None:
                 new_rule["assign_group_id"] = self.group_id
                 slz = AssignRuleSlz(data=new_rule)
                 slz.is_valid(raise_exception=True)
-                AlertAssignRule.objects.create(**slz.validated_data)
+                AlertAssignRule.objects.create_(**slz.validated_data)
                 logger.info("Succeed to create assign rule, {}".format(slz.validated_data))
+            # 目前强制更新只支持用户组ID列表
+            elif force_update:
+                existed_rule.user_groups = new_rule["user_groups"]
+                existed_rule.save()
 
     def get_rule_by_idx(self, idx: str) -> AlertAssignRule:
         for rule in self.rules:

@@ -16,6 +16,7 @@ from typing import Dict, List, Tuple
 
 from bkmonitor.action.serializers.strategy import UserGroupSlz
 from bkmonitor.models.strategy import UserGroup
+from bkmonitor.utils.user import get_global_user
 from bkmonitor.views import serializers
 from constants.alert import EventStatus
 from core.drf_resource import api, resource
@@ -48,8 +49,11 @@ class BaseStatusResource(Resource):
         self.collect_config: CollectConfigMeta = CollectConfigMeta.objects.get(id=self.collect_config_id)
         self.stage = stage
         if self.stage:
-            loader = DatalinkDefaultAlarmStrategyLoader(collect_config=self.collect_config)
-            self.strategy_map = loader.load_strategy_map(self.stage)
+            self.loader = DatalinkDefaultAlarmStrategyLoader(
+                collect_config=self.collect_config, user_id=get_global_user()
+            )
+            self.strategy_map = self.loader.load_strategy_map(self.stage)
+            self.strategy_ids = list(self.strategy_map.keys())
         self._init = True
 
     def get_alert_strategies(self) -> Tuple[List[int], List[Dict]]:
@@ -74,7 +78,7 @@ class BaseStatusResource(Resource):
         start_time, end_time = int(time.time() - time_range), int(time.time())
         request_data = {
             "bk_biz_ids": [self.collect_config.bk_biz_id],
-            "query_string": " OR ".join(f"stategy_id : {sid}" for sid in self.strategy_ids),
+            "query_string": " OR ".join(f"strategy_id : {sid}" for sid in self.strategy_ids),
             "start_time": start_time,
             "end_time": end_time,
         }
@@ -158,7 +162,7 @@ class UpdateAlertUserGroupsResource(BaseStatusResource):
         )
         notice_group_list = serializers.ListField(required=True, child=serializers.IntegerField())
 
-    def perform_request(self, validated_request_data: Dict) -> Dict:
+    def perform_request(self, validated_request_data: Dict):
         self.init_data(validated_request_data["collect_config_id"], DataLinkStage(validated_request_data["stage"]))
         self.loader.update_rule_group(
             user_group_ids=validated_request_data["notice_group_list"],
@@ -199,7 +203,7 @@ class CollectingTargetStatusResource(BaseStatusResource):
 
         request_data = {
             "bk_biz_ids": [self.collect_config.bk_biz_id],
-            "query_string": " OR ".join(f"stategy_id : {sid}" for sid in self.strategy_ids),
+            "query_string": " OR ".join(f"strategy_id : {sid}" for sid in self.strategy_ids),
         }
 
         handler = AlertQueryHandler(**request_data)
