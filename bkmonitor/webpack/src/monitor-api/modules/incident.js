@@ -6,6 +6,7 @@ export const incidentTopN = request('POST', 'rest/v2/incident/top_n/');
 export const incidentValidateQueryString = request('POST', 'rest/v2/incident/validate_query_string/');
 export const incidentDetail = request('GET', 'rest/v2/incident/incident_detail/');
 export const incidentTopology = request('GET', 'rest/v2/incident/incident_topology/');
+export const incidentTopologyUpstream = request('GET', 'rest/v2/incident/incident_topology_upstream/');
 export const incidentTimeLine = request('GET', 'rest/v2/incident/incident_time_line/');
 export const incidentAlertAggregate = request('POST', 'rest/v2/incident/incident_alert_aggregate/');
 export const incidentHandlers = request('GET', 'rest/v2/incident/incident_handlers/');
@@ -23,6 +24,7 @@ export default {
   incidentValidateQueryString,
   incidentDetail,
   incidentTopology,
+  incidentTopologyUpstream,
   incidentTimeLine,
   incidentAlertAggregate,
   incidentHandlers,

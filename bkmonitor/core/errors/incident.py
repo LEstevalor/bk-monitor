@@ -26,3 +26,10 @@ class IncidentNotFoundError(Error):
     code = 3336002
     name = _("故障不存在")
     message_tpl = _("故障UUID ({id}) 对应的故障信息不存在")
+
+
+class IncidentEntityNotFoundError(Error):
+    status_code = 404
+    code = 3336003
+    name = _("实体ID不在当前图谱中")
+    message_tpl = _("实体ID ({entity_id}) 不在当前图谱中")

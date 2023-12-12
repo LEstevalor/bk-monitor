@@ -71,6 +71,59 @@ class IncidentBaseResource(Resource):
 
         return aggregate_results
 
+    def generate_topo_node_status(self, entity: IncidentGraphEntity) -> str:
+        """根据图谱实体的配置生成拓扑节点的状态
+
+        :param entity: 图谱实体
+        :return: 拓扑图节点状态
+        """
+        if entity.is_root:
+            return "root"
+
+        if entity.is_anomaly:
+            return "error"
+
+        return "normal"
+
+    def aggregate_nodes(self, nodes: List[Dict]) -> List[Dict]:
+        """聚合节点
+
+        :param nodes: 节点列表
+        :return: 聚合后的节点列表
+        """
+        aggregated_nodes = []
+        normal_node = None
+        for node_entity_info in nodes:
+            if node_entity_info["is_anomaly"]:
+                node_entity_info["aggreagte_nodes"] = []
+                aggregated_nodes.append(node_entity_info)
+            else:
+                if not normal_node:
+                    node_entity_info["aggreagte_nodes"] = []
+                    normal_node = node_entity_info
+                    aggregated_nodes.append(normal_node)
+
+                normal_node["aggreagte_nodes"].append(node_entity_info)
+
+        return aggregated_nodes
+
+    def generate_nodes_by_entites(self, entites: List[IncidentGraphEntity]) -> List[Dict]:
+        """根据图谱实体生成拓扑图节点
+
+        :param entites: 实体列表
+        :return: 拓扑图节点列表
+        """
+        return [
+            {
+                "id": entity.entity_id,
+                "comboId": entity.rank.rank_category.category_name,
+                "status": self.generate_topo_node_status(entity),
+                "aggregateNode": [],
+                "entity": asdict(entity),
+            }
+            for entity in entites
+        ]
+
 
 class IncidentListResource(IncidentBaseResource):
     """
@@ -204,16 +257,7 @@ class IncidentTopologyResource(IncidentBaseResource):
         :return: 拓扑图数据
         """
         topology_data = {
-            "nodes": [
-                {
-                    "id": entity.entity_id,
-                    "comboId": entity.rank.rank_category.category_name,
-                    "status": self.generate_topo_node_status(entity),
-                    "aggregateNode": [],
-                    "entity": asdict(entity),
-                }
-                for entity in snapshot.incident_graph_entities.values()
-            ],
+            "nodes": self.generate_nodes_by_entites(snapshot.incident_graph_entities.values()),
             "edges": [
                 {"source": edge.source.entity_id, "target": edge.target.entity_id, "count": 1, "type": "include"}
                 for edge in snapshot.incident_graph_edges
@@ -229,19 +273,31 @@ class IncidentTopologyResource(IncidentBaseResource):
         }
         return topology_data
 
-    def generate_topo_node_status(self, entity: IncidentGraphEntity) -> str:
-        """根据图谱实体的配置生成拓扑节点的状态
 
-        :param entity: 图谱实体
-        :return: 拓扑图节点状态
-        """
-        if entity.is_root:
-            return "root"
+class IncidentTopologyUpstreamResource(IncidentBaseResource):
+    """
+    故障拓扑图
+    """
 
-        if entity.is_anomaly:
-            return "error"
+    def __init__(self):
+        super(IncidentTopologyUpstreamResource, self).__init__()
 
-        return "normal"
+    class RequestSerializer(serializers.Serializer):
+        id = serializers.IntegerField(required=True, label="故障ID")
+        entity_id = serializers.CharField(required=True, label="故障实体")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+
+    def perform_request(self, validated_request_data: Dict) -> Dict:
+        incident = IncidentDocument.get(validated_request_data.pop("id"))
+        snapshot = IncidentSnapshot(incident.snapshot.content.to_dict())
+
+        ranks = snapshot.upstreams_group_by_rank(validated_request_data["entity_id"])
+
+        for rank_info in ranks:
+            nodes = self.generate_nodes_by_entites(rank_info.pop("entities"))
+            rank_info["nodes"] = self.aggregate_nodes(nodes)
+
+        return ranks
 
 
 class IncidentTimeLineResource(IncidentBaseResource):
@@ -276,6 +332,8 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
         ordering = serializers.ListField(label="排序", child=serializers.CharField(), default=[])
         page = serializers.IntegerField(label="页数", min_value=1, default=1)
         page_size = serializers.IntegerField(label="每页大小", min_value=0, max_value=5000, default=300)
+        start_time = serializers.IntegerField(label="开始时间", required=False)
+        end_time = serializers.IntegerField(label="结束时间", required=False)
         record_history = serializers.BooleanField(label="是否保存收藏历史", default=False)
         must_exists_fields = serializers.ListField(label="必要字段", child=serializers.CharField(), default=[])
 
