@@ -101,8 +101,10 @@ ADVANCED_OPTIONS = OrderedDict(
         ),
         (
             "BK_DATA_AIOPS_INCIDENT_BROKER_URL",
-            slz.CharField(label=_("故障接入的 RabbitMQ 地址"),
-                          default="amqp://bkbase-rabbitmq.bkbase.svc.cluster.local:5672/aiops_incident"),
+            slz.CharField(
+                label=_("故障接入的 RabbitMQ 地址"),
+                default="amqp://bkbase-rabbitmq.bkbase.svc.cluster.local:5672/aiops_incident",
+            ),
         ),
         (
             "BK_DATA_AIOPS_INCIDENT_SYNC_QUEUE",
