@@ -1733,6 +1733,7 @@ export default {
   数据投递: 'Data Delivery',
   投递到Influxdb: 'Post to Influxdb',
   备注说明: 'Note',
+  业务筛选: 'Business',
   空间筛选: 'Spaces',
   集群属性: 'set',
   模块属性: 'module',

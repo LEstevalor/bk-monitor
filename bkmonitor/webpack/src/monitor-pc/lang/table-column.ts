@@ -67,6 +67,7 @@ export default {
   屏蔽内容: 'Mute Content',
   结束时间: 'End Time',
   告警ID: 'Alarm ID',
+  故障ID: 'incident ID',
   业务名: 'Business Name',
   告警名称: 'Alarm Name',
   告警来源: 'Alarm Source',
@@ -117,5 +118,13 @@ export default {
   '投递到 influxdb': 'Post to influxdb',
   '投递到 Kafka (topic)': 'Post to Kafka (topic)',
   接口名称: 'Span name',
-  'Async 数量': 'Async quantity'
+  'Async 数量': 'Async quantity',
+  '告警开始/结束时间': 'StartTime/EndTime',
+  '开始时间 / 结束时间': 'StartTime/EndTime',
+  业务名称: 'Business Name',
+  故障名称: 'Fault Name',
+  故障状态: 'Fault Status',
+  告警数量: 'Alarm Count',
+  故障原因: 'Fault Reason',
+  告警: 'Alarm'
 };

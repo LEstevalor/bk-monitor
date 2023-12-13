@@ -93,7 +93,12 @@ class FilterText {
   separator = ' ';
   fieldKey: FilterText;
   fieldValue: FilterText;
-  constructor(public text: string, public startOffset: number, public dataType: string, separator?: string) {
+  constructor(
+    public text: string,
+    public startOffset: number,
+    public dataType: string,
+    separator?: string
+  ) {
     this.endOffset = startOffset + text.length;
     this.separator = separator || ' ';
     if (dataType === 'field' && /\./.test(text)) {
@@ -131,6 +136,7 @@ export default class FilerInput extends tsc<IFilterInputProps, IFilterInputEvent
   popoverInstance: any = null;
   popoverMenuInstance: any = null;
   alertFieldList: IListItem[] = [];
+  incidentFieldList: IListItem[] = [];
   actionFieldList: IListItem[] = [];
   eventFieldList: IListItem[] = [];
   historyList: IListItem[] = [];
@@ -176,6 +182,9 @@ export default class FilerInput extends tsc<IFilterInputProps, IFilterInputEvent
       case 'event':
         list = this.eventFieldList;
         break;
+      case 'incident':
+        list = this.incidentFieldList;
+        break;
     }
     return this.isEn ? list.map(item => ({ ...item, name: item.id })) : list;
   }
@@ -197,6 +206,33 @@ export default class FilerInput extends tsc<IFilterInputProps, IFilterInputEvent
     this.handleGetSearchFavorite();
   }
   created() {
+    // 故障建议字段列表
+    this.incidentFieldList = [
+      {
+        id: 'incident_name',
+        name: this.$t('故障名称')
+      },
+      {
+        id: 'status',
+        name: this.$t('故障状态')
+      },
+      {
+        id: 'level',
+        name: this.$t('故障级别')
+      },
+      {
+        id: 'assignees',
+        name: this.$t('故障负责人')
+      },
+      {
+        id: 'handlers',
+        name: this.$t('故障处理人')
+      },
+      {
+        id: 'labels',
+        name: this.$t('标签')
+      }
+    ];
     // 告警建议字段列表
     this.alertFieldList = [
       {
