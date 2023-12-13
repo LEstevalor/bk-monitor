@@ -32,10 +32,6 @@ const wewebId = 'trace';
 @Component
 export default class IncidentDetail extends tsc<{}> {
   @Prop({ default: '' }) readonly id!: string;
-  created() {
-    console.info('IncidentDetail created', this.id, '-----------------------');
-    debugger;
-  }
   get incidentDetailHost() {
     return process.env.NODE_ENV === 'development' ? `http://${process.env.devHost}:7002` : location.origin;
   }
