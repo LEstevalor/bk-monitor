@@ -32,13 +32,17 @@ import './failure-edit-dialog.scss';
 export default defineComponent({
   name: 'FailureEditDialog',
   props: {
+    data: {
+      type: Object,
+      default: () => {}
+    },
     visible: {
       type: Boolean,
       required: false
     },
     levelList: {
-      type: Array,
-      default: () => []
+      type: Object,
+      default: () => {}
     },
     onChange: {
       type: Function,
@@ -65,6 +69,7 @@ export default defineComponent({
           >
             <Input
               placeholder={t('由中英文、下划线或数字组成')}
+              v-model={props.data.incident_name}
               maxlength={50}
             />
           </Form.FormItem>
@@ -72,9 +77,12 @@ export default defineComponent({
             label={t('故障级别')}
             required
           >
-            {props.levelList.map((item: any) => (
-              <Radio>
-                <i class={`icon-monitor icon-${item.icon} radio-icon ${item.icon}`}></i>
+            {Object.values(props.levelList || {}).map((item: any) => (
+              <Radio
+                v-model={props.data.level}
+                label={item.name}
+              >
+                <i class={`icon-monitor icon-${item.key} radio-icon ${item.key}`}></i>
                 {item.label}
               </Radio>
             ))}
@@ -100,6 +108,7 @@ export default defineComponent({
             <Input
               type='textarea'
               maxlength={300}
+              v-model={props.data.incident_reason}
             />
           </Form.FormItem>
         </Form>

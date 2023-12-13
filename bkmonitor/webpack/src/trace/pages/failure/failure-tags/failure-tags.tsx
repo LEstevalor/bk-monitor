@@ -23,57 +23,62 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, nextTick, ref } from 'vue';
+import { computed, defineComponent, nextTick, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Tag } from 'bkui-vue';
 
-import TagShow from './tag-show';
-
+// import TagShow from './tag-show';
 import './failure-tags.scss';
 
 export default defineComponent({
+  props: {
+    incidentDetail: {
+      type: Object,
+      default: () => {}
+    }
+  },
   emits: ['collapse'],
   setup(props, { emit }) {
     const { t } = useI18n();
     const isShow = ref<boolean>(false);
     const failureTags = ref();
-    const principal = [
-      'Helloworld',
-      'Helloworld',
-      'world he',
-      'Helloworld he',
-      'Helloworld',
-      'Helloworld',
-      'Helloworld',
-      'Helloworld'
-    ];
-    const business = ['[1001342] 英雄联盟', '[34234] FFO 自由幻想', '[100123] DNF 地下城勇士'];
+    const incidentDetailData = computed(() => {
+      return props.incidentDetail;
+    });
     const renderList = [
       {
         label: t('影响业务'),
-        renderFn: () => business.map(item => <Tag ext-cls='business-tag'>{item}</Tag>)
+        renderFn: () => {
+          const snapshots = incidentDetailData.value.current_snapshot?.bk_biz_ids || [];
+          return snapshots.map(item => <Tag ext-cls='business-tag'>{`[${item.bk_biz_id}] ${item.bk_biz_name}`}</Tag>);
+        }
       },
       {
         label: t('故障根因'),
-        renderFn: () => (
-          <span class='item-info'>
-            Service ( <label class='name-target'>我是名称占位</label> ) 于 <b>2023-08-12 00:00:00 </b>
-            发生异常，导致 141 个告警
-          </span>
-        )
+        renderFn: () => {
+          const snapshots = incidentDetailData.value.snapshots || [];
+          return (
+            <span class='item-info'>
+              {snapshots[0]?.content?.incident_name || '--'}
+              {/* Service ( <label class='name-target'>我是名称占位</label> ) 于 <b>2023-08-12 00:00:00 </b>
+              发生异常，导致 141 个告警 */}
+            </span>
+          );
+        }
       },
       {
         label: t('故障负责人'),
         renderFn: () => {
-          if (!isShow.value) {
-            return (
-              <TagShow
-                styleName={'principal-tag'}
-                data={principal}
-              />
-            );
-          }
-          return principal.map(item => <Tag ext-cls='principal-tag'>{item}</Tag>);
+          const list = incidentDetailData.value?.assignees || [];
+          // if (!isShow.value) {
+          //   return (
+          //     <TagShow
+          //       styleName={'principal-tag'}
+          //       data={principal}
+          //     />
+          //   );
+          // }
+          return list.map(item => <Tag ext-cls='principal-tag'>{item}</Tag>);
         }
       }
     ];
@@ -83,23 +88,10 @@ export default defineComponent({
         emit('collapse', isShow.value, failureTags?.value?.clientHeight);
       });
     };
-    // const renderFn = () => (
-    //   <div class={['failure-tags', { 'failure-tags-full': isShow.value }]}>
-    //     {renderList.map(item => (
-    //       <div class='failure-tags-item'>
-    //         <span class='item-label'>{item.label}：</span>
-    //         <div class='item-main'>{item.renderFn()}</div>
-    //       </div>
-    //     ))}
-    //     <i
-    //       class={`icon-monitor icon-double-${isShow.value ? 'up' : 'down'} failure-tags-icon`}
-    //       onClick={expandCollapseHandle}
-    //     ></i>
-    //   </div>
-    // );
-    return { renderList, expandCollapseHandle, isShow, failureTags };
+    return { renderList, expandCollapseHandle, isShow, failureTags, incidentDetailData };
   },
   render() {
+    // const { assignees = [], handlers = [] } = this.incidentDetailData;
     return (
       <div
         ref='failureTags'
@@ -111,10 +103,10 @@ export default defineComponent({
             <div class='item-main'>{item.renderFn()}</div>
           </div>
         ))}
-        <i
+        {/* <i
           class={`icon-monitor icon-double-${this.isShow ? 'up' : 'down'} failure-tags-icon`}
           onClick={this.expandCollapseHandle}
-        ></i>
+        ></i> */}
       </div>
     );
   }

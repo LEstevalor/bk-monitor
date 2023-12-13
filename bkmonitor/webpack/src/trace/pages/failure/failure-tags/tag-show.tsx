@@ -60,6 +60,7 @@ export default defineComponent({
             break;
           }
         }
+        console.log(count, domList.length, domList);
         return count;
       },
       set: () => {}
@@ -67,12 +68,14 @@ export default defineComponent({
     return { calculateTagCount, sectionRef };
   },
   render() {
+    console.log(this.$props.data, 'this.$props.data');
     const dataLen = (this.$props.data || []).length;
     if (dataLen === 0) {
       return;
     }
     const countIndex: any = this.calculateTagCount;
     const status = dataLen > countIndex;
+    console.log(status, 'status', dataLen, countIndex);
     const list = (this.$props.data || []).slice(0, this.calculateTagCount);
     return (
       <span class='bk-common-tag-show'>
