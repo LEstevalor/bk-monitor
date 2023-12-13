@@ -8,9 +8,11 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 """
-from dataclasses import asdict, dataclass
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
 from typing import Dict, List
 
+from constants.incident import IncidentGraphEdgeType
 from core.errors.incident import IncidentEntityNotFoundError
 
 
@@ -46,6 +48,7 @@ class IncidentGraphRank:
 class IncidentGraphEntity:
     """
     "entity_id": "BCS-K8S-xxxx#k8s-idc-br#uid-0",
+    "entity_name": "BCS-K8S-xxxx#k8s-idc-br#uid-0",
     "entity_type": "BcsPod",
     "is_anomaly": false,
     "anomaly_score": 0.3333333333333333,
@@ -55,12 +58,14 @@ class IncidentGraphEntity:
     """
 
     entity_id: str
+    entity_name: str
     entity_type: str
     is_anomaly: bool
     anomaly_score: float
     anomaly_type: str
     is_root: bool
     rank: IncidentGraphRank
+    aggregated_entites: List["IncidentGraphEntity"] = field(default_factory=list)
 
 
 @dataclass
@@ -74,6 +79,7 @@ class IncidentGraphEdge:
 
     source: IncidentGraphEntity
     target: IncidentGraphEntity
+    edge_type: IncidentGraphEdgeType
 
 
 @dataclass
@@ -103,6 +109,8 @@ class IncidentSnapshot(object):
         self.incident_graph_entities = {}
         self.incident_graph_edges = []
         self.alert_entity_mapping = {}
+        self.entity_targets = defaultdict(set)
+        self.entity_sources = defaultdict(set)
 
         self.prepare_graph()
         self.prepare_alerts()
@@ -121,12 +129,11 @@ class IncidentSnapshot(object):
             self.incident_graph_entities[entity_info["entity_id"]] = IncidentGraphEntity(**entity_info)
 
         for edge_info in self.incident_snapshot_content["incident_propagation_graph"]["edges"]:
-            self.incident_graph_edges.append(
-                IncidentGraphEdge(
-                    source=self.incident_graph_entities[edge_info["source_id"]],
-                    target=self.incident_graph_entities[edge_info["target_id"]],
-                )
-            )
+            source = self.incident_graph_entities[edge_info["source_id"]]
+            target = self.incident_graph_entities[edge_info["target_id"]]
+            self.entity_sources[target.entity_id].add(source.entity_id)
+            self.entity_targets[source.entity_id].add(target.entity_id)
+            self.incident_graph_edges.append(IncidentGraphEdge(source=source, target=target))
 
     def prepare_alerts(self):
         """根据故障分析结果快照构建告警所在实体的关系."""
@@ -157,6 +164,8 @@ class IncidentSnapshot(object):
             rank.rank_id: {
                 **asdict(rank),
                 "entities": {},
+                "total": 0,
+                "anomaly_count": 0,
             }
             for rank in self.incident_graph_ranks.values()
         }
@@ -185,3 +194,52 @@ class IncidentSnapshot(object):
 
         if entity.entity_id not in ranks[entity.rank.rank_id]["entities"]:
             ranks[entity.rank.rank_id]["entities"][entity.entity_id] = entity
+            if entity.is_anomaly:
+                ranks[entity.rank.rank_id]["anomaly_count"] += 1
+            ranks[entity.rank.rank_id]["total"] += 1
+
+    def aggregate_graph(self) -> "IncidentSnapshot":
+        group_by_entities = {}
+
+        for entity_id, entity in self.incident_graph_entities.items():
+            key = (
+                frozenset(self.entity_sources[entity_id]),
+                frozenset(self.entity_targets[entity_id]),
+                entity_id if entity.is_anomaly or entity.is_root else "normal",
+            )
+            if key not in group_by_entities:
+                group_by_entities[key] = set()
+            group_by_entities[key].add(entity)
+
+        for entities in group_by_entities.values():
+            if len(entities) > 0:
+                self.merge_entities(entities)
+
+        incident_graph_edges = {}
+        for entity_id, targets in self.entity_targets.items():
+            for target_entity_id in targets:
+                incident_graph_edges[(entity_id, target_entity_id)] = IncidentGraphEdge(
+                    source=self.incident_graph_entities[entity_id],
+                    target=self.incident_graph_entities[target_entity_id],
+                )
+        for entity_id, sources in self.entity_sources.items():
+            for source_entity_id in sources:
+                incident_graph_edges[(source_entity_id, entity_id)] = IncidentGraphEdge(
+                    source=self.incident_graph_entities[source_entity_id],
+                    target=self.incident_graph_entities[entity_id],
+                )
+        self.incident_graph_edges = list(incident_graph_edges.values())
+
+    def merge_entities(self, entities: List[IncidentGraphEntity]) -> None:
+        entities[0].aggregated_entites = entities[1:]
+        for entity in entities[1:]:
+            for target in self.entity_targets[entity.entity_id]:
+                self.entity_sources[target.entity_id].remove(entity.entity_id)
+                self.entity_sources[target.entity_id].add(entities[0].entity_id)
+            for source in self.entity_sources[entity.entity_id]:
+                self.entity_targets[source.entity_id].remove(entity.entity_id)
+                self.entity_targets[source.entity_id].add(entities[0].entity_id)
+
+            del self.entity_targets[entity.entity_id]
+            del self.entity_sources[entity.entity_id]
+            del self.incident_graph_entities[entity.entity_id]
