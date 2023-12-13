@@ -31,6 +31,12 @@
     width: 100%;
     height: calc(100% - 58px);
 
+    .clear-btn {
+      margin: 0px 2px;
+      color: #3a84ff;
+      cursor: pointer;
+    }
+
     .list-item {
       position: relative;
       display: flex;
@@ -69,7 +75,10 @@
       width: 20px;
       height: 20px;
       margin-right: 8px;
-      background: #f0f1f5;
+      line-height: 20px;
+      color: #fff;
+      text-align: center;
+      background: #c4c6cc;
       border-radius: 50%;
     }
 
@@ -111,7 +120,8 @@
   }
 
   .bk-dropdown-item {
-    &:hover {
+    &:hover,
+    &.active {
       color: #3a84ff;
       background: #e1ecff;
 

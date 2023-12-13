@@ -23,81 +23,30 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent } from 'vue';
+import { defineComponent, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Input, Select, Tree } from 'bkui-vue';
+import { Dropdown, Input, Loading, Select, Tree } from 'bkui-vue';
+
+import { incidentAlertAggregate } from '../../../../monitor-api/modules/incident';
 
 import './handle-search.scss';
 
 export default defineComponent({
   setup() {
     const { t } = useI18n();
-    const treeList = [
+    const alertAggregateData = ref([]);
+    const listLoading = ref(false);
+    const isShowDropdown = ref(false);
+    const filterList = [
       {
-        name: t('未恢复'),
-        icon: 'mind-fill',
-        total: 10,
-        level: 1,
-        children: [
-          {
-            name: '容器状态异常',
-            total: 3,
-            level: 2,
-            children: [
-              {
-                name: 'pod_id=coredns-59234fs',
-                level: 3
-              },
-              {
-                name: 'pod_id=coredns-59234fs',
-                level: 3
-              },
-              {
-                name: 'pod_id=coredns-59234fs',
-                level: 3
-              }
-            ]
-          }
-        ]
+        name: t('未恢复告警数'),
+        icon: 'AlertSort',
+        key: 'abnormal_alert_count'
       },
       {
-        name: t('已恢复'),
-        icon: 'mc-check-fill',
-        total: 2,
-        level: 1,
-        children: [
-          {
-            name: 'pod近30分钟重启次数过多',
-            total: 3,
-            level: 2
-          }
-        ]
-      },
-      {
-        name: t('已解决'),
-        icon: 'mc-solved',
-        total: 2,
-        level: 1,
-        children: [
-          {
-            name: '日志平台-es磁盘容量告警-全局',
-            total: 3,
-            level: 2
-          }
-        ]
-      },
-      {
-        name: t('已失效'),
-        icon: 'mc-expired',
-        total: 2,
-        level: 1,
-        children: [
-          {
-            name: '日志平台-es磁盘容量告警-全局',
-            total: 3,
-            level: 2
-          }
-        ]
+        name: t('名称 A-Z '),
+        icon: 'A-ZSort',
+        key: 'bk_username'
       }
     ];
     const searchHeadFn = () => (
@@ -124,6 +73,22 @@ export default defineComponent({
         />
       </div>
     );
+    const getIncidentAlertAggregate = () => {
+      listLoading.value = true;
+      incidentAlertAggregate({
+        bk_biz_id: 2,
+        id: 17019496696,
+        aggregate_bys: ['alert_name', 'node_name', 'node_type']
+      })
+        .then(res => {
+          alertAggregateData.value = Object.values(res);
+          console.log(res, alertAggregateData.value);
+        })
+        .catch(err => {
+          console.log(err);
+        })
+        .finally(() => (listLoading.value = false));
+    };
     const getPrefixIcon = (item, renderType) => {
       const { icon, level } = item;
       if (renderType === 'node_action') {
@@ -138,14 +103,14 @@ export default defineComponent({
     const treeFn = () => (
       <Tree
         class='search-tree-list'
-        data={treeList}
+        data={alertAggregateData.value}
         label='name'
         children='children'
         level-line
         prefix-icon={getPrefixIcon}
         auto-open-parent-node={false}
         v-slots={{
-          nodeAppend: (node: any) => (node.level === 3 ? '' : <span class='node-append'>{node.total}</span>)
+          nodeAppend: (node: any) => <span class='node-append'>{node.count}</span>
         }}
       />
     );
@@ -153,9 +118,32 @@ export default defineComponent({
       <div class='handle-search-list'>
         <div class='search-head'>
           {t('我负责的告警')}
-          <i class='icon-monitor icon-menu-setting search-head-icon' />
+          <Dropdown
+            trigger='manual'
+            is-show={isShowDropdown.value}
+            placement='bottom-start'
+            v-slots={{
+              content: () => (
+                <Dropdown.DropdownMenu extCls={'search-btn-drop'}>
+                  {filterList.map(item => (
+                    <Dropdown.DropdownItem
+                    // extCls={`${this.orderByType === item.key ? 'active' : ''}`}
+                    // onclick={() => this.filterListHandle(item.key)}
+                    >
+                      <i class={`icon-monitor icon-${item.icon} search-btn-icon`}></i>
+                      {item.name}
+                    </Dropdown.DropdownItem>
+                  ))}
+                </Dropdown.DropdownMenu>
+              )
+            }}
+          >
+            <i class='icon-monitor icon-menu-setting search-head-icon' />
+          </Dropdown>
         </div>
-        <div class='search-tree'>{treeFn()}</div>
+        <Loading loading={listLoading.value}>
+          <div class='search-tree'>{treeFn()}</div>
+        </Loading>
       </div>
     );
     const renderFn = () => (
@@ -164,6 +152,9 @@ export default defineComponent({
         {listFn()}
       </div>
     );
+    onMounted(() => {
+      getIncidentAlertAggregate();
+    });
     return { renderFn };
   },
   render() {
