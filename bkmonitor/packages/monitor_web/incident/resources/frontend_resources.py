@@ -96,15 +96,15 @@ class IncidentBaseResource(Resource):
         normal_node = None
         for node_entity_info in nodes:
             if node_entity_info["entity"]["is_anomaly"]:
-                node_entity_info["aggreagte_nodes"] = []
                 aggregated_nodes.append(copy.deepcopy(node_entity_info))
             else:
                 if not normal_node:
-                    node_entity_info["aggreagte_nodes"] = []
                     normal_node = node_entity_info
-                    aggregated_nodes.append(copy.deepcopy(normal_node))
 
-                normal_node["aggreagte_nodes"].append(copy.deepcopy(node_entity_info))
+                normal_node["aggregate_nodes"].append(copy.deepcopy(node_entity_info))
+
+        if normal_node:
+            aggregated_nodes.append(copy.deepcopy(normal_node))
 
         return aggregated_nodes
 
@@ -117,9 +117,9 @@ class IncidentBaseResource(Resource):
         return [
             {
                 "id": entity.entity_id,
-                "comboId": entity.rank.rank_category.category_name,
+                "combo_id": entity.rank.rank_category.category_name,
                 "status": self.generate_topo_node_status(entity),
-                "aggregateNode": [],
+                "aggregate_nodes": [],
                 "entity": asdict(entity),
             }
             for entity in entites
