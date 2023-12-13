@@ -25,6 +25,7 @@
  */
 import { defineComponent, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { Dialog, Form, Input, Popover, Progress, Tag } from 'bkui-vue';
 
 import FailureEditDialog from './failure-edit-dialog';
@@ -36,6 +37,7 @@ export default defineComponent({
     const { t } = useI18n();
     const isShow = ref<boolean>(false);
     const isShowResolve = ref<boolean>(false);
+    const router = useRouter();
     const tipsData = [
       {
         name: t('未恢复'),
@@ -71,6 +73,9 @@ export default defineComponent({
       }
     ];
     const tagList = ['在线', '登录', '游戏', '异常', '时序'];
+    const handleBack = () => {
+      router.go(-1);
+    };
     const tipsItem = (val: number) => (
       <span class='tips-more'>
         ，其中 <b>{val}</b> 个未分派
@@ -116,7 +121,10 @@ export default defineComponent({
     );
     const renderFn = () => (
       <div class='failure-header'>
-        <i class='icon-monitor icon-back-left head-icon'></i>
+        <i
+          class='icon-monitor icon-back-left head-icon'
+          onClick={handleBack}
+        ></i>
         <span class='header-sign'>
           <i class='icon-monitor icon-danger sign-icon'></i>
           {t('致命')}

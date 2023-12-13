@@ -44,7 +44,6 @@ const router = createRouter({
     }
   ]
 });
-console.dir('router: ', router);
 router.onError(e => {
   console.error('router error: ', e);
 });
