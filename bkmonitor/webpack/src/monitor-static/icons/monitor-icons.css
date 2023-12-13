@@ -13,6 +13,50 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.icon-mc-container:before {
+  content: "\e790";
+}
+
+.icon-mc-pod:before {
+  content: "\e78d";
+}
+
+.icon-mc-endpoint:before {
+  content: "\e78e";
+}
+
+.icon-mc-cmdb-process:before {
+  content: "\e787";
+}
+
+.icon-mc-user-experience:before {
+  content: "\e788";
+}
+
+.icon-mc-data-center:before {
+  content: "\e789";
+}
+
+.icon-mc-target-cloud:before {
+  content: "\e78a";
+}
+
+.icon-mc-relate-alert:before {
+  content: "\e78b";
+}
+
+.icon-mc-intelligent-detection:before {
+  content: "\e78c";
+}
+
+.icon-mc-not-assigned:before {
+  content: "\e785";
+}
+
+.icon-mc-all:before {
+  content: "\e786";
+}
+
 .icon-mc-lunliu:before {
   content: "\e784";
 }

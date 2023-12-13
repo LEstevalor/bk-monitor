@@ -370,7 +370,7 @@ export default defineComponent({
       });
     };
     const handleResize = () => {
-      if (!graph || graph.get('destroyed')) return;
+      if (!graph || graph.get('destroyed') || !graphRef.value) return;
       const { width, height } = graphRef.value.getBoundingClientRect();
       graph.changeSize(width, Math.max(160 * topoData.combos.length, height));
       graph.render();
@@ -553,7 +553,7 @@ export default defineComponent({
       addListener(topoGraphRef.value, onResize);
     });
     onUnmounted(() => {
-      removeListener(topoGraphRef.value, onResize);
+      topoGraphRef.value && removeListener(topoGraphRef.value, onResize);
     });
     return {
       topoGraphRef,

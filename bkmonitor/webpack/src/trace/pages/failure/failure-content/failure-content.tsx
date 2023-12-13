@@ -23,7 +23,7 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineAsyncComponent, defineComponent, ref } from 'vue';
+import { defineComponent, KeepAlive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import AlarmDetail from '../alarm-detail/alarm-detail';
@@ -64,8 +64,10 @@ export default defineComponent({
           active={this.active}
           onChange={this.handleChangeActive}
         ></FailureMenu>
-        {/* {this.active === 'FailureTopo' && <FailureTopo></FailureTopo>} */}
-        {this.active === 'AlarmDetail' && <AlarmDetail></AlarmDetail>}
+        <KeepAlive>
+          {this.active === 'FailureTopo' && <FailureTopo></FailureTopo>}
+          {this.active === 'AlarmDetail' && <AlarmDetail></AlarmDetail>}
+        </KeepAlive>
       </div>
     );
   }
