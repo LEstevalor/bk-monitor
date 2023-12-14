@@ -41,6 +41,11 @@ export interface IRank {
   rank_id: number;
   rank_name: string;
   rank_alias: string;
+  rank_category: {
+    category_alias: string;
+    category_id: number;
+    category_name: string;
+  };
 }
 
 export interface ITopoNode extends ModelConfig {
@@ -48,6 +53,13 @@ export interface ITopoNode extends ModelConfig {
   comboId: string;
   entity: IEntity;
   id: string;
+  bk_biz_id: string;
+  bk_biz_name: string;
+  alert_display: {
+    alert_id: string;
+    alert_name: string;
+  };
+  alert_ids: string[];
 }
 
 export interface ITopoEdge extends ModelConfig {

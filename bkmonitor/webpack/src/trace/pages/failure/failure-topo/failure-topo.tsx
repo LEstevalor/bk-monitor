@@ -321,6 +321,7 @@ export default defineComponent({
           const type = e.item.getType();
           const model = e.item.getModel();
           tooltipsModel.value = model as ITopoNode | ITopoEdge;
+          console.info(type, model, '===========================');
           tooltipsType.value = type;
           return tooltipsRef.value.$el;
         }

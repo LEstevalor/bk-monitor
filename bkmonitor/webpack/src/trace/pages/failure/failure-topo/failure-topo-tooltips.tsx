@@ -122,35 +122,41 @@ export default defineComponent({
               })}
           </div>
           <div class='node-tooltip-content'>
-            {createCommonForm('包含告警：', () => (
-              <>
-                {createCommonIconBtn(
-                  '告警名称占位',
-                  {
-                    marginRight: '4px'
-                  },
-                  false
-                )}
-                等共
-                {createCommonIconBtn(
-                  '10',
-                  {
-                    marginRight: '4px',
-                    marginLeft: '4px'
-                  },
-                  false
-                )}
-                同类告警
-              </>
-            ))}
+            {createCommonForm('包含告警：', () =>
+              node.alert_display.alert_name ? (
+                <>
+                  {createCommonIconBtn(
+                    node.alert_display.alert_name || '',
+                    {
+                      marginRight: '4px'
+                    },
+                    false
+                  )}
+                  等共
+                  {createCommonIconBtn(
+                    node.alert_ids.length.toString(),
+                    {
+                      marginRight: '4px',
+                      marginLeft: '4px'
+                    },
+                    false
+                  )}
+                  同类告警
+                </>
+              ) : (
+                <>--</>
+              )
+            )}
             {createCommonForm('分类：', () => (
-              <>主机/云平台 - 主机设备</>
+              <>{node.entity.rank.rank_category.category_alias}</>
             ))}
             {createCommonForm('节点类型：', () => (
               <>{node.entity.entity_type}</>
             ))}
             {createCommonForm('所属业务：', () => (
-              <>[100342] DNF 地下城与勇士</>
+              <>
+                [{node.bk_biz_id}] {node.bk_biz_name}
+              </>
             ))}
           </div>
         </div>
