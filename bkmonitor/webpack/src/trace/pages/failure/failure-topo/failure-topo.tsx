@@ -282,10 +282,8 @@ export default defineComponent({
           const nodeMargin = 40;
           const maxColumnCount = 2;
           const minComboHeight = 66 * maxColumnCount;
+          let hasNoSpecial = false;
           console.info('minComboHeight', minComboHeight);
-          combos.sort((a, b) => {
-            return a.id - b.id;
-          });
           debugger;
           combos.forEach(combo => {
             const comboNodes = nodes.filter(node => node.comboId.toString() === combo.id.toString());
@@ -295,12 +293,14 @@ export default defineComponent({
             let yBegin = needNewRow ? totalHeight + minComboHeight : totalHeight;
             let nodeStep = nodeMargin + nodeSize;
             let yStep = nodeMargin;
-            const isSpecial = ['host_platform', 'data_center'].includes(combo.status);
+            const isSpecial = ['host_platform', 'data_center'].includes(combo.dataType);
             if (isSpecial) {
-              yBegin = totalHeight + minComboHeight;
+              yBegin = totalHeight + (hasNoSpecial ? minComboHeight : 0);
               xBegin = 0;
               nodeStep = width / comboNodes.length;
               yStep = nodeMargin;
+            } else {
+              hasNoSpecial = true;
             }
             comboNodes.forEach((node, index) => {
               node.x = xBegin + index * nodeStep + begin;
@@ -308,6 +308,7 @@ export default defineComponent({
             });
             totalWidth = needNewRow ? comboWidth : totalWidth + comboWidth;
             totalHeight = yBegin;
+            hasNoSpecial = true;
           });
         }
       });
@@ -337,6 +338,12 @@ export default defineComponent({
     onMounted(async () => {
       topoRawData = await incidentTopology({
         id: props.id
+      }).then(({ combos = [], edges = [], nodes = [] }) => {
+        return {
+          combos: combos.map(combo => ({ ...combo, id: combo.id.toString() })),
+          edges,
+          nodes: nodes.map(node => ({ ...node, id: node.id.toString(), comboId: node.comboId.toString() }))
+        };
       });
       const { width, height } = graphRef.value.getBoundingClientRect();
       console.info('topo graph', width, height);
@@ -467,7 +474,7 @@ export default defineComponent({
       });
       graph.on('afterlayout', () => {
         const combos = graph.getCombos();
-        const instanceCombos = combos.filter(combo => combo.get('model').status === 'service_instance');
+        const instanceCombos = combos.filter(combo => combo.get('model').dataType === 'service_instance');
         let i = 0;
         let w = 0;
         let minX = 0;
@@ -501,10 +508,11 @@ export default defineComponent({
           i += Math.max(sameRowCombo.length, 1);
         }
         combos.forEach(combo => {
-          if (['data_center', 'host_platform'].includes(combo.get('model').status)) {
+          if (['data_center', 'host_platform'].includes(combo.get('model').dataType)) {
+            const comboW = Math.max(maxX, graph.getWidth());
             graph.updateItem(combo, {
-              fixSize: [w - 80, 80],
-              x: w / 2 + 0
+              fixSize: [comboW - 80, 80],
+              x: comboW / 2
             });
             return;
           }
