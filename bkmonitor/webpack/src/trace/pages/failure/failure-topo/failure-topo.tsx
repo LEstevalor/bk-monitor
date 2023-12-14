@@ -103,7 +103,7 @@ export default defineComponent({
                 text: '根因',
                 fontSize: 12,
                 fill: '#fff',
-                ...nodeAttrs.rectAttrs
+                ...nodeAttrs.textAttrs
               },
               name: 'topo-node-text'
             });
@@ -320,7 +320,6 @@ export default defineComponent({
         getContent: e => {
           const type = e.item.getType();
           const model = e.item.getModel();
-          console.info(type, model, '================');
           tooltipsModel.value = model as ITopoNode | ITopoEdge;
           tooltipsType.value = type;
           return tooltipsRef.value.$el;
@@ -530,10 +529,10 @@ export default defineComponent({
     onUnmounted(() => {
       topoGraphRef.value && removeListener(topoGraphRef.value, onResize);
     });
-    const handleUpdateAggregateConfig = config => {
+    const handleUpdateAggregateConfig = async config => {
       aggregateConfig.value = config.aggregate_config;
       autoAggregate.value = config.auto_aggregate;
-      getGraphData();
+      await getGraphData();
       renderGraph();
     };
     return {
