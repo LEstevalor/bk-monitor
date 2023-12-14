@@ -1,0 +1,94 @@
+.aggregation-select {
+  display: flex;
+  align-items: center;
+  &-trigger {
+    display: flex;
+    align-items: center;
+    height: 40px;
+    background-color: #454547;
+    color: #fff;
+    .trigger-icon {
+      height: 16px;
+      width: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 6px;
+    }
+    &:hover{
+      cursor: pointer;
+    }
+  }
+  &-content {
+    display: flex;
+    flex-direction: column;
+    background-color: #454547;
+    border: 1px solid #454547;
+    box-shadow: 0 2px 6px 0 #00000080;
+    border-radius: 2px;
+    width: 240px;
+    height: 310px;
+    overflow: auto;
+    overflow-x: hidden;
+    .panel-header {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      margin: 8px;
+      height: 30px;
+      .panel-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 30px;
+        width: 72px;
+        border-radius: 2px;
+        background-color: #5C5C5C;
+        color: #C4C6CC;
+        margin-right: 8px;
+        &.is-active,
+        &:hover {
+          cursor: pointer;
+          background-color: #505F7B;
+          color: #A3C5FD;
+        }
+      }
+    }
+    .panel-search {
+      display: flex;
+      width: 100%;
+      margin-bottom: 6px;
+      .bk-input {
+        border-bottom-color: #63656E !important;
+        background-color: #454547 !important;
+        margin: 0 8px;
+        input {
+          background-color: #454547 !important;
+          color: #fff !important;
+        }
+        .input-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 20px;
+          color: #63656E;
+        }
+      }
+    }
+    .bk-tree {
+      color: #C4C6CC;
+      .bk-node-content {
+        .bk-checkbox {
+          margin-right: 6px; 
+        }
+      }
+      .is-selected {
+        background-color: transparent;
+      }
+    }
+  }
+}
+.aggregation-select-popover {
+  padding: 0 !important;
+  background-color: #454547 !important;
+}

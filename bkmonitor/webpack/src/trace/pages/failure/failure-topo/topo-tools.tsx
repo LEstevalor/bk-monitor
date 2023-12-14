@@ -25,6 +25,8 @@
  */
 import { defineComponent } from 'vue';
 
+import AggregationSelect from './aggregation-select';
+
 import './topo-tools.scss';
 
 export default defineComponent({
@@ -37,6 +39,11 @@ export default defineComponent({
   },
   setup() {},
   render() {
-    return <div class='topo-tools'>{this.$t('故障拓扑')}</div>;
+    return (
+      <div class='topo-tools'>
+        {this.$t('故障拓扑')}
+        <AggregationSelect class='topo-tools-agg' />
+      </div>
+    );
   }
 });
