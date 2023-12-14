@@ -25,7 +25,7 @@
  */
 import { defineComponent, VNode } from 'vue';
 
-import { NodeStatus } from './topo-data';
+import { ITopoNode } from './types';
 
 import './failure-topo-tooltips.scss';
 
@@ -89,7 +89,7 @@ export default defineComponent({
         </div>
       );
     };
-    const createNodeToolTip = () => {
+    const createNodeToolTip = (node: ITopoNode) => {
       return (
         <div class='node-tooltip'>
           <div class='node-tooltip-header'>
@@ -100,12 +100,12 @@ export default defineComponent({
                 height: '16px'
               }}
             ></i>
-            <span class='header-name'>节点名称占位</span>
-            {this.model.status === NodeStatus.Root && (
+            <span class='header-name'>{node.entity.entity_name}</span>
+            {node.entity.is_root && (
               <span
                 class='root-mark'
                 style={{
-                  backgroundColor: this.model.status === NodeStatus.Root ? '#EA3636' : '#00FF00'
+                  backgroundColor: node.entity.is_root ? '#EA3636' : '#00FF00'
                 }}
               >
                 根因
@@ -141,7 +141,7 @@ export default defineComponent({
               <>主机/云平台 - 主机设备</>
             ))}
             {createCommonForm('节点类型：', () => (
-              <>Node/Host</>
+              <>{node.entity.entity_type}</>
             ))}
             {createCommonForm('所属业务：', () => (
               <>[100342] DNF 地下城与勇士</>
@@ -158,7 +158,7 @@ export default defineComponent({
           'edge-tooltip': this.type === 'edge'
         }}
       >
-        {this.type === 'edge' ? createEdgeToolTip() : createNodeToolTip()}
+        {this.type === 'edge' ? createEdgeToolTip() : createNodeToolTip(this.model as ITopoNode)}
       </div>
     );
   }

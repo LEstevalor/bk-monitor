@@ -37,7 +37,7 @@ import dbsvg from './db.svg';
 import FailureTopoTooltips from './failure-topo-tooltips';
 import httpSvg from './http.svg';
 import TopoTools from './topo-tools';
-import { ITopoCombo, ITopoData, ITopoNode } from './types';
+import { ITopoCombo, ITopoData, ITopoEdge, ITopoNode } from './types';
 import { getNodeAttrs } from './utils';
 
 import './failure-topo.scss';
@@ -49,7 +49,7 @@ export default defineComponent({
     const graphRef = ref<HTMLDivElement>(null);
     let graph: Graph;
     let tooltips = null;
-    const tooltipsModel = shallowRef();
+    const tooltipsModel = shallowRef<ITopoNode | ITopoEdge>();
     const tooltipsType = ref('node');
     const tooltipsRef = ref<InstanceType<typeof FailureTopoTooltips>>();
     let topoRawData: ITopoData = null;
@@ -320,7 +320,8 @@ export default defineComponent({
         getContent: e => {
           const type = e.item.getType();
           const model = e.item.getModel();
-          tooltipsModel.value = model;
+          console.info(type, model, '================');
+          tooltipsModel.value = model as ITopoNode | ITopoEdge;
           tooltipsType.value = type;
           return tooltipsRef.value.$el;
         }
