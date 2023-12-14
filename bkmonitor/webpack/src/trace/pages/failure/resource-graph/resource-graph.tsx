@@ -37,6 +37,7 @@ import './resource-graph.scss';
 const getRawData = () => {
   return JSON.parse(JSON.stringify(resourceData));
 };
+
 export default defineComponent({
   name: 'ResourceGraph',
   props: {

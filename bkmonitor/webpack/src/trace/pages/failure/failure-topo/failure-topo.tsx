@@ -35,55 +35,12 @@ import ResourceGraph from '../resource-graph/resource-graph';
 import dbsvg from './db.svg';
 import FailureTopoTooltips from './failure-topo-tooltips';
 import httpSvg from './http.svg';
-import topoData, { ComboStatus, EdgeStatus, NodeStatus } from './topo-data';
 import TopoTools from './topo-tools';
+import { ITopoCombo, ITopoData, ITopoNode } from './types';
+import { getNodeAttrs } from './utils';
 
 import './failure-topo.scss';
 
-const StatusNodeMap = {
-  [NodeStatus.Normal]: {
-    groupAttrs: {
-      fill: 'rgba(197, 197, 197, 0.2)',
-      stroke: '#979BA5'
-    },
-    rectAttrs: {
-      stroke: '#EAEBF0',
-      fill: '#313238'
-    },
-    textAttrs: {
-      fill: '#fff'
-    }
-  },
-  [NodeStatus.Error]: {
-    groupAttrs: {
-      fill: 'rgba(255, 102, 102, 0.4)',
-      stroke: '#F55555'
-    },
-    rectAttrs: {
-      stroke: '#F55555',
-      fill: '#313238'
-    },
-    textErrorAttrs: {
-      fill: '#313238'
-    },
-    textNormalAttrs: {
-      fill: '#fff'
-    }
-  },
-  [NodeStatus.Root]: {
-    groupAttrs: {
-      fill: '#F55555',
-      stroke: '#F55555'
-    },
-    rectAttrs: {
-      stroke: '#3A3B3D',
-      fill: '#F55555'
-    },
-    textAttrs: {
-      fill: '#fff'
-    }
-  }
-};
 export default defineComponent({
   name: 'FailureTopo',
   props: {
@@ -100,11 +57,12 @@ export default defineComponent({
     const tooltipsModel = shallowRef();
     const tooltipsType = ref('node');
     const tooltipsRef = ref<InstanceType<typeof FailureTopoTooltips>>();
-    let topoRawData = null;
+    let topoRawData: ITopoData = null;
     const registerCustomNode = () => {
       registerNode('topo-node', {
         afterDraw(cfg, group) {
-          if (cfg.status === NodeStatus.Root) {
+          const nodeAttrs = getNodeAttrs(cfg as ITopoNode);
+          if ((cfg as ITopoNode).entity.is_root) {
             group.addShape('circle', {
               zIndex: -11,
               attrs: {
@@ -133,7 +91,7 @@ export default defineComponent({
                 height: 16,
                 radius: 8,
                 fill: '#fff',
-                ...StatusNodeMap[NodeStatus.Root]?.rectAttrs
+                ...nodeAttrs.rectAttrs
               },
               name: 'topo-node-rect'
             });
@@ -147,7 +105,7 @@ export default defineComponent({
                 text: '根因',
                 fontSize: 12,
                 fill: '#fff',
-                ...StatusNodeMap[NodeStatus.Root].textAttrs
+                ...nodeAttrs.rectAttrs
               },
               name: 'topo-node-text'
             });
@@ -167,14 +125,15 @@ export default defineComponent({
           }
         },
         draw(cfg, group) {
-          const { status, aggregateNode } = cfg as any;
+          const { entity } = cfg as ITopoNode;
+          const nodeAttrs = getNodeAttrs(cfg as ITopoNode);
           const nodeShape = group.addShape('circle', {
             zIndex: 10,
             attrs: {
               lineWidth: 1, // 描边宽度
               cursor: 'pointer', // 手势类型
               r: 20, // 圆半径
-              ...StatusNodeMap[status].groupAttrs
+              ...nodeAttrs.groupAttrs
             },
             name: 'topo-node-shape'
           });
@@ -185,11 +144,11 @@ export default defineComponent({
               width: 24,
               height: 24,
               cursor: 'pointer', // 手势类型
-              img: status === NodeStatus.Error ? dbsvg : httpSvg // 图片资源
+              img: entity.is_anomaly ? dbsvg : httpSvg // 图片资源
             },
             name: 'topo-node-img'
           });
-          if (aggregateNode?.length) {
+          if (entity.aggregated_entites?.length) {
             group.addShape('rect', {
               zIndex: 10,
               attrs: {
@@ -199,7 +158,7 @@ export default defineComponent({
                 height: 16,
                 radius: 8,
                 fill: '#fff',
-                ...StatusNodeMap[status]?.rectAttrs
+                ...nodeAttrs.rectAttrs
               },
               name: 'topo-node-rect'
             });
@@ -210,10 +169,10 @@ export default defineComponent({
                 y: 20,
                 textAlign: 'center',
                 textBaseline: 'middle',
-                text: status === NodeStatus.Root ? '根因' : aggregateNode.length,
+                text: entity.is_root ? '根因' : entity.aggregated_entites.length,
                 fontSize: 12,
                 fill: '#fff',
-                ...StatusNodeMap[status].textAttrs
+                ...nodeAttrs.textAttrs
               },
               name: 'topo-node-text'
             });
@@ -291,14 +250,14 @@ export default defineComponent({
           // const indexStep = Math.ceil(width / 500);
           const nodeMargin = 30;
           // const comboStatusValues = Object.values(ComboStatus);
-          const instanceCombos = combos.filter(item => item.status === ComboStatus.Instance);
+          const instanceCombos = combos.filter((item: ITopoCombo) => item.dataType === 'service_instance');
           let xCount = 0;
           const yBegin = nodeSize / 2;
           const xBegin = nodeSize / 2;
           const padding = 16 * 2;
           let totalWidth = 0;
           instanceCombos.forEach(combo => {
-            const comboNodes = nodes.filter(node => node.comboId === combo.id);
+            const comboNodes = nodes.filter(node => node.comboId.toString() === combo.id.toString());
             const comboWidth = xBegin + comboNodes.length * (nodeSize + nodeMargin) + padding;
             totalWidth += comboWidth;
             if (totalWidth <= width) {
@@ -311,7 +270,6 @@ export default defineComponent({
             }
             xCount = 0;
           });
-          debugger;
         },
         execute() {
           const { nodes, combos } = this;
@@ -325,21 +283,19 @@ export default defineComponent({
           const maxColumnCount = 2;
           const minComboHeight = 66 * maxColumnCount;
           console.info('minComboHeight', minComboHeight);
-          const comboStatusValues = Object.values(ComboStatus);
           combos.sort((a, b) => {
-            const aStatus = comboStatusValues.indexOf(a.status);
-            const bStatus = comboStatusValues.indexOf(b.status);
-            return aStatus - bStatus;
+            return a.id - b.id;
           });
-          combos.forEach((combo, index) => {
-            const comboNodes = nodes.filter(node => node.comboId === combo.id);
+          debugger;
+          combos.forEach(combo => {
+            const comboNodes = nodes.filter(node => node.comboId.toString() === combo.id.toString());
             const comboWidth = comboNodes.length * (nodeSize + nodeMargin) + 6;
             const needNewRow = totalWidth !== 0 && totalWidth + comboWidth > width;
             let xBegin = needNewRow ? 0 : totalWidth;
             let yBegin = needNewRow ? totalHeight + minComboHeight : totalHeight;
             let nodeStep = nodeMargin + nodeSize;
             let yStep = nodeMargin;
-            const isSpecial = [ComboStatus.Host, ComboStatus.DataCenter].includes(combo.status);
+            const isSpecial = ['host_platform', 'data_center'].includes(combo.status);
             if (isSpecial) {
               yBegin = totalHeight + minComboHeight;
               xBegin = 0;
@@ -461,20 +417,19 @@ export default defineComponent({
         };
       });
       graph.edge((cfg: any) => {
-        const isInvoke = cfg.type === EdgeStatus.Invoke;
+        const isInvoke = cfg.type === 'invoke';
         const edg = {
           ...cfg,
           style: {
-            endArrow:
-              cfg.type === EdgeStatus.Invoke
-                ? {
-                    path: Arrow.triangle(),
-                    d: 0,
-                    fill: '#F55555',
-                    stroke: '#F55555',
-                    lineDash: [0, 0]
-                  }
-                : false,
+            endArrow: isInvoke
+              ? {
+                  path: Arrow.triangle(),
+                  d: 0,
+                  fill: '#F55555',
+                  stroke: '#F55555',
+                  lineDash: [0, 0]
+                }
+              : false,
             fill: isInvoke ? '#F55555' : '#63656E',
             stroke: isInvoke ? '#F55555' : '#63656E',
             lineWidth: isInvoke ? 2 : 1,
@@ -501,8 +456,8 @@ export default defineComponent({
       });
       graph.on('node:click', e => {
         const nodeItem = e.item;
-        const { status } = nodeItem.getModel() as any;
-        if (status === NodeStatus.Root) {
+        const { entity } = nodeItem.getModel() as ITopoNode;
+        if (entity.is_root) {
           graph.setItemState(nodeItem, 'running', true);
           return;
         }
@@ -512,7 +467,7 @@ export default defineComponent({
       });
       graph.on('afterlayout', () => {
         const combos = graph.getCombos();
-        const instanceCombos = combos.filter(combo => combo.get('model').status === ComboStatus.Instance);
+        const instanceCombos = combos.filter(combo => combo.get('model').status === 'service_instance');
         let i = 0;
         let w = 0;
         let minX = 0;
@@ -546,7 +501,7 @@ export default defineComponent({
           i += Math.max(sameRowCombo.length, 1);
         }
         combos.forEach(combo => {
-          if ([ComboStatus.Host, ComboStatus.DataCenter].includes(combo.get('model').status)) {
+          if (['data_center', 'host_platform'].includes(combo.get('model').status)) {
             graph.updateItem(combo, {
               fixSize: [w - 80, 80],
               x: w / 2 + 0
