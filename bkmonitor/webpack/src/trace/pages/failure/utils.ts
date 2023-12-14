@@ -23,50 +23,10 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { computed, defineComponent, ref } from 'vue';
-import { ResizeLayout } from 'bkui-vue';
+import { type ComputedRef, inject, provide } from 'vue';
 
-import FailureContent from './failure-content/failure-content';
-import FailureHeader from './failure-header/failure-header';
-import FailureNav from './failure-nav/failure-nav';
-import FailureTags from './failure-tags/failure-tags';
-import { useIncidentProvider } from './utils';
-
-import './failure.scss';
-
-export default defineComponent({
-  props: {
-    id: {
-      type: String,
-      default: ''
-    }
-  },
-  setup(props) {
-    useIncidentProvider(computed(() => props.id || '17024603108'));
-    const tagDomHeight = ref<Number>(40);
-    const collapseTagHandle = (val: boolean, height: Number) => {
-      tagDomHeight.value = height;
-    };
-    return { tagDomHeight, collapseTagHandle };
-  },
-  render() {
-    return (
-      <div class='failure-wrapper'>
-        <FailureHeader />
-        <FailureTags onCollapse={this.collapseTagHandle} />
-        <ResizeLayout
-          class='failure-content-layout'
-          style={{ height: `calc(100vh - ${160 + Number(this.tagDomHeight)}px)` }}
-          auto-minimize={400}
-          border={false}
-          collapsible
-          initial-divide={500}
-          v-slots={{
-            aside: () => <FailureNav></FailureNav>,
-            main: () => <FailureContent></FailureContent>
-          }}
-        ></ResizeLayout>
-      </div>
-    );
-  }
-});
+export const INCIDENT_ID_KEY = 'INCIDENT_ID_KEY';
+export const useIncidentProvider = (incidentId: ComputedRef<string>) => {
+  provide(INCIDENT_ID_KEY, incidentId);
+};
+export const useIncidentInject = () => inject<ComputedRef<string>>(INCIDENT_ID_KEY);

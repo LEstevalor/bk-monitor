@@ -31,6 +31,7 @@ import { addListener, removeListener } from 'resize-detector';
 import { debounce } from 'throttle-debounce';
 
 import ResourceGraph from '../resource-graph/resource-graph';
+import { useIncidentInject } from '../utils';
 
 import dbsvg from './db.svg';
 import FailureTopoTooltips from './failure-topo-tooltips';
@@ -43,13 +44,7 @@ import './failure-topo.scss';
 
 export default defineComponent({
   name: 'FailureTopo',
-  props: {
-    id: {
-      type: String,
-      default: '17024603108'
-    }
-  },
-  setup(props) {
+  setup() {
     const topoGraphRef = ref<HTMLDivElement>(null);
     const graphRef = ref<HTMLDivElement>(null);
     let graph: Graph;
@@ -58,6 +53,9 @@ export default defineComponent({
     const tooltipsType = ref('node');
     const tooltipsRef = ref<InstanceType<typeof FailureTopoTooltips>>();
     let topoRawData: ITopoData = null;
+    const autoAggregate = ref(true);
+    const aggregateConfig = ref({});
+    const incidentId = useIncidentInject();
     const registerCustomNode = () => {
       registerNode('topo-node', {
         afterDraw(cfg, group) {
@@ -335,9 +333,11 @@ export default defineComponent({
       graph.render();
     };
     const onResize = debounce(300, handleResize);
-    onMounted(async () => {
+    const getGraphData = async () => {
       topoRawData = await incidentTopology({
-        id: props.id
+        id: incidentId.value,
+        auto_aggregate: autoAggregate.value,
+        aggregate_config: aggregateConfig.value
       }).then(({ combos = [], edges = [], nodes = [] }) => {
         return {
           combos: combos.map(combo => ({ ...combo, id: combo.id.toString() })),
@@ -345,6 +345,13 @@ export default defineComponent({
           nodes: nodes.map(node => ({ ...node, id: node.id.toString(), comboId: node.comboId.toString() }))
         };
       });
+    };
+    const renderGraph = () => {
+      graph.data(JSON.parse(JSON.stringify(topoRawData)));
+      graph.render();
+    };
+    onMounted(async () => {
+      await getGraphData();
       const { width, height } = graphRef.value.getBoundingClientRect();
       console.info('topo graph', width, height);
       registerCustomNode();
@@ -449,8 +456,7 @@ export default defineComponent({
           type: 'topo-edge'
         };
       });
-      graph.data(JSON.parse(JSON.stringify(topoRawData)));
-      graph.render();
+      renderGraph();
       graph.on('node:mouseenter', e => {
         const nodeItem = e.item;
         graph.setItemState(nodeItem, 'hover', true);
@@ -523,18 +529,25 @@ export default defineComponent({
     onUnmounted(() => {
       topoGraphRef.value && removeListener(topoGraphRef.value, onResize);
     });
+    const handleUpdateAggregateConfig = config => {
+      aggregateConfig.value = config.aggregate_config;
+      autoAggregate.value = config.auto_aggregate;
+      getGraphData();
+      renderGraph();
+    };
     return {
       topoGraphRef,
       graphRef,
       tooltipsRef,
       tooltipsModel,
-      tooltipsType
+      tooltipsType,
+      handleUpdateAggregateConfig
     };
   },
   render() {
     return (
       <div class='failure-topo'>
-        <TopoTools />
+        <TopoTools onUpdate:AggregationConfig={this.handleUpdateAggregateConfig} />
         <div
           class='topo-graph-wrapper'
           ref='topoGraphRef'
