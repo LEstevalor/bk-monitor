@@ -26,6 +26,7 @@
 
 import { computed, defineComponent, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { Dialog, Form, Input, Popover, Progress, Tag } from 'bkui-vue';
 
 import FailureEditDialog from './failure-edit-dialog';
@@ -44,7 +45,7 @@ export default defineComponent({
     const { t } = useI18n();
     const isShow = ref<boolean>(false);
     const isShowResolve = ref<boolean>(false);
-    // const incidentDetail = inject('incidentDetail');
+    const router = useRouter();
     const tipsData = [
       {
         name: t('未恢复'),
@@ -98,6 +99,9 @@ export default defineComponent({
         icon: 'mc-solved',
         color: '#979BA5'
       }
+    };
+    const handleBack = () => {
+      router.go(-1);
     };
     const tipsItem = (val: number) => (
       <span class='tips-more'>
@@ -181,14 +185,27 @@ export default defineComponent({
         </Form>
       </Dialog>
     );
-    return { DialogFn, incidentDetailData, isShow, levelList, t, statusTips, isShowResolve, renderStatusIcon };
+    return {
+      DialogFn,
+      incidentDetailData,
+      isShow,
+      levelList,
+      t,
+      statusTips,
+      isShowResolve,
+      renderStatusIcon,
+      handleBack
+    };
   },
   render() {
     const { id, incident_name, labels, status_alias, level, level_alias, status } = this.incidentDetailData;
     const isRecovered = status !== 'recovered';
     return (
       <div class='failure-header'>
-        <i class='icon-monitor icon-back-left head-icon'></i>
+        <i
+          class='icon-monitor icon-back-left head-icon'
+          onClick={this.handleBack}
+        ></i>
         <span class={`header-sign ${this.levelList[level]?.key}`}>
           <i class={`icon-monitor icon-${this.levelList[level]?.key} sign-icon`}></i>
           {level_alias}

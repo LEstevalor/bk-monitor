@@ -26,6 +26,7 @@
  */
 import { defineComponent, onMounted, onUnmounted, ref, shallowRef } from 'vue';
 import { Arrow, Graph, registerEdge, registerLayout, registerNode, Tooltip } from '@antv/g6';
+import { incidentTopology } from '@api/modules/incident';
 import { addListener, removeListener } from 'resize-detector';
 import { debounce } from 'throttle-debounce';
 
@@ -86,12 +87,12 @@ const StatusNodeMap = {
 export default defineComponent({
   name: 'FailureTopo',
   props: {
-    content: {
+    id: {
       type: String,
-      default: ''
+      default: '17024603108'
     }
   },
-  setup() {
+  setup(props) {
     const topoGraphRef = ref<HTMLDivElement>(null);
     const graphRef = ref<HTMLDivElement>(null);
     let graph: Graph;
@@ -99,6 +100,7 @@ export default defineComponent({
     const tooltipsModel = shallowRef();
     const tooltipsType = ref('node');
     const tooltipsRef = ref<InstanceType<typeof FailureTopoTooltips>>();
+    let topoRawData = null;
     const registerCustomNode = () => {
       registerNode('topo-node', {
         afterDraw(cfg, group) {
@@ -372,11 +374,14 @@ export default defineComponent({
     const handleResize = () => {
       if (!graph || graph.get('destroyed') || !graphRef.value) return;
       const { width, height } = graphRef.value.getBoundingClientRect();
-      graph.changeSize(width, Math.max(160 * topoData.combos.length, height));
+      graph.changeSize(width, Math.max(160 * topoRawData.combos.length, height));
       graph.render();
     };
     const onResize = debounce(300, handleResize);
-    onMounted(() => {
+    onMounted(async () => {
+      topoRawData = await incidentTopology({
+        id: props.id
+      });
       const { width, height } = graphRef.value.getBoundingClientRect();
       console.info('topo graph', width, height);
       registerCustomNode();
@@ -386,7 +391,7 @@ export default defineComponent({
       graph = new Graph({
         container: graphRef.value,
         width,
-        height: Math.max(160 * topoData.combos.length, height),
+        height: Math.max(160 * topoRawData.combos.length, height),
         fitViewPadding: 0,
         fitCenter: false,
         fitView: false,
@@ -482,7 +487,7 @@ export default defineComponent({
           type: 'topo-edge'
         };
       });
-      graph.data(topoData);
+      graph.data(JSON.parse(JSON.stringify(topoRawData)));
       graph.render();
       graph.on('node:mouseenter', e => {
         const nodeItem = e.item;

@@ -36,6 +36,12 @@ import FailureTags from './failure-tags/failure-tags';
 import './failure.scss';
 
 export default defineComponent({
+  props: {
+    id: {
+      type: String,
+      default: ''
+    }
+  },
   setup() {
     const tagDomHeight = ref<Number>(40);
     const collapseTagHandle = (val: boolean, height: Number) => {

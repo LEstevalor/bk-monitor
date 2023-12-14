@@ -55,7 +55,7 @@ export interface IDetail {
 @Component({
   name: 'QuickShield'
 })
-export default class MyComponent extends tsc<IQuickShieldProps> {
+export default class QuickShield extends tsc<IQuickShieldProps> {
   /**
    * 由于 event-center 和 event-center-detail 这两个页面都需要 Provide 以下的 authority 和 authorityFromEventDetail
    * 但是都继承了 authorityMixin 的方法，其中 beforeRouteEnter 这个只有页面组件才能执行该回调，
