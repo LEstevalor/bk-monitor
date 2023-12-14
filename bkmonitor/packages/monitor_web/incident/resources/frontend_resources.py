@@ -8,9 +8,8 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 """
-import copy
 import time
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import asdict
 from typing import Any, Dict, List
 
@@ -72,43 +71,7 @@ class IncidentBaseResource(Resource):
 
         return aggregate_results
 
-    def generate_topo_node_status(self, entity: IncidentGraphEntity) -> str:
-        """根据图谱实体的配置生成拓扑节点的状态
-
-        :param entity: 图谱实体
-        :return: 拓扑图节点状态
-        """
-        if entity.is_root:
-            return "root"
-
-        if entity.is_anomaly:
-            return "error"
-
-        return "normal"
-
-    def aggregate_nodes(self, nodes: List[Dict]) -> List[Dict]:
-        """聚合节点
-
-        :param nodes: 节点列表
-        :return: 聚合后的节点列表
-        """
-        aggregated_nodes = []
-        normal_node = None
-        for node_entity_info in nodes:
-            if node_entity_info["entity"]["is_anomaly"]:
-                aggregated_nodes.append(copy.deepcopy(node_entity_info))
-            else:
-                if not normal_node:
-                    normal_node = node_entity_info
-
-                normal_node["aggregate_nodes"].append(copy.deepcopy(node_entity_info))
-
-        if normal_node:
-            aggregated_nodes.append(copy.deepcopy(normal_node))
-
-        return aggregated_nodes
-
-    def generate_nodes_by_entites(self, entites: List[IncidentGraphEntity]) -> List[Dict]:
+    def generate_nodes_by_entites(self, entities: List[IncidentGraphEntity]) -> List[Dict]:
         """根据图谱实体生成拓扑图节点
 
         :param entites: 实体列表
@@ -117,12 +80,11 @@ class IncidentBaseResource(Resource):
         return [
             {
                 "id": entity.entity_id,
-                "combo_id": entity.rank.rank_category.category_name,
-                "status": self.generate_topo_node_status(entity),
-                "aggregate_nodes": [],
+                "comboId": str(entity.rank.rank_category.category_id),
+                "aggregated_nodes": [],
                 "entity": asdict(entity),
             }
-            for entity in entites
+            for entity in entities
         ]
 
 
@@ -250,11 +212,17 @@ class IncidentTopologyResource(IncidentBaseResource):
     class RequestSerializer(serializers.Serializer):
         id = serializers.IntegerField(required=True, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+        auto_aggregate = serializers.BooleanField(required=False, default=False, label="是否自动聚合")
+        aggregate_config = serializers.JSONField(required=False, default=dict, label="聚合配置")
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         incident = IncidentDocument.get(validated_request_data.pop("id"))
         snapshot = IncidentSnapshot(incident.snapshot.content.to_dict())
 
+        if validated_request_data["auto_aggregate"]:
+            snapshot.aggregate_graph()
+        elif validated_request_data["aggregate_config"]:
+            snapshot.aggregate_graph(validated_request_data["aggregate_config"])
         topology_data = self.generate_topology_data_from_snapshot(snapshot)
 
         return topology_data
@@ -265,27 +233,87 @@ class IncidentTopologyResource(IncidentBaseResource):
         :param snapshot: 快照内容
         :return: 拓扑图数据
         """
+        nodes = self.generate_nodes_by_entites(snapshot.incident_graph_entities.values())
+        node_categories = [node["entity"]["rank"]["rank_category"]["category_id"] for node in nodes]
         topology_data = {
-            "nodes": self.generate_nodes_by_entites(snapshot.incident_graph_entities.values()),
+            "nodes": nodes,
             "edges": [
-                {"source": edge.source.entity_id, "target": edge.target.entity_id, "count": 1, "type": "include"}
-                for edge in snapshot.incident_graph_edges
+                {
+                    "source": edge.source.entity_id,
+                    "target": edge.target.entity_id,
+                    "count": edge.count,
+                    "type": edge.edge_type.value,
+                }
+                for edge in snapshot.incident_graph_edges.values()
             ],
             "combos": [
                 {
-                    "id": category.category_id,
+                    "id": str(category.category_id),
                     "label": category.category_alias,
                     "dataType": category.category_name,
                 }
                 for category in snapshot.incident_graph_categories.values()
+                if category.category_id in node_categories
             ],
         }
         return topology_data
 
 
+class IncidentTopologyMenuResource(IncidentBaseResource):
+    """
+    故障拓扑图目录
+    """
+
+    def __init__(self):
+        super(IncidentTopologyMenuResource, self).__init__()
+
+    class RequestSerializer(serializers.Serializer):
+        id = serializers.IntegerField(required=True, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
+
+    def perform_request(self, validated_request_data: Dict) -> Dict:
+        incident = IncidentDocument.get(validated_request_data.pop("id"))
+        snapshot = IncidentSnapshot(incident.snapshot.content.to_dict())
+
+        topology_menu = self.generate_topology_menu(snapshot)
+
+        return topology_menu
+
+    def generate_topology_menu(self, snapshot: IncidentSnapshot) -> Dict:
+        """根据快照内容生成拓扑图目录选项
+
+        :param snapshot: 快照内容
+        :return: 拓扑图目录选项
+        """
+        entity_types = defaultdict(list)
+        for entity in snapshot.incident_graph_entities.values():
+            entity_types[entity.entity_type].append(entity)
+
+        menu_data = {}
+
+        for entity_type, entities in entity_types.items():
+            neighbors = Counter()
+            anomaly_count = 0
+            for entity in entities:
+                for target_entity_id in snapshot.entity_targets[entity.entity_id]:
+                    neighbors[snapshot.incident_graph_entities[target_entity_id].entity_type] += 1
+                for source_entity_id in snapshot.entity_sources[entity.entity_id]:
+                    neighbors[snapshot.incident_graph_entities[source_entity_id].entity_type] += 1
+                if entity.is_anomaly:
+                    anomaly_count += 1
+
+            aggregate_keys = [
+                {"count": value, "aggreate_key": key, "is_anomaly": False} for key, value in neighbors.items()
+            ]
+            aggregate_keys.append({"count": anomaly_count, "aggreate_key": None, "is_anomaly": True})
+            menu_data[entity_type] = sorted(aggregate_keys, key=lambda x: -x["count"])
+
+        return menu_data
+
+
 class IncidentTopologyUpstreamResource(IncidentBaseResource):
     """
-    故障拓扑图
+    故障拓扑图资源子图
     """
 
     def __init__(self):
@@ -300,13 +328,32 @@ class IncidentTopologyUpstreamResource(IncidentBaseResource):
         incident = IncidentDocument.get(validated_request_data.pop("id"))
         snapshot = IncidentSnapshot(incident.snapshot.content.to_dict())
 
-        ranks = snapshot.upstreams_group_by_rank(validated_request_data["entity_id"])
+        sub_snapshot = snapshot.generate_entity_sub_graph(validated_request_data["entity_id"])
+        sub_snapshot.aggregate_graph()
+        ranks = sub_snapshot.group_by_rank()
 
         for rank_info in ranks:
-            nodes = self.generate_nodes_by_entites(rank_info.pop("entities"))
-            rank_info["nodes"] = self.aggregate_nodes(nodes)
+            rank_info["nodes"] = self.generate_nodes_by_entites(rank_info["entities"])
+            for index, entity_info in enumerate(rank_info["entities"]):
+                rank_info["nodes"][index]["aggregated_nodes"] = self.generate_nodes_by_entites(
+                    entity_info.aggregated_entities
+                )
+            rank_info.pop("entities")
 
-        return [rank_info for rank_info in ranks if len(rank_info["nodes"]) > 0]
+        return {
+            "ranks": sorted(
+                [rank_info for rank_info in ranks if len(rank_info["nodes"]) > 0], key=lambda x: x["rank_id"]
+            ),
+            "edges": [
+                {
+                    "source": edge.source.entity_id,
+                    "target": edge.target.entity_id,
+                    "count": edge.count,
+                    "type": edge.edge_type.value,
+                }
+                for edge in sub_snapshot.incident_graph_edges.values()
+            ],
+        }
 
 
 class IncidentTimeLineResource(IncidentBaseResource):
