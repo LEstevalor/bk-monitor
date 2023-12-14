@@ -31,6 +31,11 @@ import './failure-topo-tooltips.scss';
 
 export default defineComponent({
   props: {
+    /** 显示查看资源的icon */
+    showViewResource: {
+      type: Boolean,
+      default: true
+    },
     type: {
       type: String,
       default: 'node'
@@ -111,9 +116,10 @@ export default defineComponent({
                 根因
               </span>
             )}
-            {createCommonIconBtn('查看资源', {
-              marginLeft: 'auto'
-            })}
+            {this.showViewResource &&
+              createCommonIconBtn('查看资源', {
+                marginLeft: 'auto'
+              })}
           </div>
           <div class='node-tooltip-content'>
             {createCommonForm('包含告警：', () => (
