@@ -25,8 +25,8 @@ class RabbitMQClient(object):
 
     def __init__(self, broker_url: str) -> None:
         try:
-            scheme, host, port, user, password, path, query = url_to_parts(broker_url)
-            self.scheme = scheme
+            schema, host, port, user, password, path, query = url_to_parts(broker_url)
+            self.schema = schema
             self.host = host
             self.port = port
             self.user = user
