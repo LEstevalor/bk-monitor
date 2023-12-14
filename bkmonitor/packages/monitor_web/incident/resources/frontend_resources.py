@@ -81,8 +81,8 @@ class IncidentBaseResource(Resource):
             {
                 "id": entity.entity_id,
                 "comboId": str(entity.rank.rank_category.category_id),
-                "aggregated_nodes": [],
-                "entity": asdict(entity),
+                "aggregated_nodes": self.generate_nodes_by_entites(entity.aggregated_entities),
+                "entity": {key: value for key, value in asdict(entity).items() if key != "aggregated_entities"},
             }
             for entity in entities
         ]
@@ -306,9 +306,15 @@ class IncidentTopologyMenuResource(IncidentBaseResource):
                 {"count": value, "aggreate_key": key, "is_anomaly": False} for key, value in neighbors.items()
             ]
             aggregate_keys.append({"count": anomaly_count, "aggreate_key": None, "is_anomaly": True})
-            menu_data[entity_type] = sorted(aggregate_keys, key=lambda x: -x["count"])
+            menu_data[entity_type] = {
+                "entity_type": entity_type,
+                "aggregate_bys": sorted(aggregate_keys, key=lambda x: -x["count"]),
+            }
+            menu_data[entity_type]["total_count"] = sum(
+                [item["count"] for item in menu_data[entity_type]["aggregate_bys"]]
+            )
 
-        return menu_data
+        return list(sorted(menu_data.values(), key=lambda x: -x["total_count"]))
 
 
 class IncidentTopologyUpstreamResource(IncidentBaseResource):

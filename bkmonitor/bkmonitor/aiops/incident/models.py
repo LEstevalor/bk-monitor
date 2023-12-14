@@ -243,20 +243,56 @@ class IncidentSnapshot(object):
         ranks = {
             rank.rank_id: {
                 **asdict(rank),
-                "entities": [],
+                "sub_ranks": {},
                 "total": 0,
                 "anomaly_count": 0,
             }
             for rank in self.incident_graph_ranks.values()
         }
+        entity_type_depths = {}
+        for entity in self.incident_graph_entities.values():
+            if len(self.entity_sources[entity.entity_id]) == 0:
+                entity_type_depths[entity.entity_type] = 0
+                self.find_entity_type_depths(entity.entity_type, 0, entity_type_depths)
 
         for entity in self.incident_graph_entities.values():
-            ranks[entity.rank.rank_id]["entities"].append(entity)
+            sub_rank_key = (entity.rank.rank_id, -entity_type_depths[entity.entity_type])
+            if sub_rank_key not in ranks[entity.rank.rank_id]["sub_ranks"]:
+                ranks[entity.rank.rank_id]["sub_ranks"][sub_rank_key] = []
+            ranks[entity.rank.rank_id]["sub_ranks"][sub_rank_key].append(entity)
+
             if entity.is_anomaly:
                 ranks[entity.rank.rank_id]["anomaly_count"] += 1
             ranks[entity.rank.rank_id]["total"] += 1
 
-        return list(ranks.values())
+        final_ranks = []
+        for rank_info in ranks.values():
+            sorted_sub_rank_keys = sorted(rank_info["sub_ranks"].keys())
+            for index, sub_rank_key in enumerate(sorted_sub_rank_keys):
+                new_rank = {key: value for key, value in rank_info.items() if key != "sub_ranks"}
+                new_rank["entities"] = rank_info["sub_ranks"][sub_rank_key]
+                new_rank["is_sub_rank"] = True if index > 0 else False
+                final_ranks.append(new_rank)
+
+        return final_ranks
+
+    def find_entity_type_depths(self, entity_type: str, current_depth: int, entity_type_depths: Dict) -> None:
+        """递归设置每种实体在拓扑图中的深度.
+
+        :param entity_type: 实体类型
+        :param current_depth: 当前深度
+        :param entity_type_depths: 实体类型深度字典
+        """
+        next_entity_types = set()
+        for entity in self.incident_graph_entities.values():
+            if entity_type == entity.entity_type:
+                for target_entity_id in self.entity_targets[entity.entity_id]:
+                    target = self.incident_graph_entities[target_entity_id]
+                    next_entity_types.add(target.entity_type)
+                    entity_type_depths[target.entity_type] = current_depth + 1
+
+        for next_entity_type in list(next_entity_types):
+            self.find_entity_type_depths(next_entity_type, current_depth + 1, entity_type_depths)
 
     def aggregate_graph(self, aggregate_config: Dict = None) -> None:
         """聚合图谱
