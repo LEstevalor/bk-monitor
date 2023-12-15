@@ -134,8 +134,8 @@ class DatalinkDefaultAlarmStrategyLoader:
         strategy_config = {
             "bk_biz_id": self.bk_biz_id,
             "name": strategy["name"],
-            "source": "bk_monitorv3",
-            "scenario": "kubernetes",
+            "source": "__buildin__",
+            "scenario": "host_process",
             "type": "monitor",
             "labels": strategy["labels"],
             "detects": strategy["detects"],
@@ -234,9 +234,7 @@ class RuleGroupTool:
             if not auto_create:
                 return False
             group = AlertAssignGroup.objects.create(
-                name=DEFAULT_RULE_GROUP_NAME,
-                priority=999,
-                bk_biz_id=self.bk_biz_id,
+                name=DEFAULT_RULE_GROUP_NAME, bk_biz_id=self.bk_biz_id, source="__buildin__"
             )
             logger.info("Succeed to create assign group, {}".format(DEFAULT_RULE_GROUP_NAME))
             self.group_id = group.id
