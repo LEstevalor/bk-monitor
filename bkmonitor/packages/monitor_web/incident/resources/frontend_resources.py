@@ -258,6 +258,7 @@ class IncidentTopologyResource(IncidentBaseResource):
                     "target": edge.target.entity_id,
                     "count": edge.count,
                     "type": edge.edge_type.value,
+                    "aggregated": edge.aggregated,
                 }
                 for edge in snapshot.incident_graph_edges.values()
             ],

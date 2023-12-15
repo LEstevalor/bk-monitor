@@ -95,6 +95,7 @@ class IncidentGraphEdge:
     target: IncidentGraphEntity
     edge_type: IncidentGraphEdgeType
     count: int = 1
+    aggregated: bool = False
 
     def to_src_dict(self):
         return {
@@ -103,6 +104,7 @@ class IncidentGraphEdge:
             "target_type": self.target.entity_type,
             "target_id": self.target.entity_id,
             "edge_type": self.edge_type.value,
+            "aggregated": self.aggregated,
         }
 
 
@@ -348,11 +350,13 @@ class IncidentSnapshot(object):
                 self.entity_sources[target_entity_id].remove(entity.entity_id)
                 self.entity_sources[target_entity_id].add(main_entity.entity_id)
                 self.incident_graph_edges[(main_entity.entity_id, target_entity_id)].count += 1
+                self.incident_graph_edges[(main_entity.entity_id, target_entity_id)].aggregated = True
                 del self.incident_graph_edges[(entity.entity_id, target_entity_id)]
             for source_entity_id in self.entity_sources[entity.entity_id]:
                 self.entity_targets[source_entity_id].remove(entity.entity_id)
                 self.entity_targets[source_entity_id].add(main_entity.entity_id)
                 self.incident_graph_edges[(source_entity_id, main_entity.entity_id)].count += 1
+                self.incident_graph_edges[(source_entity_id, main_entity.entity_id)].aggregated = True
                 del self.incident_graph_edges[(source_entity_id, entity.entity_id)]
 
             del self.entity_targets[entity.entity_id]
