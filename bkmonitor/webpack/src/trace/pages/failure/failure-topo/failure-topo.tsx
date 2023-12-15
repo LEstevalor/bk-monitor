@@ -284,7 +284,6 @@ export default defineComponent({
           const minComboHeight = 66 * maxColumnCount;
           let hasNoSpecial = false;
           console.info('minComboHeight', minComboHeight);
-          debugger;
           combos.forEach(combo => {
             const comboNodes = nodes.filter(node => node.comboId.toString() === combo.id.toString());
             const comboWidth = comboNodes.length * (nodeSize + nodeMargin) + 6;
@@ -557,6 +556,7 @@ export default defineComponent({
       graphRef,
       tooltipsRef,
       tooltipsModel,
+      nodeEntityId,
       tooltipsType,
       handleUpdateAggregateConfig,
       handleExpandResourceChange
