@@ -15,6 +15,7 @@ from typing import Any, Dict, List
 
 from bkmonitor.aiops.incident.models import IncidentGraphEntity, IncidentSnapshot
 from bkmonitor.aiops.incident.operation import IncidentOperationManager
+from bkmonitor.documents.alert import AlertDocument
 from bkmonitor.documents.incident import (
     IncidentDocument,
     IncidentOperationDocument,
@@ -234,6 +235,20 @@ class IncidentTopologyResource(IncidentBaseResource):
         :return: 拓扑图数据
         """
         nodes = self.generate_nodes_by_entites(snapshot.incident_graph_entities.values())
+        bk_biz_name = resource.cc.get_app_by_id(snapshot.bk_biz_id).name
+        for item in nodes:
+            item["bk_biz_id"] = snapshot.bk_biz_id
+            item["bk_biz_name"] = bk_biz_name
+            item["alert_ids"] = snapshot.entity_alerts(item["entity"]["entity_id"])
+            item["alert_display"] = (
+                {
+                    "alert_id": item["alert_ids"][0],
+                    "alert_name": AlertDocument.get(item["alert_ids"][0]).alert_name,
+                }
+                if len(item["alert_ids"]) > 0
+                else {}
+            )
+
         node_categories = [node["entity"]["rank"]["rank_category"]["category_id"] for node in nodes]
         topology_data = {
             "nodes": nodes,

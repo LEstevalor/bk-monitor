@@ -933,7 +933,7 @@ BK_DATA_METRIC_RECOMMEND_SOURCE_PROCESSING_ID = "ieod_system_multivariate_delay"
 
 # 故障增删事件同步配置
 BK_DATA_AIOPS_INCIDENT_BROKER_URL = "amqp://bkbase-rabbitmq.bkbase.svc.cluster.local:5672/aiops_incident"
-BK_DATA_AIOPS_INCIDENT_SYNC_QUEUE = "aiops_incident_access"
+BK_DATA_AIOPS_INCIDENT_SYNC_QUEUE = "aiops_incident"
 
 
 # 表后缀(字母或数字([A-Za-z0-9]), 不能有下划线"_", 且最好不超过10个字符)

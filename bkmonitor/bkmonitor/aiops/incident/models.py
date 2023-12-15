@@ -138,6 +138,7 @@ class IncidentSnapshot(object):
         self.incident_graph_entities = {}
         self.incident_graph_edges = {}
         self.alert_entity_mapping = {}
+        self.bk_biz_id = None
         self.entity_targets = defaultdict(set)
         self.entity_sources = defaultdict(set)
 
@@ -167,20 +168,35 @@ class IncidentSnapshot(object):
                 source=source, target=target, edge_type=IncidentGraphEdgeType(edge_info["edge_type"])
             )
 
+        self.bk_biz_id = self.incident_snapshot_content["bk_biz_id"]
+
     def prepare_alerts(self):
         """根据故障分析结果快照构建告警所在实体的关系."""
         for alert_info in self.incident_snapshot_content["incident_alerts"]:
-            entity_id = alert_info.pop("entity_id")
-            alert_info["entity"] = self.incident_graph_entities[entity_id] if entity_id else None
-            incident_alert = IncidentAlert(**alert_info)
+            incident_alert_info = copy.deepcopy(alert_info)
+            entity_id = incident_alert_info.pop("entity_id")
+            incident_alert_info["entity"] = self.incident_graph_entities[entity_id] if entity_id else None
+            incident_alert = IncidentAlert(**incident_alert_info)
             self.alert_entity_mapping[incident_alert.id] = incident_alert
 
-    def get_related_alert_ids(self) -> List[Dict]:
+    def get_related_alert_ids(self) -> List[int]:
         """检索故障根因定位快照关联的告警详情列表.
 
         :return: 告警详情列表
         """
         return [int(item["id"]) for item in self.incident_snapshot_content["incident_alerts"]]
+
+    def entity_alerts(self, entity_id) -> List[int]:
+        """实体告警列表
+
+        :param entity_id: 实体ID
+        :return: 实体告警ID列表
+        """
+        return [
+            int(item["id"])
+            for item in self.incident_snapshot_content["incident_alerts"]
+            if item["entity_id"] == entity_id
+        ]
 
     def generate_entity_sub_graph(self, entity_id: str) -> "IncidentSnapshot":
         """生成资源子图
@@ -264,6 +280,11 @@ class IncidentSnapshot(object):
             if entity.is_anomaly:
                 ranks[entity.rank.rank_id]["anomaly_count"] += 1
             ranks[entity.rank.rank_id]["total"] += 1
+
+            for aggregated_entity in entity.aggregated_entities:
+                if aggregated_entity.is_anomaly:
+                    ranks[entity.rank.rank_id]["anomaly_count"] += 1
+                ranks[entity.rank.rank_id]["total"] += 1
 
         final_ranks = []
         for rank_info in ranks.values():

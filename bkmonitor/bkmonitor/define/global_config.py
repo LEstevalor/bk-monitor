@@ -108,7 +108,7 @@ ADVANCED_OPTIONS = OrderedDict(
         ),
         (
             "BK_DATA_AIOPS_INCIDENT_SYNC_QUEUE",
-            slz.CharField(label=_("故障接入队列名"), default="aiops_incident_access"),
+            slz.CharField(label=_("故障接入队列名"), default="aiops_incident"),
         ),
         # === AIOPS 相关配置 结束 ===
         ("EVENT_NO_DATA_TOLERANCE_WINDOW_SIZE", slz.IntegerField(label=_("Event 模块最大容忍无数据周期数"), default=5)),
