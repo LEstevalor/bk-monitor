@@ -37,7 +37,7 @@ import dbsvg from './db.svg';
 import FailureTopoTooltips from './failure-topo-tooltips';
 import httpSvg from './http.svg';
 import TopoTools from './topo-tools';
-import { ITopoCombo, ITopoData, ITopoEdge, ITopoNode } from './types';
+import { ITopoCombo, ITopoData, ITopoNode } from './types';
 import { getNodeAttrs } from './utils';
 
 import './failure-topo.scss';
@@ -49,13 +49,14 @@ export default defineComponent({
     const graphRef = ref<HTMLDivElement>(null);
     let graph: Graph;
     let tooltips = null;
-    const tooltipsModel = shallowRef<ITopoNode | ITopoEdge>();
+    const tooltipsModel = shallowRef<ITopoNode | ITopoNode[]>();
     const tooltipsType = ref('node');
     const tooltipsRef = ref<InstanceType<typeof FailureTopoTooltips>>();
     let topoRawData: ITopoData = null;
     const autoAggregate = ref(true);
     const aggregateConfig = ref({});
     const incidentId = useIncidentInject();
+    const nodeEntityId = ref('');
     const registerCustomNode = () => {
       registerNode('topo-node', {
         afterDraw(cfg, group) {
@@ -320,8 +321,14 @@ export default defineComponent({
         getContent: e => {
           const type = e.item.getType();
           const model = e.item.getModel();
-          tooltipsModel.value = model as ITopoNode | ITopoEdge;
-          console.info(type, model, '===========================');
+          if (type === 'edge') {
+            const targetModel = topoRawData.nodes.find(item => item.id === model.target);
+            const sourceModel = topoRawData.nodes.find(item => item.id === model.source);
+            tooltipsModel.value = [targetModel, sourceModel];
+          } else {
+            tooltipsModel.value = model as ITopoNode;
+            nodeEntityId.value = tooltipsModel.value.entity.entity_id;
+          }
           tooltipsType.value = type;
           return tooltipsRef.value.$el;
         }
@@ -340,6 +347,7 @@ export default defineComponent({
         auto_aggregate: autoAggregate.value,
         aggregate_config: aggregateConfig.value
       }).then(({ combos = [], edges = [], nodes = [] }) => {
+        nodeEntityId.value = nodes[0]?.entity.entity_id;
         return {
           combos: combos.map(combo => ({ ...combo, id: combo.id.toString() })),
           edges,
@@ -558,7 +566,7 @@ export default defineComponent({
             class='topo-graph'
             id='topo-graph'
           />
-          <ResourceGraph />
+          <ResourceGraph entityId={''} />
         </div>
         <div style='display: none'>
           <FailureTopoTooltips

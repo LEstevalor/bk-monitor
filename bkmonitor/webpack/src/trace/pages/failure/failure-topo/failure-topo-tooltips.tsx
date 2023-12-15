@@ -41,20 +41,20 @@ export default defineComponent({
       default: 'node'
     },
     model: {
-      type: Object,
+      type: [Object, Array],
       required: true
     }
   },
   setup() {},
   render() {
     if (!this.model) return undefined;
-    const createEdgeNodeItem = () => {
+    const createEdgeNodeItem = (node: ITopoNode) => {
       return (
         <div class='node-source'>
           <span class='node-item'>
             <i class='item-source'></i>
           </span>
-          Pod(<span class='node-name'>我是 Pod 名称占位</span>）
+          {node?.entity?.entity_type}(<span class='node-name'>{node?.entity?.entity_name || '--'}</span>）
         </div>
       );
     };
@@ -65,13 +65,15 @@ export default defineComponent({
         </div>
       );
     };
-    const createEdgeToolTip = () => {
+    const createEdgeToolTip = (nodes: ITopoNode[]) => {
       return [
-        <div class='edge-tooltip-title'>边：Host 名称1 - Pod名称1</div>,
+        <div class='edge-tooltip-title'>
+          边：{nodes?.[0]?.entity.entity_name} - {nodes?.[1]?.entity.entity_name}
+        </div>,
         <div class='edge-tooltip-content'>
-          {createEdgeNodeItem()}
+          {createEdgeNodeItem(nodes[0])}
           {createEdgeNodeLink()}
-          {createEdgeNodeItem()}
+          {createEdgeNodeItem(nodes[1])}
         </div>
       ];
     };
@@ -102,7 +104,9 @@ export default defineComponent({
               class='item-source'
               style={{
                 width: '16px',
-                height: '16px'
+                height: '16px',
+                minWidth: '16px',
+                flex: '0 0 16px'
               }}
             ></i>
             <span class='header-name'>{node.entity.entity_name}</span>
@@ -170,7 +174,9 @@ export default defineComponent({
           'edge-tooltip': this.type === 'edge'
         }}
       >
-        {this.type === 'edge' ? createEdgeToolTip() : createNodeToolTip(this.model as ITopoNode)}
+        {this.type === 'edge'
+          ? createEdgeToolTip(this.model as ITopoNode[])
+          : createNodeToolTip(this.model as ITopoNode)}
       </div>
     );
   }
