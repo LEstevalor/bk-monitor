@@ -545,6 +545,7 @@ export default defineComponent({
       renderGraph();
     };
     return {
+      nodeEntityId,
       topoGraphRef,
       graphRef,
       tooltipsRef,
@@ -566,7 +567,7 @@ export default defineComponent({
             class='topo-graph'
             id='topo-graph'
           />
-          <ResourceGraph entityId={''} />
+          <ResourceGraph entityId={this.nodeEntityId} />
         </div>
         <div style='display: none'>
           <FailureTopoTooltips
