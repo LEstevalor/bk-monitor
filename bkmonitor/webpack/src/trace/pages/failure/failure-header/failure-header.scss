@@ -24,18 +24,18 @@
     padding: 4px;
     color: #fff;
     text-align: center;
-    background: #ea3636;
+    // background: #ea3636;
     border-radius: 2px;
 
     &.danger {
       background: #ea3636;
     }
 
-    &.warring {
+    &.mind-fill {
       background: #ff9c01;
     }
 
-    &.info {
+    &.tips {
       background: #3a84ff;
     }
 
@@ -59,9 +59,20 @@
     }
 
     .info-name {
+      display: inline-block;
+      width: 100%;
       margin-top: 2px;
       font-size: 14px;
       color: #313238;
+
+      .info-name-title {
+        display: inline-block;
+        max-width: 30%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+      }
     }
 
     .mr8 {
@@ -90,6 +101,16 @@
     font-size: 12px;
     cursor: pointer;
     background: #f5f7fa;
+
+    .header-status-icon {
+      width: 40px;
+      height: 40px;
+      line-height: 40px;
+
+      .status-icon {
+        font-size: 32px;
+      }
+    }
 
     .status-num {
       font-size: 12px;
@@ -124,6 +145,14 @@
       text-align: center;
       cursor: pointer;
       border-left: 1px solid #f5f7fa;
+
+      &:hover {
+        color: #3a84ff;
+
+        .btn-icon {
+          color: #3a84ff;
+        }
+      }
 
       &.disabled {
         color: #dcdee5;

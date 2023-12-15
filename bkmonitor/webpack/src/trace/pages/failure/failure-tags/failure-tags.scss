@@ -31,6 +31,11 @@
     margin-right: 28px;
     color: #63656e;
 
+    .empty-text {
+      display: inline-block;
+      line-height: 24px;
+    }
+
     &:last-child {
       margin-right: 0;
     }
