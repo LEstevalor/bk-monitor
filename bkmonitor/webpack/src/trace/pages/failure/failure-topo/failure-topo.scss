@@ -33,7 +33,11 @@
       justify-content: center;
       color: #C5C7CD;
       font-size: 14px;
+      overflow: hidden;
       cursor: pointer;
+      .icon-arrow-right{
+        font-size: 28px;
+      }
     }
   }
 
