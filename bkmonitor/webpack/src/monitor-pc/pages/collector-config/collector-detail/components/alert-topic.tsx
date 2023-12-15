@@ -23,13 +23,13 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { Component, Prop, Watch } from 'vue-property-decorator';
+import { Component, Emit, Prop, Watch } from 'vue-property-decorator';
 import { Component as tsc } from 'vue-tsx-support';
 import { Popover } from 'bk-magic-vue';
 
 import { alertStatus, updateAlertUserGroups } from '../../../../../monitor-api/modules/datalink';
 import { Debounce } from '../../../../../monitor-common/utils';
-import { isEnFn } from '../../../../utils/index';
+// import { isEnFn } from '../../../../utils/index';
 import { TCollectorAlertStage } from '../typings/detail';
 
 import AlarmGroup, { IAlarmGroupList } from './alarm-group';
@@ -41,6 +41,8 @@ interface IProps {
   alarmGroupList?: IAlarmGroupList[];
   stage: TCollectorAlertStage;
   updateKey?: string;
+  alarmGroupListLoading?: boolean;
+  onAlarmGroupListRefresh?: () => void;
 }
 
 @Component
@@ -49,11 +51,14 @@ export default class AlertTopic extends tsc<IProps> {
   @Prop({ type: String, default: '' }) stage: TCollectorAlertStage;
   @Prop({ type: [String, Number], default: '' }) id: number | string;
   @Prop({ type: String, default: '' }) updateKey: string;
+  @Prop({ type: Boolean, default: false }) alarmGroupListLoading: boolean;
 
   strategies = [];
   userGroupList = [];
   alertHistogram = [];
   hasAlert = 0;
+
+  alertQuery = '';
 
   show = false;
 
@@ -72,36 +77,21 @@ export default class AlertTopic extends tsc<IProps> {
         this.userGroupList = data.alert_config?.user_group_list?.map(item => item.id) || [];
         this.alertHistogram = data?.alert_histogram || [];
         this.hasAlert = data.has_alert;
+        this.alertQuery = data.alert_query;
       });
     }
   }
 
-  // @Watch('id', { immediate: true })
-  // handleWatch() {
-  //   if (!!this.stage && !!this.id) {
-  //     alertStatus({
-  //       collect_config_id: this.id,
-  //       stage: this.stage
-  //     }).then(data => {
-  //       if (data?.has_strategies === false) {
-  //         return;
-  //       }
-  //       this.show = true;
-  //       this.strategies = data.alert_config?.strategies || [];
-  //       this.userGroupList = data.alert_config?.user_group_list?.map(item => item.id) || [];
-  //       this.alertHistogram = data?.alert_histogram || [];
-  //       this.hasAlert = data.has_alert;
-  //     });
-  //   }
-  // }
-
   handleToEvent() {
-    const strategyIds = this.strategies.map(item => item.id);
-    const isEn = isEnFn();
-    const strategyKey = isEn ? 'strategy_id' : this.$t('策略ID');
-    const query = `queryString=${strategyIds.map(id => `${strategyKey} : ${id}`).join(' OR ')}`;
+    // const strategyIds = this.strategies.map(item => item.id);
+    // const isEn = isEnFn();
+    // const strategyKey = isEn ? 'strategy_id' : this.$t('策略ID');
+    // const query = `queryString=${strategyIds.map(id => `${strategyKey} : ${id}`).join(' OR ')}`;
     const timeRange = 'from=now-30d&to=now';
-    window.open(`${location.origin}${location.pathname}${location.search}#/event-center?${query}&${timeRange}`);
+    // window.open(`${location.origin}${location.pathname}${location.search}#/event-center?${query}&${timeRange}`);
+    window.open(
+      `${location.origin}${location.pathname}${location.search}#/event-center?queryString=${this.alertQuery}&${timeRange}`
+    );
   }
 
   @Debounce(1000)
@@ -112,6 +102,9 @@ export default class AlertTopic extends tsc<IProps> {
       notice_group_list: value
     });
   }
+
+  @Emit('alarmGroupListRefresh')
+  handleAlarmGroupListRefresh() {}
 
   render() {
     return (
@@ -170,6 +163,10 @@ export default class AlertTopic extends tsc<IProps> {
               <AlarmGroup
                 value={this.userGroupList}
                 list={this.alarmGroupList}
+                isRefresh={true}
+                isOpenNewPage={true}
+                loading={this.alarmGroupListLoading}
+                onRefresh={this.handleAlarmGroupListRefresh}
                 onChange={this.handleAlarmGroupChange}
               ></AlarmGroup>
             </span>
