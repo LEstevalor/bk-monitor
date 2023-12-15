@@ -43,6 +43,7 @@ export default defineComponent({
     const isShow = ref<boolean>(false);
     const failureTags = ref();
     const incidentDetailData = computed(() => {
+      console.log(props.incidentDetail, 'props.incidentDetail');
       return props.incidentDetail;
     });
     const renderList = [
@@ -50,7 +51,11 @@ export default defineComponent({
         label: t('影响业务'),
         renderFn: () => {
           const snapshots = incidentDetailData.value.current_snapshot?.bk_biz_ids || [];
-          return snapshots.map(item => <Tag ext-cls='business-tag'>{`[${item.bk_biz_id}] ${item.bk_biz_name}`}</Tag>);
+          return snapshots.length === 0 ? (
+            <span class='empty-text'>--</span>
+          ) : (
+            snapshots.map(item => <Tag ext-cls='business-tag'>{`[${item.bk_biz_id}] ${item.bk_biz_name}`}</Tag>)
+          );
         }
       },
       {
@@ -78,7 +83,11 @@ export default defineComponent({
           //     />
           //   );
           // }
-          return list.map(item => <Tag ext-cls='principal-tag'>{item}</Tag>);
+          return list.length === 0 ? (
+            <span class='empty-text'>--</span>
+          ) : (
+            list.map(item => <Tag ext-cls='principal-tag'>{item}</Tag>)
+          );
         }
       }
     ];

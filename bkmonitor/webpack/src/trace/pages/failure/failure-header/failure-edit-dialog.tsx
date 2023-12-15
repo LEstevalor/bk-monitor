@@ -23,9 +23,11 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Dialog, Form, Input, Radio, TagInput } from 'bkui-vue';
+
+import { editIncident } from '../../../../monitor-api/modules/incident';
 
 import './failure-edit-dialog.scss';
 
@@ -51,16 +53,34 @@ export default defineComponent({
   },
   setup(props) {
     const { t } = useI18n();
+    const btnLoading = ref(false);
     function valueChange(v) {
       props.onChange(v);
     }
+    const editIncidentHandle = () => {
+      console.log('editIncidentHandle');
+      btnLoading.value = true;
+      editIncident(props.data)
+        .then(res => {
+          console.log(res, '[[d[[[[');
+        })
+        .catch(err => {
+          console.log(err);
+        })
+        .finally(() => (btnLoading.value = false));
+    };
     const renderFn = () => (
       <Dialog
         ext-cls='failure-edit-dialog'
         is-show={props.visible}
         title={t('编辑故障属性')}
         dialog-type='operation'
+        is-loading={btnLoading.value}
         onUpdate:isShow={valueChange}
+        onConfirm={() => {
+          console.log('wwwww');
+          editIncidentHandle();
+        }}
       >
         <Form form-type={'vertical'}>
           <Form.FormItem
@@ -92,6 +112,7 @@ export default defineComponent({
             required
           >
             <TagInput
+              v-model={props.data.assignees}
               allow-create
               has-delete-icon
               collapse-tags
@@ -99,6 +120,7 @@ export default defineComponent({
           </Form.FormItem>
           <Form.FormItem label={t('故障标签')}>
             <TagInput
+              v-model={props.data.labels}
               allow-create
               has-delete-icon
               collapse-tags

@@ -37,18 +37,36 @@ export default defineComponent({
     const alertAggregateData = ref([]);
     const listLoading = ref(false);
     const isShowDropdown = ref(false);
-    const filterList = [
+    const aggregateBysList = [
       {
-        name: t('未恢复告警数'),
-        icon: 'AlertSort',
-        key: 'abnormal_alert_count'
+        name: t('节点层级'),
+        key: 'node_level'
       },
       {
-        name: t('名称 A-Z '),
-        icon: 'A-ZSort',
-        key: 'bk_username'
+        name: t('节点类型'),
+        key: 'node_type'
+      },
+      {
+        name: t('告警名称'),
+        key: 'alert_name'
+      },
+      {
+        name: t('节点名称'),
+        key: 'node_name'
+      },
+      {
+        name: t('指标名称'),
+        key: 'metric_name'
       }
     ];
+    const aggregateBys = ref(['alert_name', 'node_name', 'node_type']);
+    const filterListHandle = (key: string) => {
+      if (aggregateBys.value.includes(key)) {
+        aggregateBys.value = aggregateBys.value.filter(item => item !== key);
+      } else {
+        aggregateBys.value.push(key);
+      }
+    };
     const searchHeadFn = () => (
       <div class='handle-search-top'>
         <Select
@@ -77,8 +95,8 @@ export default defineComponent({
       listLoading.value = true;
       incidentAlertAggregate({
         bk_biz_id: 2,
-        id: 17019496696,
-        aggregate_bys: ['alert_name', 'node_name', 'node_type']
+        id: 17024603108,
+        aggregate_bys: aggregateBys.value
       })
         .then(res => {
           alertAggregateData.value = Object.values(res);
@@ -119,18 +137,18 @@ export default defineComponent({
         <div class='search-head'>
           {t('我负责的告警')}
           <Dropdown
+            ext-cls='aggregate-dropdown'
             trigger='manual'
             is-show={isShowDropdown.value}
             placement='bottom-start'
             v-slots={{
               content: () => (
                 <Dropdown.DropdownMenu extCls={'search-btn-drop'}>
-                  {filterList.map(item => (
+                  {aggregateBysList.map(item => (
                     <Dropdown.DropdownItem
-                    // extCls={`${this.orderByType === item.key ? 'active' : ''}`}
-                    // onclick={() => this.filterListHandle(item.key)}
+                      // extCls={`${this.orderByType === item.key ? 'active' : ''}`}
+                      onclick={() => this.filterListHandle(item.key)}
                     >
-                      <i class={`icon-monitor icon-${item.icon} search-btn-icon`}></i>
                       {item.name}
                     </Dropdown.DropdownItem>
                   ))}
@@ -155,9 +173,56 @@ export default defineComponent({
     onMounted(() => {
       getIncidentAlertAggregate();
     });
-    return { renderFn };
+    return {
+      t,
+      renderFn,
+      searchHeadFn,
+      filterListHandle,
+      isShowDropdown,
+      listLoading,
+      treeFn,
+      aggregateBysList,
+      aggregateBys
+    };
   },
   render() {
-    return this.renderFn();
+    return (
+      <div class='handle-search'>
+        {this.searchHeadFn()}
+        <div class='handle-search-list'>
+          <div class='search-head'>
+            {this.t('我负责的告警')}
+            <Dropdown
+              ext-cls='aggregate-dropdown'
+              trigger='click'
+              // is-show={this.isShowDropdown}
+              placement='bottom-start'
+              v-slots={{
+                content: () => (
+                  <Dropdown.DropdownMenu extCls={'aggregate-btn-drop'}>
+                    {this.aggregateBysList.map(item => (
+                      <Dropdown.DropdownItem
+                        extCls={`${this.aggregateBys.includes(item.key) ? 'active' : ''}`}
+                        onclick={() => this.filterListHandle(item.key)}
+                      >
+                        {item.name}
+                        {this.aggregateBys.includes(item.key) && (
+                          <i class='icon-monitor icon-mc-check-small active-icon' />
+                        )}
+                      </Dropdown.DropdownItem>
+                    ))}
+                  </Dropdown.DropdownMenu>
+                )
+              }}
+            >
+              <i class='icon-monitor icon-menu-setting search-head-icon' />
+            </Dropdown>
+          </div>
+          <Loading loading={this.listLoading}>
+            <div class='search-tree'>{this.treeFn()}</div>
+          </Loading>
+        </div>
+      </div>
+    );
   }
 });

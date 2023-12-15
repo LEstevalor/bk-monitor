@@ -61,7 +61,7 @@ export default defineComponent({
       listLoading.value = true;
       incidentHandlers({
         bk_biz_id: 2,
-        id: 17019496696,
+        id: 17024603108,
         order_by: orderByType.value
       })
         .then(res => {
@@ -98,6 +98,9 @@ export default defineComponent({
       getIncidentHandlers();
       isShowDropdown.value = false;
     };
+    const handleClickItem = (item: IHandleListItem) => {
+      console.log(item);
+    };
     const listFn = (list: Array<IHandleListItem>, isShowEmpty = false) => {
       if (isShowEmpty && list.length === 0) {
         return (
@@ -118,7 +121,10 @@ export default defineComponent({
         );
       }
       return list.map((item: IHandleListItem, index) => (
-        <div class={['list-item', { active: index === 2 }]}>
+        <div
+          class={['list-item', { active: index === 2 }]}
+          onClick={() => handleClickItem(item)}
+        >
           <span class='item-head'>
             <i class='icon-monitor icon-mc-user-one head-icon' />
           </span>

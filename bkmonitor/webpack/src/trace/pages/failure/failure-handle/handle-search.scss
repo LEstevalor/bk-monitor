@@ -62,9 +62,6 @@
     }
 
     .search-head-icon {
-      position: absolute;
-      top: 0;
-      right: 0;
       display: inline-block;
       width: 32px;
       height: 32px;
@@ -72,6 +69,14 @@
       color: #c4c6cc;
       text-align: center;
       border-left: 1px solid #eaebf0;
+    }
+
+    .aggregate-dropdown {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 32px;
+      height: 32px;
     }
 
     .search-tree {
@@ -119,6 +124,30 @@
         &.mc-expired {
           color: #979ba5;
         }
+      }
+    }
+  }
+}
+
+.aggregate-btn-drop {
+  .bk-dropdown-item {
+    position: relative;
+    padding-right: 44px;
+
+    &:hover {
+      color: #3a84ff;
+      background: #e1ecff;
+    }
+
+    &.active {
+      color: #3a84ff;
+
+      .active-icon {
+        position: absolute;
+        top: 0;
+        right: 5px;
+        font-size: 24px;
+        font-weight: 600;
       }
     }
   }
