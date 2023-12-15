@@ -67,6 +67,7 @@ export interface ITopoEdge extends ModelConfig {
   source: string;
   target: string;
   type: 'dependency' | 'invoke';
+  aggregated: boolean;
 }
 
 export interface ITopoCombo extends ModelConfig {

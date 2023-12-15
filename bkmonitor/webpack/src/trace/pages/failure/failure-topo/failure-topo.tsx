@@ -24,7 +24,7 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, onMounted, onUnmounted, ref, shallowRef } from 'vue';
+import { defineComponent, nextTick, onMounted, onUnmounted, ref, shallowRef } from 'vue';
 import { Arrow, Graph, registerEdge, registerLayout, registerNode, Tooltip } from '@antv/g6';
 import { incidentTopology } from '@api/modules/incident';
 import { addListener, removeListener } from 'resize-detector';
@@ -57,6 +57,7 @@ export default defineComponent({
     const aggregateConfig = ref({});
     const incidentId = useIncidentInject();
     const nodeEntityId = ref('');
+    const showResourceGraph = ref(false);
     const registerCustomNode = () => {
       registerNode('topo-node', {
         afterDraw(cfg, group) {
@@ -200,7 +201,7 @@ export default defineComponent({
         'topo-edge',
         {
           afterDraw(cfg, group) {
-            if (!cfg.count) return;
+            if (!cfg.aggregated || !cfg.count) return;
             // 获取图形组中的第一个图形，在这里就是边的路径图形
             const shape = group.get('children')[0];
             // 获取路径图形的中点坐标
@@ -334,12 +335,12 @@ export default defineComponent({
         }
       });
     };
-    const handleResize = () => {
+    function handleResize() {
       if (!graph || graph.get('destroyed') || !graphRef.value) return;
       const { width, height } = graphRef.value.getBoundingClientRect();
       graph.changeSize(width, Math.max(160 * topoRawData.combos.length, height));
       graph.render();
-    };
+    }
     const onResize = debounce(300, handleResize);
     const getGraphData = async () => {
       topoRawData = await incidentTopology({
@@ -533,10 +534,12 @@ export default defineComponent({
           }
         });
       });
-      addListener(topoGraphRef.value, onResize);
+      nextTick(() => {
+        addListener(graphRef.value, onResize);
+      });
     });
     onUnmounted(() => {
-      topoGraphRef.value && removeListener(topoGraphRef.value, onResize);
+      graphRef.value && removeListener(graphRef.value, onResize);
     });
     const handleUpdateAggregateConfig = async config => {
       aggregateConfig.value = config.aggregate_config;
@@ -544,14 +547,19 @@ export default defineComponent({
       await getGraphData();
       renderGraph();
     };
+    const handleExpandResourceChange = () => {
+      showResourceGraph.value = !showResourceGraph.value;
+    };
     return {
       nodeEntityId,
+      showResourceGraph,
       topoGraphRef,
       graphRef,
       tooltipsRef,
       tooltipsModel,
       tooltipsType,
-      handleUpdateAggregateConfig
+      handleUpdateAggregateConfig,
+      handleExpandResourceChange
     };
   },
   render() {
@@ -567,7 +575,13 @@ export default defineComponent({
             class='topo-graph'
             id='topo-graph'
           />
-          <ResourceGraph entityId={this.nodeEntityId} />
+          {this.showResourceGraph && <ResourceGraph entityId={this.nodeEntityId} />}
+          <div
+            class='expand-resource'
+            onClick={this.handleExpandResourceChange}
+          >
+            <i class={`icon-monitor ${this.showResourceGraph ? 'icon-arrow-right' : 'icon-mc-tree'} expand-icon`} />
+          </div>
         </div>
         <div style='display: none'>
           <FailureTopoTooltips
