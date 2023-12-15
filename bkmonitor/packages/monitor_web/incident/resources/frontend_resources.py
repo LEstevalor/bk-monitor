@@ -72,21 +72,38 @@ class IncidentBaseResource(Resource):
 
         return aggregate_results
 
-    def generate_nodes_by_entites(self, entities: List[IncidentGraphEntity]) -> List[Dict]:
+    def generate_nodes_by_entites(self, snapshot: IncidentSnapshot, entities: List[IncidentGraphEntity]) -> List[Dict]:
         """根据图谱实体生成拓扑图节点
 
         :param entites: 实体列表
         :return: 拓扑图节点列表
         """
-        return [
-            {
-                "id": entity.entity_id,
-                "comboId": str(entity.rank.rank_category.category_id),
-                "aggregated_nodes": self.generate_nodes_by_entites(entity.aggregated_entities),
-                "entity": {key: value for key, value in asdict(entity).items() if key != "aggregated_entities"},
-            }
-            for entity in entities
-        ]
+        nodes = []
+
+        for entity in entities:
+            alert_ids = snapshot.entity_alerts(entity.entity_id)
+            bk_biz_name = resource.cc.get_app_by_id(snapshot.bk_biz_id).name
+            nodes.append(
+                {
+                    "id": entity.entity_id,
+                    "comboId": str(entity.rank.rank_category.category_id),
+                    "aggregated_nodes": self.generate_nodes_by_entites(snapshot, entity.aggregated_entities),
+                    "entity": {key: value for key, value in asdict(entity).items() if key != "aggregated_entities"},
+                    "bk_biz_id": snapshot.bk_biz_id,
+                    "bk_biz_name": bk_biz_name,
+                    "alert_ids": alert_ids,
+                    "alert_display": (
+                        {
+                            "alert_id": alert_ids[0],
+                            "alert_name": AlertDocument.get(alert_ids[0]).alert_name,
+                        }
+                        if len(alert_ids) > 0
+                        else {}
+                    ),
+                }
+            )
+
+        return nodes
 
 
 class IncidentListResource(IncidentBaseResource):
@@ -234,20 +251,7 @@ class IncidentTopologyResource(IncidentBaseResource):
         :param snapshot: 快照内容
         :return: 拓扑图数据
         """
-        nodes = self.generate_nodes_by_entites(snapshot.incident_graph_entities.values())
-        bk_biz_name = resource.cc.get_app_by_id(snapshot.bk_biz_id).name
-        for item in nodes:
-            item["bk_biz_id"] = snapshot.bk_biz_id
-            item["bk_biz_name"] = bk_biz_name
-            item["alert_ids"] = snapshot.entity_alerts(item["entity"]["entity_id"])
-            item["alert_display"] = (
-                {
-                    "alert_id": item["alert_ids"][0],
-                    "alert_name": AlertDocument.get(item["alert_ids"][0]).alert_name,
-                }
-                if len(item["alert_ids"]) > 0
-                else {}
-            )
+        nodes = self.generate_nodes_by_entites(snapshot, snapshot.incident_graph_entities.values())
 
         node_categories = [node["entity"]["rank"]["rank_category"]["category_id"] for node in nodes]
         topology_data = {
@@ -355,10 +359,10 @@ class IncidentTopologyUpstreamResource(IncidentBaseResource):
         ranks = sub_snapshot.group_by_rank()
 
         for rank_info in ranks:
-            rank_info["nodes"] = self.generate_nodes_by_entites(rank_info["entities"])
+            rank_info["nodes"] = self.generate_nodes_by_entites(sub_snapshot, rank_info["entities"])
             for index, entity_info in enumerate(rank_info["entities"]):
                 rank_info["nodes"][index]["aggregated_nodes"] = self.generate_nodes_by_entites(
-                    entity_info.aggregated_entities
+                    sub_snapshot, entity_info.aggregated_entities
                 )
             rank_info.pop("entities")
 
@@ -564,6 +568,9 @@ class IncidentOperationsResource(IncidentBaseResource):
     def perform_request(self, validated_request_data: Dict) -> Dict:
         operations = IncidentOperationDocument.list_by_incident_id(validated_request_data["incident_id"])
         operations = [operation.to_dict() for operation in operations]
+        for operation in operations:
+            operation["operation_class"] = IncidentOperationType(operation["operation_type"]).operation_class.value
+        return operations
 
 
 class IncidentRecordOperationResource(IncidentBaseResource):
@@ -592,6 +599,7 @@ class IncidentRecordOperationResource(IncidentBaseResource):
 
 
 class IncidentOperationTypesResource(IncidentBaseResource):
+    """
     故障流转列表
     """
 
