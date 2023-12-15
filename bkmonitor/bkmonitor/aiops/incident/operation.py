@@ -265,10 +265,14 @@ class IncidentOperationManager(object):
         """
         return cls.record_operation(
             incident_id,
+            IncidentOperationType.FEEDBACK,
+            operate_time,
+            feedback_incident_root=feedback_incident_root,
             is_cancel=is_cancel,
         )
 
     @classmethod
+    def record_close_incident(cls, incident_id: int, operate_time: int) -> IncidentOperationDocument:
         """记录用户关闭故障
         文案: 故障已关闭
 
