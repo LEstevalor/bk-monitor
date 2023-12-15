@@ -27,8 +27,9 @@ import { RouteRecordRaw } from 'vue-router';
 
 export default [
   {
-    path: '/failure-detail',
-    name: 'failure-detail',
-    component: () => import(/* webpackChunkName: "failure-detail" */ '../../pages/failure/failure')
+    path: '/incident/detail/:id?',
+    name: 'incident-detail',
+    component: () => import(/* webpackChunkName: "incident-detail" */ '../../pages/failure/failure'),
+    props: true
   }
 ] as RouteRecordRaw[];

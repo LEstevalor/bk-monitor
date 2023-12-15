@@ -23,29 +23,59 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, ref } from 'vue';
+import { defineComponent, onMounted, provide, ref, computed } from 'vue';
 import { ResizeLayout } from 'bkui-vue';
+
+import { incidentDetail } from '../../../monitor-api/modules/incident';
 
 import FailureContent from './failure-content/failure-content';
 import FailureHeader from './failure-header/failure-header';
 import FailureNav from './failure-nav/failure-nav';
 import FailureTags from './failure-tags/failure-tags';
+import { useIncidentProvider } from './utils';
 
 import './failure.scss';
 
 export default defineComponent({
-  setup() {
+  props: {
+    id: {
+      type: String,
+      default: ''
+    }
+  },
+  setup(props) {
+    const incidentId = computed(() => props.id || '17024603108')
+    useIncidentProvider(incidentId);
     const tagDomHeight = ref<Number>(40);
     const collapseTagHandle = (val: boolean, height: Number) => {
       tagDomHeight.value = height;
     };
-    return { tagDomHeight, collapseTagHandle };
+    const incidentDetailData = ref({});
+    const getIncidentDetail = () => {
+      incidentDetail({
+        id: incidentId.value
+      })
+        .then(res => {
+          incidentDetailData.value = res;
+          provide('incidentDetail', incidentDetailData.value);
+        })
+        .catch(err => {
+          console.log(err);
+        });
+    };
+    onMounted(() => {
+      getIncidentDetail();
+    });
+    return { tagDomHeight, collapseTagHandle, incidentDetailData };
   },
   render() {
     return (
       <div class='failure-wrapper'>
-        <FailureHeader />
-        <FailureTags onCollapse={this.collapseTagHandle} />
+        <FailureHeader incidentDetail={this.incidentDetailData} />
+        <FailureTags
+          incidentDetail={this.incidentDetailData}
+          onCollapse={this.collapseTagHandle}
+        />
         <ResizeLayout
           class='failure-content-layout'
           style={{ height: `calc(100vh - ${160 + Number(this.tagDomHeight)}px)` }}
@@ -55,7 +85,7 @@ export default defineComponent({
           initial-divide={500}
           v-slots={{
             aside: () => <FailureNav></FailureNav>,
-            main: () => <FailureContent></FailureContent>
+            main: () => <FailureContent incidentDetail={this.incidentDetailData}></FailureContent>
           }}
         ></ResizeLayout>
       </div>

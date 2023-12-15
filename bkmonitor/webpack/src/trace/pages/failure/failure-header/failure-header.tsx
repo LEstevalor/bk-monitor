@@ -23,76 +23,166 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, ref } from 'vue';
+
+import { computed, defineComponent, inject, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Dialog, Form, Input, Popover, Progress, Tag } from 'bkui-vue';
+import { useRouter } from 'vue-router';
+import { Dialog, Form, Input, Loading, Popover, Progress, Tag } from 'bkui-vue';
+
+import { incidentAlertAggregate } from '../../../../monitor-api/modules/incident';
 
 import FailureEditDialog from './failure-edit-dialog';
 
 import './failure-header.scss';
 
 export default defineComponent({
-  setup() {
+  name: 'FailureHeader',
+  props: {
+    incidentDetail: {
+      type: Object,
+      default: () => {}
+    }
+  },
+  setup(props) {
     const { t } = useI18n();
     const isShow = ref<boolean>(false);
     const isShowResolve = ref<boolean>(false);
-    const tipsData = [
-      {
-        name: t('未恢复'),
-        total: 120,
-        percent: '75%'
-      },
-      {
-        name: t('已恢复'),
-        total: 20,
-        percent: '7%'
-      },
-      {
-        name: t('已失效'),
-        total: 20,
-        percent: '7%'
-      }
-    ];
-    const levelList = [
-      {
+    const router = useRouter();
+    const listLoading = ref(false);
+    const alertAggregateData = ref([]);
+    const alertAggregateTotal = ref(0);
+    const reactivityData = inject('incidentDetail');
+    const getIncidentAlertAggregate = () => {
+      listLoading.value = true;
+      incidentAlertAggregate({
+        bk_biz_id: 2,
+        id: 17024603108,
+        aggregate_bys: []
+      })
+        .then(res => {
+          alertAggregateData.value = res;
+          alertAggregateTotal.value = Object.values(res || {}).reduce((prev, cur) => {
+            return prev + cur.count;
+          }, 0);
+          console.log(res, '[[d[[[[');
+          console.log(reactivityData, 'reactivityData');
+        })
+        .catch(err => {
+          console.log(err);
+        })
+        .finally(() => (listLoading.value = false));
+    };
+    const levelList = {
+      /** 致命 */
+      ERROR: {
         label: t('致命'),
-        icon: 'danger',
-        key: 'danger'
+        key: 'danger',
+        name: 'ERROR'
       },
-      {
+      /** 告警 */
+      WARN: {
         label: t('预警'),
-        icon: 'mind-fill',
-        key: 'mind-fill'
+        key: 'mind-fill',
+        name: 'WARN'
       },
-      {
+      /** 提醒 */
+      INFO: {
         label: t('提醒'),
-        icon: 'tips',
-        key: 'tips'
+        key: 'tips',
+        name: 'INFO'
       }
-    ];
-    const tagList = ['在线', '登录', '游戏', '异常', '时序'];
-    const tipsItem = (val: number) => (
-      <span class='tips-more'>
-        ，其中 <b>{val}</b> 个未分派
-        <span class='tips-btn'>
-          <i class='icon-monitor icon-fenpai tips-btn-icon'></i>
-          {t('告警分派')}
-        </span>
-      </span>
-    );
-    const statusTips = () => (
-      <div class='header-status-tips'>
-        <div class='tips-head'>
-          故障内的告警：共
-          <b> 160 </b> 个
+    };
+    const statusList = {
+      /** 已恢复  */
+      recovered: {
+        icon: 'mc-check-fill',
+        color: '#1CAB88'
+      },
+      /** 观察中  */
+      recovering: {
+        icon: 'guanchazhong',
+        color: '#FF9C01'
+      },
+      /** 已解决  */
+      closed: {
+        icon: 'mc-solved',
+        color: '#979BA5'
+      }
+    };
+    const handleBack = () => {
+      router.go(-1);
+    };
+    /** 一期先不展示 */
+    // const tipsItem = (val: number) => (
+    //   <span class='tips-more'>
+    //     ，其中 <b>{val}</b> 个未分派
+    //     <span class='tips-btn'>
+    //       <i class='icon-monitor icon-fenpai tips-btn-icon'></i>
+    //       {t('告警分派')}
+    //     </span>
+    //   </span>
+    // );
+    const incidentDetailData = computed(() => {
+      return props.incidentDetail;
+    });
+    const statusTips = () => {
+      const list = Object.values(alertAggregateData.value);
+      const total = alertAggregateTotal.value;
+      return (
+        <div class='header-status-tips'>
+          <div class='tips-head'>
+            {t('故障内的告警：共')}
+            <b> {total} </b> 个
+          </div>
+          {list.map((item: any, ind: number) => (
+            <span class={['tips-item', { marked: ind === 0 }]}>
+              {item.name}：<b>{item.count}</b> (<b>{Math.round((item.count / total) * 100)}%</b>)
+              {/* {ind === 0 && tipsItem(10)} */}
+            </span>
+          ))}
         </div>
-        {tipsData.map((item: any, ind: number) => (
-          <span class={['tips-item', { marked: ind === 0 }]}>
-            {item.name}：<b>{item.total}</b> (<b>{item.percent}</b>){ind === 0 && tipsItem(10)}
-          </span>
-        ))}
-      </div>
-    );
+      );
+    };
+    const renderStatusIcon = (status = 'closed') => {
+      console.log(status, 'status=======');
+      // 未恢复
+      if (status === 'abnormal') {
+        const data = alertAggregateData.value.ABNORMAL;
+        console.log(data, 'data', data.count);
+        return (
+          <Popover
+            placement='bottom-start'
+            theme='light'
+            width='200'
+            // width='350'
+            v-slots={{
+              content: () => {
+                return statusTips();
+              }
+            }}
+          >
+            <Progress
+              text-inside
+              type='circle'
+              width={38}
+              percent={Math.round((data.count / alertAggregateTotal.value) * 100)}
+              stroke-width={12}
+              bg-color='#EBECF0'
+              color='#EB3333'
+            >
+              <label class='status-num'>{data.count}</label>
+            </Progress>
+          </Popover>
+        );
+      }
+      const info = statusList[status];
+      return (
+        <i
+          class={`icon-monitor icon-${info?.icon} status-icon`}
+          style={{ color: info?.color }}
+        />
+      );
+    };
     /** 标记已解决弹框 */
     const DialogFn = () => (
       <Dialog
@@ -114,87 +204,96 @@ export default defineComponent({
         </Form>
       </Dialog>
     );
-    const renderFn = () => (
-      <div class='failure-header'>
-        <i class='icon-monitor icon-back-left head-icon'></i>
-        <span class='header-sign'>
-          <i class='icon-monitor icon-danger sign-icon'></i>
-          {t('致命')}
-        </span>
-        <div class='header-info'>
-          <span class='info-id'>14235345346534</span>
-          <div class='info-name'>
-            <label class='mr8'>故障名称占位</label>
-            {tagList.map((item: any) => (
-              <Tag>{item}</Tag>
-            ))}
-            <span
-              class='info-edit'
-              onClick={() => (isShow.value = true)}
-            >
-              <i class='icon-monitor icon-bianji info-edit-icon'></i>
-              {t('编辑')}
-            </span>
-          </div>
-        </div>
-        <div class='header-status'>
-          <Popover
-            placement='bottom-start'
-            theme='light'
-            width='350'
-            v-slots={{
-              content: () => {
-                return statusTips();
-              }
-            }}
-          >
-            <Progress
-              text-inside
-              type='circle'
-              width={38}
-              percent={78}
-              stroke-width={12}
-              bg-color='#EBECF0'
-              color='#EB3333'
-            >
-              <label class='status-num'>120</label>
-            </Progress>
-          </Popover>
-          <span class='status-info'>
-            <span class='txt'>未恢复</span>
-            <span class='txt'>
-              {t('故障持续时间：')}
-              <b>00:08:23</b>
-            </span>
-          </span>
-        </div>
-        <div class='header-btn-group'>
-          <div
-            class='header-btn disabled'
-            onClick={() => (isShowResolve.value = !isShowResolve.value)}
-          >
-            <i class='icon-monitor icon-mc-solved btn-icon'></i>
-            {t('标记已解决')}
-          </div>
-          <div
-            class='header-btn'
-            onClick={() => {}}
-          >
-            <i class='icon-monitor icon-qiye-weixin btn-icon'></i>
-            {t('故障群')}
-          </div>
-        </div>
-        <FailureEditDialog
-          visible={isShow.value}
-          levelList={levelList}
-          onChange={val => (isShow.value = val)}
-        />
-        {DialogFn()}
-      </div>
-    );
-    return { renderFn };
+    onMounted(() => {
+      getIncidentAlertAggregate();
+    });
+    return {
+      DialogFn,
+      incidentDetailData,
+      isShow,
+      levelList,
+      t,
+      statusTips,
+      isShowResolve,
+      renderStatusIcon,
+      handleBack,
+      listLoading
+    };
   },
   render() {
-    return this.renderFn();
+    const { id, incident_name, labels, status_alias, level, level_alias, status } = this.incidentDetailData;
+    const isRecovered = status !== 'recovered';
+    return (
+      <Loading loading={this.listLoading}>
+        <div class='failure-header'>
+          <i
+            class='icon-monitor icon-back-left head-icon'
+            onClick={this.handleBack}
+          ></i>
+          <span class={`header-sign ${this.levelList[level]?.key}`}>
+            <i class={`icon-monitor icon-${this.levelList[level]?.key} sign-icon`}></i>
+            {level_alias}
+          </span>
+          <div class='header-info'>
+            <span class='info-id'>{id}</span>
+            <div class='info-name'>
+              <label
+                class='info-name-title mr8'
+                title={incident_name}
+              >
+                {incident_name}
+              </label>
+              {(labels || []).map((item: any) => (
+                <Tag>{item}</Tag>
+              ))}
+              <span
+                class='info-edit'
+                onClick={() => (this.isShow = true)}
+              >
+                <i class='icon-monitor icon-bianji info-edit-icon'></i>
+                {this.t('编辑')}
+              </span>
+            </div>
+          </div>
+          <div class='header-status'>
+            <div class='header-status-icon'>{this.renderStatusIcon(status)}</div>
+            <span class='status-info'>
+              <span class='txt'>{status_alias}</span>
+              <span class='txt'>
+                {this.t('故障持续时间：')}
+                <b>00:08:23</b>
+              </span>
+            </span>
+          </div>
+          <div class='header-btn-group'>
+            <div
+              class={['header-btn', { disabled: isRecovered }]}
+              onClick={() => (this.isShowResolve = !this.isShowResolve)}
+              v-bk-tooltips={{
+                content: this.t('故障已恢复，才可以标记已解决'),
+                disabled: !isRecovered
+              }}
+            >
+              <i class='icon-monitor icon-mc-solved btn-icon'></i>
+              {this.t('标记已解决')}
+            </div>
+            <div
+              class='header-btn'
+              onClick={() => {}}
+            >
+              <i class='icon-monitor icon-qiye-weixin btn-icon'></i>
+              {this.t('故障群')}
+            </div>
+          </div>
+          <FailureEditDialog
+            visible={this.isShow}
+            levelList={this.levelList}
+            data={this.incidentDetailData}
+            onChange={val => (this.isShow = val)}
+          />
+          {this.DialogFn()}
+        </div>
+      </Loading>
+    );
   }
 });

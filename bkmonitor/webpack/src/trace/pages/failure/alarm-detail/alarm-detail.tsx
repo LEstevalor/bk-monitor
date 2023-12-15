@@ -25,7 +25,6 @@
  */
 import { defineComponent, onBeforeMount, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute } from 'vue-router';
 import { Loading, Popover, Table } from 'bkui-vue';
 import { $bkPopover } from 'bkui-vue/lib/popover';
 import moment from 'moment';
@@ -35,6 +34,7 @@ import { random } from '../../../../monitor-common/utils/utils.js';
 import SetMealAdd from '../../../store/modules/set-meal-add';
 import StatusTag from '../components/status-tag';
 import FeedbackCauseDialog from '../failure-topo/feedback-cause-dialog';
+import { useIncidentInject } from '../utils';
 
 import ChatGroup from './chat-group/chat-group';
 import AlarmConfirm from './alarm-confirm';
@@ -51,12 +51,18 @@ export enum EBatchAction {
   alarmDispatch = 'dispatch'
 }
 export default defineComponent({
+  props: {
+    incidentDetail: {
+      type: Object,
+      default: () => {}
+    }
+  },
   setup() {
-    const route = useRoute();
     const { t } = useI18n();
     const setMealAddModule = SetMealAdd();
     onBeforeMount(async () => await setMealAddModule.getVariableDataList());
     const scrollLoading = ref(false);
+    const incidentId = useIncidentInject();
     const tableLoading = ref(false);
     const queryString = ref('');
     const tableData = ref([]);
@@ -261,13 +267,13 @@ export default defineComponent({
         field: 'alert_name',
         render: ({ data }) => {
           return (
-            <span
+            <div
               class='name-column'
               v-overflow-title
             >
               {data.alert_name}
               {/* {data.entity.is_root && <span class='root-cause'>{t('根因')}</span>} */}
-            </span>
+            </div>
           );
         }
       },
@@ -309,11 +315,12 @@ export default defineComponent({
           );
           return (
             <div class='tag-column-wrap'>
+              {content}
               <Popover
                 extCls='tag-column-popover'
                 maxWidth={400}
                 theme='light common-table'
-                placement='top-center'
+                placement='top'
                 arrow={true}
                 v-slots={{
                   default: () => content,
@@ -348,6 +355,7 @@ export default defineComponent({
       {
         label: t('告警开始/结束时间'),
         field: 'time',
+        minWidth: 145,
         render: ({ data }) => {
           return (
             <span class='time-column'>
@@ -570,11 +578,9 @@ export default defineComponent({
       }
     };
     const handleGetTable = async () => {
-      const { biz_id: bizId = 2, incident_id: id = 17019496696 } = route.query;
       tableLoading.value = true;
       const params = {
-        id,
-        bk_biz_id: bizId
+        id: incidentId.value
       };
       const data = await incidentAlertList(params);
       tableLoading.value = false;
@@ -609,6 +615,7 @@ export default defineComponent({
     const handleSettingChange = ({ checked }) => {
       console.log(checked, settings.value);
     };
+    const handleFeedbackChange = () => {};
     return {
       alertData,
       moreItems,
@@ -629,6 +636,7 @@ export default defineComponent({
       alarmConfirmChange,
       quickShieldSucces,
       handleConfirmAfter,
+      handleFeedbackChange,
       handleRootCauseConfirm,
       handleAlarmDispatchShowChange,
       manualProcessShowChange,
@@ -644,7 +652,10 @@ export default defineComponent({
     return (
       <Loading loading={this.tableLoading}>
         <div class='alarm-detail bk-scroll-y'>
-          <FeedbackCauseDialog visible={this.dialog.rootCauseConfirm.show}></FeedbackCauseDialog>
+          <FeedbackCauseDialog
+            visible={this.dialog.rootCauseConfirm.show}
+            onChange={this.handleFeedbackChange}
+          ></FeedbackCauseDialog>
           <ChatGroup
             show={this.chatGroupDialog.show}
             assignee={this.chatGroupDialog.assignee}
@@ -698,7 +709,7 @@ export default defineComponent({
                     columns={this.columns}
                     data={item.alerts}
                     max-height={616}
-                    show-overflow-tooltip
+                    show-overflow-tooltip={true}
                     settings={this.settings}
                     scroll-loading={this.scrollLoading}
                     onRowMouseEnter={this.handleEnter}

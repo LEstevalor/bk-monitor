@@ -23,28 +23,41 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-export interface IRouteConfig {
-  id: string;
-  name: string;
-  route: string;
-  children?: any[];
-}
-export const allRouteConfig: IRouteConfig[] = [
-  {
-    id: 'home',
-    name: 'route-首页',
-    route: 'home'
-  },
-  {
-    id: 'alarm-shield',
-    name: 'route-屏蔽',
-    route: 'alarm-shield'
-  },
-  {
-    id: 'incident-detail',
-    name: 'route-故障',
-    route: 'incident-detail'
-  }
-];
+import { Component, Prop } from 'vue-property-decorator';
+import { Component as tsc } from 'vue-tsx-support';
 
-export const createRouteConfig = () => allRouteConfig;
+import './incident-detail.scss';
+
+const wewebId = 'trace';
+@Component
+export default class IncidentDetail extends tsc<{}> {
+  @Prop({ default: '' }) readonly id!: string;
+  get incidentDetailHost() {
+    return process.env.NODE_ENV === 'development' ? `http://${process.env.devHost}:7002` : location.origin;
+  }
+  get incidentDetailUrl() {
+    return process.env.NODE_ENV === 'development'
+      ? `${this.incidentDetailHost}/?bizId=${this.$store.getters.bizId}/#/trace/incident/detail/${this.id}`
+      : `${location.origin}${window.site_url}trace/?bizId=${this.$store.getters.bizId}/#/trace/incident/detail/${this.id}`;
+  }
+  get incidentDetailData() {
+    return JSON.stringify({
+      host: this.incidentDetailHost,
+      baseroute: '/trace/'
+    });
+  }
+  render() {
+    return (
+      <div class='incident-detail-wrap'>
+        <bk-weweb
+          setShodowDom={true}
+          class='incident-detail-wrap-iframe'
+          url={this.incidentDetailUrl}
+          showSourceCode={true}
+          id={wewebId}
+          data={this.incidentDetailData}
+        />
+      </div>
+    );
+  }
+}

@@ -23,58 +23,61 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, KeepAlive, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { type ModelConfig } from '@antv/g6';
 
-import AlarmDetail from '../alarm-detail/alarm-detail';
-import FailureMenu from '../failure-menu/failure-menu';
-import FailureTopo from '../failure-topo/failure-topo';
+export interface IEntity {
+  aggregated_entites: IEntity[];
+  anomaly_score: number;
+  anomaly_type: string;
+  entity_id: string;
+  entity_name: string;
+  entity_type: string;
+  is_anomaly: boolean;
+  is_root: boolean;
+  rank: IRank;
+}
 
-import './failure-content.scss';
+export interface IRank {
+  rank_id: number;
+  rank_name: string;
+  rank_alias: string;
+  rank_category: {
+    category_alias: string;
+    category_id: number;
+    category_name: string;
+  };
+}
 
-export default defineComponent({
-  props: {
-    incidentDetail: {
-      type: Object,
-      default: () => {}
-    }
-  },
-  setup() {
-    const { t } = useI18n();
-    const active = ref('FailureTopo');
-    const tabList = [
-      {
-        name: 'FailureTopo',
-        label: t('故障拓扑')
-      },
-      {
-        name: 'AlarmDetail',
-        label: t('告警明细')
-      }
-    ];
+export interface ITopoNode extends ModelConfig {
+  aggregated_nodes: ITopoNode[];
+  comboId: string;
+  entity: IEntity;
+  id: string;
+  bk_biz_id: string;
+  bk_biz_name: string;
+  alert_display: {
+    alert_id: string;
+    alert_name: string;
+  };
+  alert_ids: string[];
+}
 
-    const handleChangeActive = (activeName: string) => {
-      active.value = activeName;
-    };
-    return {
-      tabList,
-      active,
-      handleChangeActive
-    };
-  },
-  render() {
-    return (
-      <div class='failure-content'>
-        <FailureMenu
-          tabList={this.tabList}
-          active={this.active}
-          onChange={this.handleChangeActive}
-        ></FailureMenu>
-        <KeepAlive>
-          {this.active === 'FailureTopo' && <FailureTopo></FailureTopo>}
-          {this.active === 'AlarmDetail' && <AlarmDetail incidentDetail={this.incidentDetail}></AlarmDetail>}
-        </KeepAlive>
-      </div>
-    );
-  }
-});
+export interface ITopoEdge extends ModelConfig {
+  count: number;
+  source: string;
+  target: string;
+  type: 'dependency' | 'invoke';
+  aggregated: boolean;
+}
+
+export interface ITopoCombo extends ModelConfig {
+  dataType: string;
+  id: number;
+  label: string;
+}
+
+export interface ITopoData {
+  combos: ITopoCombo[];
+  edges: ITopoEdge[];
+  nodes: ITopoNode[];
+}

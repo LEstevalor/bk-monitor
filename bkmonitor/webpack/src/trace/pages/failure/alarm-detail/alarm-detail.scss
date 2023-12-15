@@ -36,7 +36,12 @@ $statusColors: #ea3635 #ff9c00 #699df4;
         line-height: 56px !important;
       }
     }
-    .tag-column,
+    .tag-column {
+      overflow: hidden;
+      display: flex;
+      width: 50px;
+    }
+    // .tag-column,
     .tag-column-wrap {
       width: 100%;
       display: flex;

@@ -9,17 +9,42 @@
     display: flex;
     width: 100%;
     height: 100%;
+    position: relative;
 
     .topo-graph {
       flex: 1;
       height: 100%;
+      width: 100%;
+      display: flex;
+      overflow: hidden;
+    }
+    .expand-resource {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 32px;
+      height: 32px;
+      background: #454547;
+      border: 1px solid #4F4F52;
+      box-shadow: 0 2px 6px 0 #00000080;
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #C5C7CD;
+      font-size: 14px;
+      overflow: hidden;
+      cursor: pointer;
+      .icon-arrow-right{
+        font-size: 28px;
+      }
     }
   }
 
   .g6-component-tooltip {
     width: fit-content;
     padding: 0;
-    color: #fff;
+    color: #454547;
     background: none;
     border: 0;
     border-radius: 0;

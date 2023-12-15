@@ -23,22 +23,28 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Dialog, Form, Input, Radio, TagInput } from 'bkui-vue';
+
+import { editIncident } from '../../../../monitor-api/modules/incident';
 
 import './failure-edit-dialog.scss';
 
 export default defineComponent({
   name: 'FailureEditDialog',
   props: {
+    data: {
+      type: Object,
+      default: () => {}
+    },
     visible: {
       type: Boolean,
       required: false
     },
     levelList: {
-      type: Array,
-      default: () => []
+      type: Object,
+      default: () => {}
     },
     onChange: {
       type: Function,
@@ -47,16 +53,34 @@ export default defineComponent({
   },
   setup(props) {
     const { t } = useI18n();
+    const btnLoading = ref(false);
     function valueChange(v) {
       props.onChange(v);
     }
+    const editIncidentHandle = () => {
+      console.log('editIncidentHandle');
+      btnLoading.value = true;
+      editIncident(props.data)
+        .then(res => {
+          console.log(res, '[[d[[[[');
+        })
+        .catch(err => {
+          console.log(err);
+        })
+        .finally(() => (btnLoading.value = false));
+    };
     const renderFn = () => (
       <Dialog
         ext-cls='failure-edit-dialog'
         is-show={props.visible}
         title={t('编辑故障属性')}
         dialog-type='operation'
+        is-loading={btnLoading.value}
         onUpdate:isShow={valueChange}
+        onConfirm={() => {
+          console.log('wwwww');
+          editIncidentHandle();
+        }}
       >
         <Form form-type={'vertical'}>
           <Form.FormItem
@@ -65,6 +89,7 @@ export default defineComponent({
           >
             <Input
               placeholder={t('由中英文、下划线或数字组成')}
+              v-model={props.data.incident_name}
               maxlength={50}
             />
           </Form.FormItem>
@@ -72,9 +97,12 @@ export default defineComponent({
             label={t('故障级别')}
             required
           >
-            {props.levelList.map((item: any) => (
-              <Radio>
-                <i class={`icon-monitor icon-${item.icon} radio-icon ${item.icon}`}></i>
+            {Object.values(props.levelList || {}).map((item: any) => (
+              <Radio
+                v-model={props.data.level}
+                label={item.name}
+              >
+                <i class={`icon-monitor icon-${item.key} radio-icon ${item.key}`}></i>
                 {item.label}
               </Radio>
             ))}
@@ -84,6 +112,7 @@ export default defineComponent({
             required
           >
             <TagInput
+              v-model={props.data.assignees}
               allow-create
               has-delete-icon
               collapse-tags
@@ -91,6 +120,7 @@ export default defineComponent({
           </Form.FormItem>
           <Form.FormItem label={t('故障标签')}>
             <TagInput
+              v-model={props.data.labels}
               allow-create
               has-delete-icon
               collapse-tags
@@ -100,6 +130,7 @@ export default defineComponent({
             <Input
               type='textarea'
               maxlength={300}
+              v-model={props.data.incident_reason}
             />
           </Form.FormItem>
         </Form>

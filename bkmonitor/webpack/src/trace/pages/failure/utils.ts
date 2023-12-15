@@ -23,58 +23,10 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, KeepAlive, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { type ComputedRef, inject, provide } from 'vue';
 
-import AlarmDetail from '../alarm-detail/alarm-detail';
-import FailureMenu from '../failure-menu/failure-menu';
-import FailureTopo from '../failure-topo/failure-topo';
-
-import './failure-content.scss';
-
-export default defineComponent({
-  props: {
-    incidentDetail: {
-      type: Object,
-      default: () => {}
-    }
-  },
-  setup() {
-    const { t } = useI18n();
-    const active = ref('FailureTopo');
-    const tabList = [
-      {
-        name: 'FailureTopo',
-        label: t('故障拓扑')
-      },
-      {
-        name: 'AlarmDetail',
-        label: t('告警明细')
-      }
-    ];
-
-    const handleChangeActive = (activeName: string) => {
-      active.value = activeName;
-    };
-    return {
-      tabList,
-      active,
-      handleChangeActive
-    };
-  },
-  render() {
-    return (
-      <div class='failure-content'>
-        <FailureMenu
-          tabList={this.tabList}
-          active={this.active}
-          onChange={this.handleChangeActive}
-        ></FailureMenu>
-        <KeepAlive>
-          {this.active === 'FailureTopo' && <FailureTopo></FailureTopo>}
-          {this.active === 'AlarmDetail' && <AlarmDetail incidentDetail={this.incidentDetail}></AlarmDetail>}
-        </KeepAlive>
-      </div>
-    );
-  }
-});
+export const INCIDENT_ID_KEY = 'INCIDENT_ID_KEY';
+export const useIncidentProvider = (incidentId: ComputedRef<string>) => {
+  provide(INCIDENT_ID_KEY, incidentId);
+};
+export const useIncidentInject = () => inject<ComputedRef<string>>(INCIDENT_ID_KEY);

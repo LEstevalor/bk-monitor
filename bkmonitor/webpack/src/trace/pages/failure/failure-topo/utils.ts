@@ -23,58 +23,57 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, KeepAlive, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
 
-import AlarmDetail from '../alarm-detail/alarm-detail';
-import FailureMenu from '../failure-menu/failure-menu';
-import FailureTopo from '../failure-topo/failure-topo';
+import { ITopoNode } from './types';
 
-import './failure-content.scss';
-
-export default defineComponent({
-  props: {
-    incidentDetail: {
-      type: Object,
-      default: () => {}
-    }
+const rootNodeAttrs = {
+  groupAttrs: {
+    fill: '#F55555',
+    stroke: '#F55555'
   },
-  setup() {
-    const { t } = useI18n();
-    const active = ref('FailureTopo');
-    const tabList = [
-      {
-        name: 'FailureTopo',
-        label: t('故障拓扑')
-      },
-      {
-        name: 'AlarmDetail',
-        label: t('告警明细')
-      }
-    ];
-
-    const handleChangeActive = (activeName: string) => {
-      active.value = activeName;
-    };
-    return {
-      tabList,
-      active,
-      handleChangeActive
-    };
+  rectAttrs: {
+    stroke: '#3A3B3D',
+    fill: '#F55555'
   },
-  render() {
-    return (
-      <div class='failure-content'>
-        <FailureMenu
-          tabList={this.tabList}
-          active={this.active}
-          onChange={this.handleChangeActive}
-        ></FailureMenu>
-        <KeepAlive>
-          {this.active === 'FailureTopo' && <FailureTopo></FailureTopo>}
-          {this.active === 'AlarmDetail' && <AlarmDetail incidentDetail={this.incidentDetail}></AlarmDetail>}
-        </KeepAlive>
-      </div>
-    );
+  textAttrs: {
+    fill: '#fff'
   }
-});
+};
+const errorNodeAttrs = {
+  groupAttrs: {
+    fill: 'rgba(255, 102, 102, 0.4)',
+    stroke: '#F55555'
+  },
+  rectAttrs: {
+    stroke: '#F55555',
+    fill: '#313238'
+  },
+  textErrorAttrs: {
+    fill: '#313238'
+  },
+  textNormalAttrs: {
+    fill: '#fff'
+  }
+};
+const normalNodeAttrs = {
+  groupAttrs: {
+    fill: 'rgba(197, 197, 197, 0.2)',
+    stroke: '#979BA5'
+  },
+  rectAttrs: {
+    stroke: '#EAEBF0',
+    fill: '#313238'
+  },
+  textAttrs: {
+    fill: '#fff'
+  }
+};
+export const getNodeAttrs = (node: ITopoNode) => {
+  if (node.entity?.is_root) {
+    return { ...rootNodeAttrs };
+  }
+  if (node.entity?.is_anomaly) {
+    return { ...errorNodeAttrs };
+  }
+  return { ...normalNodeAttrs };
+};
