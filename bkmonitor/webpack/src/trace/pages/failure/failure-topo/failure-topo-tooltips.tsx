@@ -61,14 +61,14 @@ export default defineComponent({
     const createEdgeNodeLink = () => {
       return (
         <div class='node-link'>
-          <div class='node-link-text'>从属关系</div>
+          <div class='node-link-text'>{this.$t('从属关系')}</div>
         </div>
       );
     };
     const createEdgeToolTip = (nodes: ITopoNode[]) => {
       return [
         <div class='edge-tooltip-title'>
-          边：{nodes?.[0]?.entity.entity_name} - {nodes?.[1]?.entity.entity_name}
+          {this.$t('边：')} {nodes?.[0]?.entity.entity_name} - {nodes?.[1]?.entity.entity_name}
         </div>,
         <div class='edge-tooltip-content'>
           {createEdgeNodeItem(nodes[0])}
@@ -117,16 +117,16 @@ export default defineComponent({
                   backgroundColor: node.entity.is_root ? '#EA3636' : '#00FF00'
                 }}
               >
-                根因
+                {this.$t('根因')}
               </span>
             )}
             {this.showViewResource &&
-              createCommonIconBtn('查看资源', {
+              createCommonIconBtn(this.$t('查看资源'), {
                 marginLeft: 'auto'
               })}
           </div>
           <div class='node-tooltip-content'>
-            {createCommonForm('包含告警：', () =>
+            {createCommonForm(this.$t('包含告警：'), () =>
               node.alert_display.alert_name ? (
                 <>
                   {createCommonIconBtn(
@@ -145,19 +145,19 @@ export default defineComponent({
                     },
                     false
                   )}
-                  同类告警
+                  个同类告警
                 </>
               ) : (
                 <>--</>
               )
             )}
-            {createCommonForm('分类：', () => (
+            {createCommonForm(this.$t('分类：'), () => (
               <>{node.entity.rank.rank_category.category_alias}</>
             ))}
-            {createCommonForm('节点类型：', () => (
+            {createCommonForm(this.$t('节点类型：'), () => (
               <>{node.entity.entity_type}</>
             ))}
-            {createCommonForm('所属业务：', () => (
+            {createCommonForm(this.$t('所属业务：'), () => (
               <>
                 [{node.bk_biz_id}] {node.bk_biz_name}
               </>
