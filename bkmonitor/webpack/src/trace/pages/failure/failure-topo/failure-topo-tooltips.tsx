@@ -25,31 +25,36 @@
  */
 import { defineComponent, VNode } from 'vue';
 
-import { NodeStatus } from './topo-data';
+import { ITopoNode } from './types';
 
 import './failure-topo-tooltips.scss';
 
 export default defineComponent({
   props: {
+    /** 显示查看资源的icon */
+    showViewResource: {
+      type: Boolean,
+      default: true
+    },
     type: {
       type: String,
       default: 'node'
     },
     model: {
-      type: Object,
+      type: [Object, Array],
       required: true
     }
   },
   setup() {},
   render() {
     if (!this.model) return undefined;
-    const createEdgeNodeItem = () => {
+    const createEdgeNodeItem = (node: ITopoNode) => {
       return (
         <div class='node-source'>
           <span class='node-item'>
             <i class='item-source'></i>
           </span>
-          Pod(<span class='node-name'>我是 Pod 名称占位</span>）
+          {node?.entity?.entity_type}(<span class='node-name'>{node?.entity?.entity_name || '--'}</span>）
         </div>
       );
     };
@@ -60,13 +65,15 @@ export default defineComponent({
         </div>
       );
     };
-    const createEdgeToolTip = () => {
+    const createEdgeToolTip = (nodes: ITopoNode[]) => {
       return [
-        <div class='edge-tooltip-title'>边：Host 名称1 - Pod名称1</div>,
+        <div class='edge-tooltip-title'>
+          边：{nodes?.[0]?.entity.entity_name} - {nodes?.[1]?.entity.entity_name}
+        </div>,
         <div class='edge-tooltip-content'>
-          {createEdgeNodeItem()}
+          {createEdgeNodeItem(nodes[0])}
           {createEdgeNodeLink()}
-          {createEdgeNodeItem()}
+          {createEdgeNodeItem(nodes[1])}
         </div>
       ];
     };
@@ -89,7 +96,7 @@ export default defineComponent({
         </div>
       );
     };
-    const createNodeToolTip = () => {
+    const createNodeToolTip = (node: ITopoNode) => {
       return (
         <div class='node-tooltip'>
           <div class='node-tooltip-header'>
@@ -97,54 +104,63 @@ export default defineComponent({
               class='item-source'
               style={{
                 width: '16px',
-                height: '16px'
+                height: '16px',
+                minWidth: '16px',
+                flex: '0 0 16px'
               }}
             ></i>
-            <span class='header-name'>节点名称占位</span>
-            {this.model.status === NodeStatus.Root && (
+            <span class='header-name'>{node.entity.entity_name}</span>
+            {node.entity.is_root && (
               <span
                 class='root-mark'
                 style={{
-                  backgroundColor: this.model.status === NodeStatus.Root ? '#EA3636' : '#00FF00'
+                  backgroundColor: node.entity.is_root ? '#EA3636' : '#00FF00'
                 }}
               >
                 根因
               </span>
             )}
-            {createCommonIconBtn('查看资源', {
-              marginLeft: 'auto'
-            })}
+            {this.showViewResource &&
+              createCommonIconBtn('查看资源', {
+                marginLeft: 'auto'
+              })}
           </div>
           <div class='node-tooltip-content'>
-            {createCommonForm('包含告警：', () => (
-              <>
-                {createCommonIconBtn(
-                  '告警名称占位',
-                  {
-                    marginRight: '4px'
-                  },
-                  false
-                )}
-                等共
-                {createCommonIconBtn(
-                  '10',
-                  {
-                    marginRight: '4px',
-                    marginLeft: '4px'
-                  },
-                  false
-                )}
-                同类告警
-              </>
-            ))}
+            {createCommonForm('包含告警：', () =>
+              node.alert_display.alert_name ? (
+                <>
+                  {createCommonIconBtn(
+                    node.alert_display.alert_name || '',
+                    {
+                      marginRight: '4px'
+                    },
+                    false
+                  )}
+                  等共
+                  {createCommonIconBtn(
+                    node.alert_ids.length.toString(),
+                    {
+                      marginRight: '4px',
+                      marginLeft: '4px'
+                    },
+                    false
+                  )}
+                  同类告警
+                </>
+              ) : (
+                <>--</>
+              )
+            )}
             {createCommonForm('分类：', () => (
-              <>主机/云平台 - 主机设备</>
+              <>{node.entity.rank.rank_category.category_alias}</>
             ))}
             {createCommonForm('节点类型：', () => (
-              <>Node/Host</>
+              <>{node.entity.entity_type}</>
             ))}
             {createCommonForm('所属业务：', () => (
-              <>[100342] DNF 地下城与勇士</>
+              <>
+                [{node.bk_biz_id}] {node.bk_biz_name}
+              </>
             ))}
           </div>
         </div>
@@ -158,7 +174,9 @@ export default defineComponent({
           'edge-tooltip': this.type === 'edge'
         }}
       >
-        {this.type === 'edge' ? createEdgeToolTip() : createNodeToolTip()}
+        {this.type === 'edge'
+          ? createEdgeToolTip(this.model as ITopoNode[])
+          : createNodeToolTip(this.model as ITopoNode)}
       </div>
     );
   }

@@ -30,7 +30,8 @@ export const incidentOverview = request('POST', 'rest/v2/incident/incident_overv
 export const incidentTopN = request('POST', 'rest/v2/incident/top_n/');
 export const incidentValidateQueryString = request('POST', 'rest/v2/incident/validate_query_string/');
 export const incidentDetail = request('GET', 'rest/v2/incident/incident_detail/');
-export const incidentTopology = request('GET', 'rest/v2/incident/incident_topology/');
+export const incidentTopology = request('POST', 'rest/v2/incident/incident_topology/');
+export const incidentTopologyMenu = request('GET', 'rest/v2/incident/incident_topology_menu/');
 export const incidentTopologyUpstream = request('GET', 'rest/v2/incident/incident_topology_upstream/');
 export const incidentTimeLine = request('GET', 'rest/v2/incident/incident_time_line/');
 export const incidentAlertAggregate = request('POST', 'rest/v2/incident/incident_alert_aggregate/');
@@ -49,6 +50,7 @@ export default {
   incidentValidateQueryString,
   incidentDetail,
   incidentTopology,
+  incidentTopologyMenu,
   incidentTopologyUpstream,
   incidentTimeLine,
   incidentAlertAggregate,

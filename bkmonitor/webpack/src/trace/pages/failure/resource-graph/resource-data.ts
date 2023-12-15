@@ -23,6 +23,7 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
+import { random } from '../../../../monitor-common/utils/utils.js';
 const nodeCount = 10;
 // const comboCount = 6;
 export const enum NodeStatus {
@@ -108,7 +109,134 @@ const createEdges = () => {
     })
     .filter(Boolean);
 };
+
+export const createGraphData1 = (ranksMap, edges) => {
+  console.log('ranksMap', ranksMap);
+  const combos = [];
+  let nodeDatas = [];
+  Object.keys(ranksMap).forEach((ranks, index) => {
+    const fillColor = index % 2 === 1 ? '#292A2B' : '#1B1C1F';
+    if (ranksMap[ranks].length > 0) {
+      ranksMap[ranks].forEach((rank, index) => {
+        const { rank_category, rank_name, rank_alias, nodes, anomaly_count, total, is_sub_rank } = rank;
+        const randomStr = random(10);
+        combos.push({
+          groupId: is_sub_rank ? `${rank_name}${randomStr}` : rank_name,
+          groupName: index === 0 ? rank_category.category_alias : '',
+          id: rank_category.category_name + rank_name + (is_sub_rank ? randomStr : ''),
+          anomaly_count: is_sub_rank ? 0 : anomaly_count,
+          subTitle: is_sub_rank ? '' : `${anomaly_count > 0 ? '/' : ''} ${total}`,
+          title: is_sub_rank ? '' : rank_alias,
+          style: {
+            fill: fillColor,
+            stroke: fillColor
+          }
+        });
+        nodes.forEach(node => {
+          const { isRoot, is_anomaly } = node.entity;
+          node.comboId = rank_category.category_name + rank_name + (is_sub_rank ? randomStr : '');
+          node.status = isRoot || is_anomaly ? (isRoot ? 'root' : 'error') : 'normal';
+        });
+        nodeDatas = nodeDatas.concat(rank.nodes);
+      });
+    } else {
+      const { rank_category, rank_name, rank_alias, nodes, anomaly_count, total } = ranksMap[ranks][0];
+      console.log(ranksMap[ranks][0], 'ranks[ranksMap][0]');
+      combos.push({
+        groupId: rank_name,
+        groupName: rank_category.category_alias,
+        id: rank_category.category_name,
+        anomaly_count,
+        subTitle: `${anomaly_count > 0 ? '/' : ''} ${total}`,
+        title: rank_alias,
+        style: {
+          fill: fillColor,
+          stroke: fillColor
+        }
+      });
+      nodes.forEach(node => {
+        const { isRoot, is_anomaly } = node.entity;
+        node.comboId = rank_category.category_name + rank_name;
+        node.status = isRoot || is_anomaly ? (isRoot ? 'root' : 'error') : 'normal';
+      });
+      nodeDatas = nodeDatas.concat(nodes);
+    }
+  });
+  console.log(nodeDatas, combos);
+  const aggregateNodes = [];
+  // nodeDatas.forEach(node => {
+  //   if (node.aggregated_nodes.length > 0) {
+  //     combos.push({
+  //       comboId: node.comboId,
+  //       id: node.comboId + node.id,
+  //       parentId: node.comboId,
+  //       aggregated_node: node.id,
+  //       collapsed: true,
+  //       fixSize: [280, 52],
+  //       padding: 0,
+  //       fixCollapseSize: [280, 52],
+  //       style: {
+  //         // fill: '#ffff',
+  //         radius: 48,
+  //         padding: 0,
+  //         stroke: '#979797', // 描边颜色
+  //         lineWidth: 2, // 描边宽度
+  //         lineDash: [4, 4] // 虚线的模式，表示线段长为 4，间隔为 4
+  //       }
+  //     });
+  //     node.comboId = node.comboId + node.id;
+  //     node.aggregated_nodes.forEach(item => {
+  //       const { isRoot, is_anomaly } = item.entity;
+  //       item.status = isRoot || is_anomaly ? (isRoot ? 'root' : 'error') : 'normal';
+  //       item.comboId = node.comboId;
+  //       item.type = 'resource-node';
+  //       aggregateNodes.push(item);
+  //     });
+  //   }
+  // });
+  console.log(aggregateNodes);
+  return {
+    combos,
+    nodes: nodeDatas.concat(aggregateNodes),
+    edges
+  };
+};
+
+export const createGraphData = ranks => {
+  return;
+  let nodeDates = [];
+  const combos = [];
+  const edges = [];
+  ranks.forEach(rank => {
+    const { rank_category, rank_name, rank_alias, nodes, anomaly_count, total } = rank;
+    combos.push({
+      groupId: rank_name,
+      groupName: rank_category.category_alias,
+      id: rank_category.category_name,
+      subTitle: `${anomaly_count > 0 ? anomaly_count + '/' : ''}${total}`,
+      title: rank_alias
+    });
+    nodeDates = nodeDates.concat(nodes);
+  });
+  return {
+    nodes: nodeDates,
+    combos,
+    edges
+  };
+};
+
 const createCombos = () => {
+  // return combos.map(rank => {
+  //   const { rank_category, rank_name, rank_alias } = rank;
+  //   return {
+  //     groupId: rank_name,
+  //     groupName: rank_category.category_alias,
+  //     id: rank_category.category_name,
+  //     subTitle: '1 / 6',
+  //     title: rank_alias
+  //   };
+  // });
+  // return;
   const groupCombos = [
     {
       name: '服务',

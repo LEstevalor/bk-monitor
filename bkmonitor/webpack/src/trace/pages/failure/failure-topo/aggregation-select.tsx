@@ -29,76 +29,36 @@ import { Search } from 'bkui-vue/lib/icon';
 
 import './aggregation-select.scss';
 
-const treeData = [
-  {
-    id: '1',
-    name: '方案成熟',
-    isOpen: true,
-    content: '拥有支撑数百款腾讯业务的经验沉淀，兼容各种复杂的系统架构，生于运维 · 精于运维',
-    children: [
-      {
-        id: '2',
-        name: 'child-1-方案成熟-拥有支撑数百款腾讯业务的经验沉淀，兼容各种复杂的系统架构，生于运维 · 精于运维',
-        content: '拥有支撑数百款腾讯业务的经验沉淀，兼容各种复杂的系统架构，生于运维 · 精于运维',
-        children: []
-      },
-      {
-        id: '3',
-        name: 'child-1-覆盖全面',
-        content:
-          '从配置管理，到作业执行、任务调度和监控自愈，再通过运维大数据分析辅助运营决策，全方位覆盖业务运营的全周期保障管理。',
-        children: []
-      },
-      {
-        id: '4',
-        name: 'child-1-开放平台',
-        content: '开放的PaaS，具备强大的开发框架和调度引擎，以及完整的运维开发培训体系，助力运维快速转型升级。',
-        children: [
-          {
-            id: '5',
-            name: 'child-1-方案成熟',
-            content: '拥有支撑数百款腾讯业务的经验沉淀，兼容各种复杂的系统架构，生于运维 · 精于运维',
-            children: []
-          },
-          {
-            id: '6',
-            name: 'child-1-覆盖全面',
-            content:
-              '从配置管理，到作业执行、任务调度和监控自愈，再通过运维大数据分析辅助运营决策，全方位覆盖业务运营的全周期保障管理。',
-            children: []
-          },
-          {
-            id: '7',
-            name: 'child-1-开放平台',
-            isOpen: true,
-            content: '开放的PaaS，具备强大的开发框架和调度引擎，以及完整的运维开发培训体系，助力运维快速转型升级。',
-            children: []
-          }
-        ]
-      }
-    ]
-  }
-];
 export default defineComponent({
   name: 'AggregationSelect',
   props: {
-    options: {
+    checkedIds: {
       type: Array,
-      default: () => []
+      required: true
     },
-    modelValue: {
-      type: [String, Number, Object],
-      default: ''
+    treeData: {
+      type: Array,
+      required: true
+    },
+    autoAggregate: {
+      type: Boolean,
+      default: true
+    },
+    aggregateConfig: {
+      type: Object,
+      default: undefined
     }
   },
-  emits: ['update:modelValue'],
+  emits: ['update:autoAggregate', 'update:checkedIds'],
   setup(props, { emit }) {
-    const updateValue = (value: string | number | object) => {
-      emit('update:modelValue', value);
+    const handleNodeCheck = checkedData => {
+      emit(
+        'update:checkedIds',
+        checkedData.filter(item => !item.children).map(item => item.id)
+      );
     };
-
     return {
-      updateValue
+      handleNodeCheck
     };
   },
   render() {
@@ -118,8 +78,24 @@ export default defineComponent({
             content: () => (
               <div class='aggregation-select-content'>
                 <div class='panel-header'>
-                  <div class='panel-btn'>{this.$t('自动聚合')}</div>
-                  <div class='panel-btn'>{this.$t('不聚合')}</div>
+                  <div
+                    class={{
+                      'panel-btn': true,
+                      'is-active': this.autoAggregate && !this.checkedIds.length
+                    }}
+                    onClick={() => this.$emit('update:autoAggregate', true)}
+                  >
+                    {this.$t('自动聚合')}
+                  </div>
+                  <div
+                    class={{
+                      'panel-btn': true,
+                      'is-active': !this.autoAggregate && !this.checkedIds.length
+                    }}
+                    onClick={() => this.$emit('update:autoAggregate', false)}
+                  >
+                    {this.$t('不聚合')}
+                  </div>
                 </div>
                 <div class='panel-search'>
                   <Input
@@ -131,12 +107,15 @@ export default defineComponent({
                   ></Input>
                 </div>
                 <Tree
-                  data={treeData}
+                  data={this.treeData}
+                  selected={this.checkedIds}
                   label='name'
-                  showCheckbox
-                  levelLine
+                  showCheckbox={true}
+                  levelLine={false}
                   nodeKey='id'
+                  expandAll={true}
                   showNodeTypeIcon={false}
+                  onNodeChecked={this.handleNodeCheck}
                 ></Tree>
               </div>
             )

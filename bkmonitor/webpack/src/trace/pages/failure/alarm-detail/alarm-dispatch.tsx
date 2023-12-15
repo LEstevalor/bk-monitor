@@ -254,6 +254,7 @@ export default defineComponent({
               theme='primary'
               style={{ 'margin-right': '8px' }}
               onClick={this.handleSubmit}
+              disabled={this.loading}
             >
               {this.$t('确定')}
             </Button>,

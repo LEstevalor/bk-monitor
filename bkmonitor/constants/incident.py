@@ -155,6 +155,12 @@ class IncidentSyncType(CustomEnum):
     UPDATE = "update"
 
 
+class IncidentGraphEdgeType(CustomEnum):
+    """故障图谱边类型."""
+
+    DEPENDENCY = "dependency"
+
+
 class IncidentAlertAggregateDimension(CustomEnum):
     """故障告警聚合维度."""
 

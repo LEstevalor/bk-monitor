@@ -8,9 +8,12 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 """
-from dataclasses import asdict, dataclass
+import copy
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
 from typing import Dict, List
 
+from constants.incident import IncidentGraphEdgeType
 from core.errors.incident import IncidentEntityNotFoundError
 
 
@@ -25,6 +28,9 @@ class IncidentGraphCategory:
     category_id: int
     category_name: str
     category_alias: str
+
+    def to_src_dict(self):
+        return asdict(self)
 
 
 @dataclass
@@ -41,11 +47,17 @@ class IncidentGraphRank:
     rank_alias: str
     rank_category: IncidentGraphCategory
 
+    def to_src_dict(self):
+        data = asdict(self)
+        data["rank_category"] = data.pop("rank_category")["category_name"]
+        return data
+
 
 @dataclass
 class IncidentGraphEntity:
     """
     "entity_id": "BCS-K8S-xxxx#k8s-idc-br#uid-0",
+    "entity_name": "BCS-K8S-xxxx#k8s-idc-br#uid-0",
     "entity_type": "BcsPod",
     "is_anomaly": false,
     "anomaly_score": 0.3333333333333333,
@@ -55,12 +67,19 @@ class IncidentGraphEntity:
     """
 
     entity_id: str
+    entity_name: str
     entity_type: str
     is_anomaly: bool
     anomaly_score: float
     anomaly_type: str
     is_root: bool
     rank: IncidentGraphRank
+    aggregated_entities: List["IncidentGraphEntity"] = field(default_factory=list)
+
+    def to_src_dict(self):
+        data = asdict(self)
+        data["rank_name"] = data.pop("rank")["rank_name"]
+        return data
 
 
 @dataclass
@@ -74,6 +93,17 @@ class IncidentGraphEdge:
 
     source: IncidentGraphEntity
     target: IncidentGraphEntity
+    edge_type: IncidentGraphEdgeType
+    count: int = 1
+
+    def to_src_dict(self):
+        return {
+            "source_type": self.source.entity_type,
+            "source_id": self.source.entity_id,
+            "target_type": self.target.entity_type,
+            "target_id": self.target.entity_id,
+            "edge_type": self.edge_type.value,
+        }
 
 
 @dataclass
@@ -88,6 +118,11 @@ class IncidentAlert:
     strategy_id: int
     entity: IncidentGraphEntity
 
+    def to_src_dict(self):
+        data = asdict(self)
+        data["entity_id"] = data.pop("entity")["entity_id"]
+        return data
+
 
 @dataclass
 class IncidentSnapshot(object):
@@ -97,15 +132,18 @@ class IncidentSnapshot(object):
 
     incident_snapshot_content: Dict
 
-    def __post_init__(self):
+    def __post_init__(self, prepare=True):
         self.incident_graph_categories = {}
         self.incident_graph_ranks = {}
         self.incident_graph_entities = {}
-        self.incident_graph_edges = []
+        self.incident_graph_edges = {}
         self.alert_entity_mapping = {}
+        self.entity_targets = defaultdict(set)
+        self.entity_sources = defaultdict(set)
 
-        self.prepare_graph()
-        self.prepare_alerts()
+        if prepare:
+            self.prepare_graph()
+            self.prepare_alerts()
 
     def prepare_graph(self):
         """根据故障分析结果快照实例化图结构."""
@@ -121,11 +159,12 @@ class IncidentSnapshot(object):
             self.incident_graph_entities[entity_info["entity_id"]] = IncidentGraphEntity(**entity_info)
 
         for edge_info in self.incident_snapshot_content["incident_propagation_graph"]["edges"]:
-            self.incident_graph_edges.append(
-                IncidentGraphEdge(
-                    source=self.incident_graph_entities[edge_info["source_id"]],
-                    target=self.incident_graph_entities[edge_info["target_id"]],
-                )
+            source = self.incident_graph_entities[edge_info["source_id"]]
+            target = self.incident_graph_entities[edge_info["target_id"]]
+            self.entity_sources[target.entity_id].add(source.entity_id)
+            self.entity_targets[source.entity_id].add(target.entity_id)
+            self.incident_graph_edges[(source.entity_id, target.entity_id)] = IncidentGraphEdge(
+                source=source, target=target, edge_type=IncidentGraphEdgeType(edge_info["edge_type"])
             )
 
     def prepare_alerts(self):
@@ -143,45 +182,122 @@ class IncidentSnapshot(object):
         """
         return [int(item["id"]) for item in self.incident_snapshot_content["incident_alerts"]]
 
-    def upstreams_group_by_rank(self, entity_id: str) -> List[Dict]:
-        """根据实体ID找到所有上下游全链路，并按照rank维度分层
+    def generate_entity_sub_graph(self, entity_id: str) -> "IncidentSnapshot":
+        """生成资源子图
 
         :param entity_id: 实体ID
-        :return: 按rank分层的上下游
+        :return: 资源上下游关系的资源子图
         """
         if entity_id not in self.incident_graph_entities:
             raise IncidentEntityNotFoundError({"entity_id": entity_id})
         entity = self.incident_graph_entities[entity_id]
 
+        sub_incident_snapshot_content = copy.deepcopy(self.incident_snapshot_content)
+        sub_incident_snapshot_content["incident_alerts"] = []
+        sub_incident_snapshot_content["product_hierarchy_category"] = {}
+        sub_incident_snapshot_content["product_hierarchy_rank"] = {}
+        sub_incident_snapshot_content["incident_propagation_graph"] = {"entities": [], "edges": []}
+
+        self.move_upstream_to_sub_graph_content(entity, "source", sub_incident_snapshot_content)
+        self.move_upstream_to_sub_graph_content(entity, "target", sub_incident_snapshot_content)
+
+        sub_incident_snapshot_content["alerts"] = len(sub_incident_snapshot_content["incident_alerts"])
+
+        return IncidentSnapshot(sub_incident_snapshot_content)
+
+    def move_upstream_to_sub_graph_content(
+        self, entity: IncidentGraphEntity, direct_key: str, graph_content: Dict
+    ) -> None:
+        """把节点关联的上游或下游加入到子图内容内容中
+
+        :param entity: 故障实体
+        :param direct_key: 上游或下游的方向key
+        :param graph_content: 图内容
+        """
+        for edge in self.incident_graph_edges.values():
+            if direct_key == "source" and edge.target.entity_id == entity.entity_id:
+                graph_content["incident_propagation_graph"]["edges"].append(edge.to_src_dict())
+                self.move_upstream_to_sub_graph_content(edge.source, direct_key, graph_content)
+
+            if direct_key == "target" and edge.source.entity_id == entity.entity_id:
+                graph_content["incident_propagation_graph"]["edges"].append(edge.to_src_dict())
+                self.move_upstream_to_sub_graph_content(edge.target, direct_key, graph_content)
+
+        graph_content["incident_propagation_graph"]["entities"].append(entity.to_src_dict())
+        if entity.rank.rank_name not in graph_content["product_hierarchy_rank"]:
+            graph_content["product_hierarchy_rank"][entity.rank.rank_name] = entity.rank.to_src_dict()
+        if entity.rank.rank_category.category_name not in graph_content["product_hierarchy_category"]:
+            graph_content["product_hierarchy_category"][
+                entity.rank.rank_category.category_name
+            ] = entity.rank.rank_category.to_src_dict()
+
+        for incident_alert in self.alert_entity_mapping.values():
+            if incident_alert.entity.entity_id == entity.entity_id:
+                graph_content["incident_alerts"].append(incident_alert.to_src_dict())
+
+    def group_by_rank(self) -> List[Dict]:
+        """根据实体ID找到所有上下游全链路，并按照rank维度分层
+
+        :return: 按rank分层的上下游
+        """
         ranks = {
             rank.rank_id: {
                 **asdict(rank),
-                "entities": {},
+                "entities": [],
+                "total": 0,
+                "anomaly_count": 0,
             }
             for rank in self.incident_graph_ranks.values()
         }
 
-        self.move_upstreams_into_ranks(entity, "source", ranks)
-        self.move_upstreams_into_ranks(entity, "target", ranks)
-
-        for rank in ranks.values():
-            rank["entities"] = list(rank["entities"].values())
+        for entity in self.incident_graph_entities.values():
+            ranks[entity.rank.rank_id]["entities"].append(entity)
+            if entity.is_anomaly:
+                ranks[entity.rank.rank_id]["anomaly_count"] += 1
+            ranks[entity.rank.rank_id]["total"] += 1
 
         return list(ranks.values())
 
-    def move_upstreams_into_ranks(self, entity: IncidentGraphEntity, direct_key: str, ranks: Dict) -> None:
-        """把节点关联的上游或下游加入到ranks层级中
+    def aggregate_graph(self, aggregate_config: Dict = None) -> None:
+        """聚合图谱
 
-        :param entity: 故障实体
-        :param direct_key: 上游或下游的方向key
-        :param ranks: 层级
+        :param aggregate_config: 聚合配置，没有则按照是否有同质化边，且被聚合节点数大于等于3进行聚合
         """
-        for edge in self.incident_graph_edges:
-            if direct_key == "source" and edge.target.entity_id == entity.entity_id:
-                self.move_upstreams_into_ranks(edge.source, direct_key, ranks)
+        group_by_entities = {}
 
-            if direct_key == "target" and edge.source.entity_id == entity.entity_id:
-                self.move_upstreams_into_ranks(edge.target, direct_key, ranks)
+        for entity_id, entity in self.incident_graph_entities.items():
+            key = (
+                frozenset(self.entity_sources[entity_id]),
+                frozenset(self.entity_targets[entity_id]),
+                entity_id if entity.is_anomaly or entity.is_root else "normal",
+            )
+            if key not in group_by_entities:
+                group_by_entities[key] = set()
+            group_by_entities[key].add(entity.entity_id)
 
-        if entity.entity_id not in ranks[entity.rank.rank_id]["entities"]:
-            ranks[entity.rank.rank_id]["entities"][entity.entity_id] = entity
+        for entity_ids in group_by_entities.values():
+            if len(entity_ids) >= 3:
+                self.merge_entities(list(entity_ids))
+
+    def merge_entities(self, entity_ids: List[str]) -> None:
+        """合并同类实体
+
+        :param entity_ids: 待合并实体列表
+        """
+        main_entity = self.incident_graph_entities[entity_ids[0]]
+        main_entity.aggregated_entities = [self.incident_graph_entities[entity_id] for entity_id in entity_ids[1:]]
+        for entity in main_entity.aggregated_entities:
+            for target_entity_id in self.entity_targets[entity.entity_id]:
+                self.entity_sources[target_entity_id].remove(entity.entity_id)
+                self.entity_sources[target_entity_id].add(main_entity.entity_id)
+                self.incident_graph_edges[(main_entity.entity_id, target_entity_id)].count += 1
+                del self.incident_graph_edges[(entity.entity_id, target_entity_id)]
+            for source_entity_id in self.entity_sources[entity.entity_id]:
+                self.entity_targets[source_entity_id].remove(entity.entity_id)
+                self.entity_targets[source_entity_id].add(main_entity.entity_id)
+                self.incident_graph_edges[(source_entity_id, main_entity.entity_id)].count += 1
+                del self.incident_graph_edges[(source_entity_id, entity.entity_id)]
+
+            del self.entity_targets[entity.entity_id]
+            del self.entity_sources[entity.entity_id]
+            del self.incident_graph_entities[entity.entity_id]

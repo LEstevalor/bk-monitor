@@ -23,7 +23,7 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, onMounted, provide, ref } from 'vue';
+import { defineComponent, onMounted, provide, ref, computed } from 'vue';
 import { ResizeLayout } from 'bkui-vue';
 
 import { incidentDetail } from '../../../monitor-api/modules/incident';
@@ -32,6 +32,7 @@ import FailureContent from './failure-content/failure-content';
 import FailureHeader from './failure-header/failure-header';
 import FailureNav from './failure-nav/failure-nav';
 import FailureTags from './failure-tags/failure-tags';
+import { useIncidentProvider } from './utils';
 
 import './failure.scss';
 
@@ -42,7 +43,8 @@ export default defineComponent({
       default: ''
     }
   },
-  setup() {
+  setup(props) {
+    useIncidentProvider(computed(() => props.id || '17024603108'));
     const tagDomHeight = ref<Number>(40);
     const collapseTagHandle = (val: boolean, height: Number) => {
       tagDomHeight.value = height;
