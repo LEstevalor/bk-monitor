@@ -50,14 +50,14 @@ export default defineComponent({
       tagDomHeight.value = height;
     };
     const incidentDetailData = ref({});
+    provide('incidentDetail', incidentDetailData);
     const getIncidentDetail = () => {
       incidentDetail({
         bk_biz_id: 2,
-        id: 17024603108
+        id: 17028676962127
       })
         .then(res => {
           incidentDetailData.value = res;
-          provide('incidentDetail', incidentDetailData.value);
         })
         .catch(err => {
           console.log(err);
@@ -71,11 +71,8 @@ export default defineComponent({
   render() {
     return (
       <div class='failure-wrapper'>
-        <FailureHeader incidentDetail={this.incidentDetailData} />
-        <FailureTags
-          incidentDetail={this.incidentDetailData}
-          onCollapse={this.collapseTagHandle}
-        />
+        <FailureHeader />
+        <FailureTags onCollapse={this.collapseTagHandle} />
         <ResizeLayout
           class='failure-content-layout'
           style={{ height: `calc(100vh - ${160 + Number(this.tagDomHeight)}px)` }}

@@ -23,7 +23,7 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { computed, defineComponent, nextTick, ref } from 'vue';
+import { computed, defineComponent, nextTick, ref, inject, Ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Tag } from 'bkui-vue';
 
@@ -31,20 +31,14 @@ import { Tag } from 'bkui-vue';
 import './failure-tags.scss';
 
 export default defineComponent({
-  props: {
-    incidentDetail: {
-      type: Object,
-      default: () => {}
-    }
-  },
   emits: ['collapse'],
   setup(props, { emit }) {
     const { t } = useI18n();
     const isShow = ref<boolean>(false);
     const failureTags = ref();
+    const incidentDetail = inject<Ref<object>>('incidentDetail');
     const incidentDetailData = computed(() => {
-      console.log(props.incidentDetail, 'props.incidentDetail');
-      return props.incidentDetail;
+      return incidentDetail.value;
     });
     const renderList = [
       {
@@ -100,7 +94,6 @@ export default defineComponent({
     return { renderList, expandCollapseHandle, isShow, failureTags, incidentDetailData };
   },
   render() {
-    // const { assignees = [], handlers = [] } = this.incidentDetailData;
     return (
       <div
         ref='failureTags'

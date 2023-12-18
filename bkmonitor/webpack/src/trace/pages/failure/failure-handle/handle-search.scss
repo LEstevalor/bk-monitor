@@ -62,6 +62,8 @@
     }
 
     .search-head-icon {
+      position: absolute;
+      right: 0;
       display: inline-block;
       width: 32px;
       height: 32px;
@@ -149,6 +151,27 @@
         font-size: 24px;
         font-weight: 600;
       }
+    }
+  }
+}
+.drop-main {
+  .drop-main-title {
+    font-size: 16px;
+    color: #313238;
+    margin-top: 5px;
+  }
+  .drop-main-list {
+    display: block;
+    margin: 6px 0 12px;
+    .drop-item {
+      height: 26px;
+      line-height: 26px; 
+      color: #63656E;
+    }
+    .drop-item-checkbox {
+      display: block;
+      font-size: 12px;
+      margin-left: 2px;
     }
   }
 }
