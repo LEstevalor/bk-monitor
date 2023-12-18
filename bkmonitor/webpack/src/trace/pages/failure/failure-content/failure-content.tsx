@@ -33,6 +33,12 @@ import FailureTopo from '../failure-topo/failure-topo';
 import './failure-content.scss';
 
 export default defineComponent({
+  props: {
+    incidentDetail: {
+      type: Object,
+      default: () => {}
+    }
+  },
   setup() {
     const { t } = useI18n();
     const active = ref('FailureTopo');
@@ -66,7 +72,7 @@ export default defineComponent({
         ></FailureMenu>
         <KeepAlive>
           {this.active === 'FailureTopo' && <FailureTopo></FailureTopo>}
-          {this.active === 'AlarmDetail' && <AlarmDetail></AlarmDetail>}
+          {this.active === 'AlarmDetail' && <AlarmDetail incidentDetail={this.incidentDetail}></AlarmDetail>}
         </KeepAlive>
       </div>
     );

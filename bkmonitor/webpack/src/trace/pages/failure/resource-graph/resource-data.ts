@@ -162,8 +162,8 @@ export const createGraphData1 = (ranksMap, edges) => {
       nodeDatas = nodeDatas.concat(nodes);
     }
   });
-  console.log(nodeDatas, combos);
-  const aggregateNodes = [];
+  // console.log(nodeDatas, combos);
+  // const aggregateNodes = [];
   // nodeDatas.forEach(node => {
   //   if (node.aggregated_nodes.length > 0) {
   //     combos.push({
@@ -171,9 +171,9 @@ export const createGraphData1 = (ranksMap, edges) => {
   //       id: node.comboId + node.id,
   //       parentId: node.comboId,
   //       aggregated_node: node.id,
-  //       collapsed: true,
+  //       collapsed: false,
   //       fixSize: [280, 52],
-  //       padding: 0,
+  //       // padding: 0,
   //       fixCollapseSize: [280, 52],
   //       style: {
   //         // fill: '#ffff',
@@ -192,12 +192,13 @@ export const createGraphData1 = (ranksMap, edges) => {
   //       item.type = 'resource-node';
   //       aggregateNodes.push(item);
   //     });
+  //     aggregateNodes.push(node);
   //   }
   // });
-  console.log(aggregateNodes);
+  // console.log(aggregateNodes);
   return {
     combos,
-    nodes: nodeDatas.concat(aggregateNodes),
+    nodes: nodeDatas, // nodeDatas.concat(aggregateNodes),
     edges
   };
 };

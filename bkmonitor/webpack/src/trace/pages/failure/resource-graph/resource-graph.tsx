@@ -24,20 +24,18 @@
  * IN THE SOFTWARE.
  */
 import { defineComponent, onMounted, ref, shallowRef, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { Arrow, Graph, registerCombo, registerEdge, registerLayout, registerNode, Tooltip } from '@antv/g6';
+import { Loading } from 'bkui-vue';
 
 import { incidentTopologyUpstream } from '../../../../monitor-api/modules/incident';
 import dbsvg from '../failure-topo/db.svg';
 import FailureTopoTooltips from '../failure-topo/failure-topo-tooltips';
 import httpSvg from '../failure-topo/http.svg';
+import { ITopoCombo, ITopoData, ITopoNode } from '../failure-topo/types';
+import { useIncidentInject } from '../utils';
 
-import resourceData, {
-  createGraphData,
-  createGraphData1,
-  EdgeStatus,
-  NodeStatus,
-  StatusNodeMap
-} from './resource-data';
+import { createGraphData1, EdgeStatus, NodeStatus, StatusNodeMap } from './resource-data';
 
 import './resource-graph.scss';
 
@@ -48,14 +46,6 @@ export default defineComponent({
       type: String,
       default: '0#0.0.0.0'
     },
-    bizId: {
-      type: String,
-      default: '2'
-    },
-    id: {
-      type: String,
-      default: '17024603108'
-    },
     content: {
       type: String,
       default: ''
@@ -65,11 +55,13 @@ export default defineComponent({
     const graphRef = ref<HTMLDivElement | null>(null);
     const openNode = ref(null);
     const graphData = ref({});
+    const route = useRoute();
     let tooltips = null;
     const tooltipsModel = shallowRef();
     const tooltipsType = ref('node');
     const tooltipsRef = ref<InstanceType<typeof FailureTopoTooltips>>();
-
+    const incidentId = useIncidentInject();
+    const loading = ref(false);
     let graph: Graph;
     const registerCustomNode = () => {
       registerNode('resource-node', {
@@ -137,7 +129,6 @@ export default defineComponent({
           }
         },
         draw(cfg, group) {
-          console.log(cfg, 'aggregated_nodesaggregated_nodes');
           const { status, aggregated_nodes } = cfg as any;
           const nodeShape = group.addShape('circle', {
             zIndex: 10,
@@ -422,14 +413,201 @@ export default defineComponent({
         },
         'rect'
       );
-      // registerCombo(
-      //   'custom-combo',
-      //   {
+      registerCombo(
+        'custom-combo',
+        {
+          // setState(name, value, combo) {
+          //   console.log(combo);
+          // const group = combo.get('group');
+          // console.log('afterUpdate==>', cfg, combo);
+          // cfg.children.forEach((memberId, index) => {
+          //   const childNode = group.findById(memberId);
+          //   console.log('childNodechildNodechildNode', childNode);
+          //   childNode.set('x', 46 + index * 10);
+          //   childNode.set('y', 0);
+          // });
+          // },
+          // afterDraw(cfg, combo) {
+          // const group = combo.get('group');
+          // console.log('afterUpdate==>', cfg, combo);
+          // cfg.children.forEach((memberId, index) => {
+          //   const childNode = group.findById(memberId);
+          //   console.log('childNodechildNodechildNode', childNode);
+          //   childNode.set('x', 46 + index * 10);
+          //   childNode.set('y', 0);
+          // });
+          // },
+          // labelPosition: 'left',
+          // labelAutoRotate: false,
+          drawShape(cfg, group) {
+            const { children = [] } = cfg;
+            console.log('custom-combocustom-combo', cfg, cfg.collapsed, group, children);
+            if (cfg.collapsed) {
+              const collapseIcon = (x, y, r) => {
+                return [
+                  ['M', x - r, y],
+                  ['a', r, r, 0, 1, 0, r * 2, 0],
+                  ['a', r, r, 0, 1, 0, -r * 2, 0],
+                  ['M', x - r + 4, y],
+                  ['L', x - r + 2 * r - 4, y]
+                ];
+              };
+              const expandIcon = (x, y, r) => {
+                return [
+                  ['M', x - r, y],
+                  ['a', r, r, 0, 1, 0, r * 2, 0],
+                  ['a', r, r, 0, 1, 0, -r * 2, 0],
+                  ['M', x - r + 4, y],
+                  ['L', x - r + 2 * r - 4, y],
+                  ['M', x - r + r, y - r + 4],
+                  ['L', x, y + r - 4]
+                ];
+              };
+              // 收起时的样式
+              // const thirdChildNode = group.findById(cfg.aggregated_node);
+              // console.log('.,===>收起时的样式,,,', thirdChildNode, '...', cfg.aggregated_node);
+              // const { x, y, width, height } = thirdChildNode.getBBox();
+              // const [width, height] = cfg.fixSize;
+              // console.log(width, height);
+              // const xRadius = width / 2 + 10;
+              // const yRadius = height / 2 + 10;
+              // 创建椭圆形容器
+              const style = self.getShapeStyle(cfg);
+              const keyShape = group.addShape('rect', {
+                zIndex: 10,
+                attrs: {
+                  x: 0,
+                  y: 0
+                  // width: style.width,
+                  // height: style.height
+                  // opacity: 0
+                },
+                name: 'combo-keyShape'
+              });
+              const marker = group.addShape('marker', {
+                zIndex: 11,
+                attrs: {
+                  fill: '#fff',
+                  opacity: 1,
+                  // cfg.style.width and cfg.style.heigth correspond to the innerWidth and innerHeight in the figure of Illustration of Built-in Rect Combo
+                  x: style.width / 2,
+                  y: style.height + 15,
+                  r: 10,
+                  symbol: collapseIcon
+                },
+                draggable: true,
+                name: 'combo-marker-shape'
+              });
+              console.log(keyShape, '..keyShape.');
+              // group.addShape('rect', {
+              //   zIndex: 10,
+              //   attrs: {
+              //     x: -240 / 2,
+              //     y: -52 / 2,
+              //     width: 240,
+              //     height: 52,
+              //     // x: 0, // 椭圆中心点 x 坐标
+              //     // y: 0, // 椭圆中心点 y 坐标
+              //     // rx: 240 / 2, // 水平半径
+              //     // ry: 52 / 2, // 垂直半径
+              //     radius: 28,
+              //     fill: '#ffff'
+              //     // stroke: '#de8954' // 描边颜色
+              //     // lineWidth: 2, // 描边宽度
+              //     // lineDash: [4, 4] // 虚线的模式，表示线段长为 4，间隔为 4
+              //   },
+              //   name: 'combo-keyShape2'
+              // });
+              // group.addShape('text', {
+              //   zIndex: 11,
+              //   attrs: {
+              //     x: -10 / 2 + 8,
+              //     y: 22,
+              //     textAlign: 'left',
+              //     text: 12312222131231233,
+              //     fontSize: 12,
+              //     fontWeight: 700,
+              //     fill: '#F55555'
+              //   },
+              //   name: 'resource-combo-text'
+              // });
+              console.log('=======>');
+              // // 将子节点放置在容器内部
+              // const offsetX = x - xRadius;
+              // const offsetY = y - yRadius;
+              // children.forEach((memberId, index) => {
+              //   const childNode = group.findById(memberId);
+              //   childNode.set('x', offsetX + index * 10);
+              //   childNode.set('y', offsetY);
+              // });
 
-      //     }
-      //   },
-      //   'rect'
-      // );
+              // 添加展开图标
+              // group.addShape('circle', {
+              //   attrs: {
+              //     x: x + xRadius,
+              //     y,
+              //     r: 10,
+              //     fill: 'green',
+              //     cursor: 'pointer'
+              //   },
+              //   name: 'combo-expand-icon'
+              // });
+
+              return keyShape;
+            }
+
+            // else {
+            //   console.log('.,===>,,,');
+            //   // 展开时的样式
+            //   const padding = 10;
+            //   let comboWidth = 0;
+            //   let comboHeight = 0;
+
+            //   children.forEach((memberId, index) => {
+            //     const childNode = group.findById(memberId);
+            //     const { width, height } = childNode.getBBox();
+            //     childNode.set('x', comboWidth);
+            //     childNode.set('y', 0);
+
+            //     comboWidth += width;
+            //     comboHeight = Math.max(comboHeight, height);
+            //   });
+
+            //   comboWidth += (children.length - 1) * padding;
+
+            //   // 创建容器椭圆虚线边样式
+            //   const keyShape = group.addShape('ellipse', {
+            //     attrs: {
+            //       x: comboWidth / 2,
+            //       y: comboHeight / 2,
+            //       rx: comboWidth / 2 + padding,
+            //       ry: comboHeight / 2 + padding,
+            //       fill: 'none',
+            //       stroke: 'blue',
+            //       lineDash: [4, 4]
+            //     },
+            //     name: 'combo-keyShape',
+            //     draggable: true
+            //   });
+
+            //   // 添加收起图标
+            //   group.addShape('circle', {
+            //     attrs: {
+            //       x: comboWidth,
+            //       y: 0,
+            //       r: 10,
+            //       fill: 'red',
+            //       cursor: 'pointer'
+            //     },
+            //     name: 'combo-collapse-icon'
+            //   });
+
+            //   return keyShape;
+            // }
+          }
+        },
+        'rect'
+      );
     };
     const registerCustomTooltip = () => {
       tooltips = new Tooltip({
@@ -440,7 +618,13 @@ export default defineComponent({
         getContent: e => {
           const type = e.item.getType();
           const model = e.item.getModel();
-          tooltipsModel.value = model;
+          if (type === 'edge') {
+            const targetModel = graphData.nodes.find(item => item.id === model.target);
+            const sourceModel = graphData.nodes.find(item => item.id === model.source);
+            tooltipsModel.value = [targetModel, sourceModel];
+          } else {
+            tooltipsModel.value = model as ITopoNode;
+          }
           tooltipsType.value = type;
           return tooltipsRef.value.$el;
         }
@@ -487,7 +671,7 @@ export default defineComponent({
                   console.log(6 + index * nodeSize, '6 + index + nodeSize');
 
                   node.x = 6 + index * nodeSize;
-                  node.y = 52 / 2;
+                  node.y = 0;
                 });
               }
             });
@@ -495,11 +679,16 @@ export default defineComponent({
       });
     };
     const getTopologyUpstream = () => {
-      incidentTopologyUpstream({ id: props.id, bk_biz_id: props.bizId, entity_id: props.entityId })
+      if (!props.entityId) {
+        return;
+      }
+      incidentTopologyUpstream({ id: incidentId.value, entity_id: props.entityId })
         .then(res => {
+          loading.value = true;
           const { ranks, edges } = res;
           const ranksMap = {};
-          console.log(res);
+          // console.log(res);
+          // const l = [ranks[0]];
           ranks.forEach(rank => {
             if (ranksMap[rank.rank_category.category_name]) {
               ranksMap[rank.rank_category.category_name].push(rank);
@@ -510,15 +699,21 @@ export default defineComponent({
           // nodeData.value = res;
           graphData.value = createGraphData1(ranksMap, edges); // createGraphData(res);
           console.log(graphData.value, '..graphData.value.');
-          init();
+          graph.data(JSON.parse(JSON.stringify(graphData.value)));
+          graph.render();
           // console.log(res, getRawData(), combos.value, createGraphData(res));
         })
         .catch(err => {})
-        .finally(() => {});
+        .finally(() => {
+          setTimeout(() => {
+            loading.value = false;
+          }, 300);
+        });
     };
     watch(
-      () => props.id,
+      () => props.entityId,
       () => {
+        console.log('----');
         getTopologyUpstream();
       },
       { immediate: true }
@@ -736,41 +931,43 @@ export default defineComponent({
         // });
         console.info('node:click', e, item);
       });
-      setTimeout(() => {
-        graph.data(graphData.value);
-        graph.render();
-      }, 1000);
       // graph.data(graphData.value);
       // graph.render();
     };
 
     onMounted(() => {
-      // init();
+      init();
     });
     return {
       graphRef,
       tooltipsRef,
       tooltipsModel,
       tooltipsType,
+      loading,
       graph
     };
   },
   render() {
     return (
-      <div class='resource-graph'>
-        <div
-          ref='graphRef'
-          class='graph-wrapper'
-        />
-        <div style='display: none'>
-          <FailureTopoTooltips
-            ref='tooltipsRef'
-            showViewResource={false}
-            model={this.tooltipsModel}
-            type={this.tooltipsType}
+      <Loading
+        loading={this.loading}
+        color='#292A2B'
+      >
+        <div class='resource-graph'>
+          <div
+            ref='graphRef'
+            class='graph-wrapper'
           />
+          <div style='display: none'>
+            <FailureTopoTooltips
+              ref='tooltipsRef'
+              showViewResource={false}
+              model={this.tooltipsModel}
+              type={this.tooltipsType}
+            />
+          </div>
         </div>
-      </div>
+      </Loading>
     );
   }
 });
