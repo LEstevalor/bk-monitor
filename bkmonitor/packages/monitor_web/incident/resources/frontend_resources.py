@@ -650,7 +650,7 @@ class EditIncidentResource(IncidentBaseResource):
 
         incident_info = api.bkdata.get_incident_detail(incident_id=incident_id)
         incident_info.update(validated_request_data)
-        api.bkdata.update_incident_detail(incident_id=incident_id, **incident_info)
+        api.bkdata.update_incident_detail(**incident_info)
         return incident_info
 
 

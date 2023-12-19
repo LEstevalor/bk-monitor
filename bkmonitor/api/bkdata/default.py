@@ -962,6 +962,13 @@ class UpdateIncidentDetail(DataAccessAPIResource):
 
     class RequestSerializer(CommonRequestSerializer):
         incident_id = serializers.CharField(required=True, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=False, label="业务ID")
+        incident_name = serializers.CharField(required=False, label="故障名称")
+        incident_reason = serializers.CharField(required=False, label="故障原因")
+        level = serializers.CharField(required=False, label="故障级别")
+        assignee = serializers.ListField(required=False, label="故障负责人")
+        handlers = serializers.ListField(required=False, label="故障处理人")
+        labels = serializers.ListField(required=False, label="故障标签")
 
 
 class GetIncidentSnapshot(DataAccessAPIResource):
