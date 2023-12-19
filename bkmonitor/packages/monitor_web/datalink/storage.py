@@ -10,9 +10,11 @@ specific language governing permissions and limitations under the License.
 """
 
 import copy
+import json
 import time
 from typing import Dict, List, Optional, Tuple
 
+import humanize
 from django.utils.translation import ugettext_lazy as _
 from typing_extensions import TypedDict
 
@@ -89,9 +91,9 @@ class InfluxdbStorager(Storager):
             "content": {
                 "keys": [
                     {"key": "host_name", "name": _("主机实例")},
-                    {"key": "influxdb_httpd_req", "name": _("请求数")},
+                    {"key": "influxdb_httpd_req", "name": _("服务端请求数")},
                     {"key": "influxdb_httpd_server_error", "name": _("服务端错误数")},
-                    {"key": "influxdb_runtime_sys", "name": _("占用内存")},
+                    {"key": "influxdb_runtime_sys", "name": _("内存占用量")},
                 ],
                 "values": [],
             },
@@ -102,9 +104,9 @@ class InfluxdbStorager(Storager):
             "content": {
                 "keys": [
                     {"key": "database", "name": _("库名")},
-                    {"key": "influxdb_shard_write_points_ok", "name": _("写入成功数")},
-                    {"key": "influxdb_shard_write_point_err", "name": _("写入失败数")},
-                    {"key": "influxdb_shard_disk_bytes", "name": _("磁盘字节数")},
+                    {"key": "influxdb_shard_write_points_ok", "name": _("累积写入成功点数")},
+                    {"key": "influxdb_shard_write_point_err", "name": _("累积写入失败点数")},
+                    {"key": "influxdb_shard_disk_bytes", "name": _("磁盘占用量")},
                     {"key": "influxdb_database_num_series", "name": _("Series数量")},
                 ],
                 "values": [],
@@ -149,19 +151,19 @@ class InfluxdbStorager(Storager):
         ret = self._query_cluster_metric(
             "influxdb.httpd.req", bkm_cluster=self.handle_info_instance_cluster_name(), bkm_hostname=host_name
         )
-        return "{} / 10s".format(ret[1]) if ret is not None else "-"
+        return humanize.intcomma(ret[1]) if ret is not None else "-"
 
     def handle_status_instance_influxdb_httpd_server_error(self, host_name: str) -> str:
         ret = self._query_cluster_metric(
             "influxdb.httpd.server_error", bkm_cluster=self.handle_info_instance_cluster_name(), bkm_hostname=host_name
         )
-        return "{} / 10s".format(ret[1]) if ret is not None else "-"
+        return humanize.intcomma(ret[1]) if ret is not None else "-"
 
     def handle_status_instance_influxdb_runtime_sys(self, host_name: str) -> str:
         ret = self._query_cluster_metric(
             "influxdb.runtime.sys", bkm_cluster=self.handle_info_instance_cluster_name(), bkm_hostname=host_name
         )
-        return "{}B".format(ret[1]) if ret is not None else "-"
+        return humanize.naturalsize(ret[1]) if ret is not None else "-"
 
     def handle_status_database(self, content: StatusContent) -> StatusContent:
         keys = content["keys"]
@@ -181,25 +183,25 @@ class InfluxdbStorager(Storager):
         ret = self._query_cluster_metric(
             "influxdb.shard.write_points_ok", bkm_cluster=self.handle_info_instance_cluster_name(), database=database
         )
-        return "{} / 10s".format(ret[1]) if ret is not None else "-"
+        return humanize.intcomma(ret[1]) if ret is not None else "-"
 
     def handle_status_database_influxdb_shard_write_point_err(self, database: str):
         ret = self._query_cluster_metric(
             "influxdb.shard.write_points_err", bkm_cluster=self.handle_info_instance_cluster_name(), database=database
         )
-        return "{} / 10s".format(ret[1]) if ret is not None else "-"
+        return humanize.intcomma(ret[1]) if ret is not None else "-"
 
     def handle_status_database_influxdb_shard_disk_bytes(self, database: str):
         ret = self._query_cluster_metric(
             "influxdb.shard.disk_bytes", bkm_cluster=self.handle_info_instance_cluster_name(), database=database
         )
-        return "{}B / 10s".format(ret[1]) if ret is not None else "-"
+        return humanize.naturalsize(ret[1]) if ret is not None else "-"
 
     def handle_status_database_influxdb_database_num_series(self, database: str):
         ret = self._query_cluster_metric(
             "influxdb.database.num_series", bkm_cluster=self.handle_info_instance_cluster_name(), database=database
         )
-        return str(ret[1]) if ret is not None else "-"
+        return humanize.intcomma(ret[1]) if ret is not None else "-"
 
     def _query_cluster_metric(self, metric_name: str, **conditions) -> Optional[Tuple[int, int]]:
         """查询集群指标"""
@@ -210,6 +212,22 @@ class InfluxdbStorager(Storager):
                     "table_id": "",
                     "field_name": metric_name,
                     "field_list": None,
+                    "function": [
+                        {
+                            "method": "sum",
+                            "without": False,
+                            "dimensions": [],
+                            "position": 0,
+                            "args_list": None,
+                            "vargs_list": None,
+                        }
+                    ],
+                    "time_aggregation": {
+                        "function": "sum_over_time",
+                        "window": "60s",
+                        "position": 0,
+                        "vargs_list": None,
+                    },
                     "reference_name": "a",
                     "dimensions": [],
                     "limit": 0,
@@ -234,6 +252,7 @@ class InfluxdbStorager(Storager):
         body["query_list"][0]["conditions"]["field_list"] = field_list
         body["query_list"][0]["conditions"]["condition_list"] = condition_list
         try:
+            logger.info("Query cluster metrics, body = {}".format(json.dumps(body)))
             ret = api.unify_query.query_cluster_metrics_data(**body)
         except BKAPIError as err:
             logger.exception("Fail to query cluster metrics, body={}, err={}".format(body, err))

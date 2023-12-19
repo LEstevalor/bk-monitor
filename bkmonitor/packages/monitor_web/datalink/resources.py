@@ -9,6 +9,7 @@ an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express o
 specific language governing permissions and limitations under the License.
 """
 import copy
+import json
 import time
 from datetime import datetime
 from enum import Enum
@@ -18,6 +19,7 @@ from bkmonitor.action.serializers.strategy import UserGroupSlz
 from bkmonitor.models.strategy import UserGroup
 from bkmonitor.utils.user import get_global_user
 from bkmonitor.views import serializers
+from common.log import logger
 from constants.alert import EventStatus
 from core.drf_resource import api, resource
 from core.drf_resource.base import Resource
@@ -78,7 +80,7 @@ class BaseStatusResource(Resource):
         start_time, end_time = int(time.time() - time_range), int(time.time())
         request_data = {
             "bk_biz_ids": [self.collect_config.bk_biz_id],
-            "query_string": " OR ".join(f"strategy_id : {sid}" for sid in self.strategy_ids),
+            "query_string": self.build_alert_query_string(),
             "start_time": start_time,
             "end_time": end_time,
         }
@@ -120,6 +122,13 @@ class BaseStatusResource(Resource):
     def has_strategies(self) -> bool:
         return len(self.strategy_ids) > 0
 
+    def build_alert_query_string(self) -> str:
+        query_string = "({strategy}) AND ({collection})".format(
+            strategy=" OR ".join(f"strategy_id : {sid}" for sid in self.strategy_ids),
+            collection="tags.bk_collect_config_id: {}".format(self.collect_config_id),
+        )
+        return query_string
+
 
 class AlertStatusResource(BaseStatusResource):
     """查询数据链路各个阶段的告警状态"""
@@ -151,6 +160,7 @@ class AlertStatusResource(BaseStatusResource):
                     for strategy in strategies
                 ],
             },
+            "alert_query": self.build_alert_query_string(),
         }
 
 
@@ -183,7 +193,7 @@ class CollectingTargetStatusResource(BaseStatusResource):
         bk_host_ids = []
         for group in instance_status["contents"]:
             for child in group["child"]:
-                bk_host_ids.append(child["bk_host_id"])
+                bk_host_ids.append(str(child["bk_host_id"]))
 
         targets_alert_histogram = {}
         if self.has_strategies():
@@ -193,7 +203,7 @@ class CollectingTargetStatusResource(BaseStatusResource):
         # 填充主机的告警信息
         for group in instance_status["contents"]:
             for child in group["child"]:
-                child["alert_histogram"] = targets_alert_histogram.get(child["bk_host_id"], None)
+                child["alert_histogram"] = targets_alert_histogram.get(str(child["bk_host_id"]), None)
         return instance_status
 
     def search_target_alert_histogram(self, targets: List[str], time_range: int = 3600) -> Dict:
@@ -203,7 +213,7 @@ class CollectingTargetStatusResource(BaseStatusResource):
 
         request_data = {
             "bk_biz_ids": [self.collect_config.bk_biz_id],
-            "query_string": " OR ".join(f"strategy_id : {sid}" for sid in self.strategy_ids),
+            "query_string": self.build_alert_query_string(),
         }
 
         handler = AlertQueryHandler(**request_data)
@@ -228,6 +238,7 @@ class CollectingTargetStatusResource(BaseStatusResource):
         search_object.aggs.bucket("init_alert", "filter", {"range": {"begin_time": {"lt": start_time}}}).bucket(
             "targets", "terms", field="event.bk_host_id"
         )
+        logger.info("Search collecting alerts, statement = {}".format(json.dumps(search_object.to_dict())))
         search_result = search_object[:0].execute()
         # 检索后的数据整理后，按照主机ID分桶存放，启动和结束记录还需要按照时间分桶存放
         init_alerts: Dict[str, int] = dict()
@@ -245,6 +256,11 @@ class CollectingTargetStatusResource(BaseStatusResource):
                 end_alerts[target_bucket.key] = {}
                 for time_bucket in target_bucket.time.buckets:
                     end_alerts[target_bucket.key][int(time_bucket.key_as_string) * 1000] = time_bucket.doc_count
+        logger.info(
+            "Search collecting alerts, init_alert={}, begine_alerts={}, end_alerts={}".format(
+                init_alerts, begine_alerts, end_alerts
+            )
+        )
 
         # 初始化主机分桶信息，每个分桶里按照时间分桶初始化 0
         ts_buckets = range(start_time, end_time, interval)
@@ -295,50 +311,42 @@ class TransferCountSeriesResource(BaseStatusResource):
             interval_unit = "m"
 
         # 读取采集相关的指标列表
-        metrics_alias = []
-        metrics_query_configs = []
-        metric_idx = 1
-
-        for table in self.get_metrics_json():
-            # 根据插件类型计算出入库 RT_ID
-            for metric_name in table["metric_names"]:
-                metric_alias = f"m{metric_idx}"
-                metrics_query_configs.append(
-                    {
-                        "data_source_label": "bk_monitor",
-                        "data_type_label": "time_series",
-                        "metrics": [{"field": metric_name, "method": "COUNT", "alias": metric_alias}],
-                        "table": table["table_id"],
-                        "data_label": "",
-                        "index_set_id": None,
-                        "group_by": [],
-                        "where": [{"key": "bk_collect_config_id", "method": "eq", "value": [self.collect_config_id]}],
-                        "interval": interval,
-                        "interval_unit": interval_unit,
-                        "time_field": None,
-                        "filter_dict": {},
-                        "functions": [],
-                    }
-                )
-                metrics_alias.append(metric_alias)
-                metric_idx += 1
+        promqls = [
+            """sum(count_over_time({{
+                __name__=~"bkmonitor:{table_id}:.*",
+                bk_collect_config_id="{collect_config_id}"}}[{interval}{unit}])) or vector(0)
+            """.format(
+                table_id=table["table_id"],
+                collect_config_id=self.collect_config_id,
+                interval=interval,
+                unit=interval_unit,
+            )
+            for table in self.get_metrics_json()
+        ]
 
         # 没有指标配置，返回空序列
-        if len(metrics_query_configs) == 0:
+        if len(promqls) == 0:
             return []
 
         query_params = {
             "bk_biz_id": self.collect_config.bk_biz_id,
-            "query_configs": metrics_query_configs,
-            "expression": "+".join(f"({alias} or vector(0))" for alias in metrics_alias),
-            "functions": [],
+            "query_configs": [
+                {
+                    "data_source_label": "prometheus",
+                    "data_type_label": "time_series",
+                    "promql": " + ".join(promqls),
+                    "interval": interval * 60,
+                    "alias": "result",
+                }
+            ],
+            "expression": "",
             "alias": "result",
-            "name": "COUNT(ALL)",
             "start_time": start_time,
             "end_time": end_time,
             "slimit": 500,
             "down_sample_range": "",
         }
+        logger.info("Search transfer metric count, statement = {}".format(json.dumps(query_params)))
         return resource.grafana.graph_unify_query(query_params)["series"]
 
 
