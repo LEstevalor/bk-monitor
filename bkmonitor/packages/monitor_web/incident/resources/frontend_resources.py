@@ -13,9 +13,12 @@ from collections import Counter, defaultdict
 from dataclasses import asdict
 from typing import Any, Dict, List
 
+import arrow
+
 from bkmonitor.aiops.incident.models import IncidentGraphEntity, IncidentSnapshot
 from bkmonitor.aiops.incident.operation import IncidentOperationManager
 from bkmonitor.documents.alert import AlertDocument
+from bkmonitor.documents.base import BulkActionType
 from bkmonitor.documents.incident import (
     IncidentDocument,
     IncidentOperationDocument,
@@ -28,6 +31,7 @@ from constants.incident import (
     IncidentAlertAggregateDimension,
     IncidentOperationClass,
     IncidentOperationType,
+    IncidentStatus,
 )
 from core.drf_resource import api, resource
 from core.drf_resource.base import Resource
@@ -104,6 +108,29 @@ class IncidentBaseResource(Resource):
             )
 
         return nodes
+
+    def update_incident_document(self, incident_info: Dict, update_time: arrow.Arrow) -> None:
+        """更新故障记录，并记录故障流转
+
+        :param incident_info: 需要更新的信息
+        :param update_time: 更新时间
+        """
+        incident_document = IncidentDocument.get(incident_info["id"])
+        for incident_key, incident_value in incident_info.items():
+            if hasattr(incident_document, incident_key) and getattr(incident_document, incident_key) != incident_value:
+                if incident_key == "status" and incident_value == IncidentStatus.CLOSED.value:
+                    IncidentOperationManager.record_close_incident(incident_info["incident_id"], update_time.timestamp)
+                else:
+                    IncidentOperationManager.record_user_update_incident(
+                        incident_info["incident_id"],
+                        update_time.timestamp,
+                        incident_key,
+                        getattr(incident_document, incident_key),
+                        incident_key,
+                    )
+                setattr(incident_document, incident_key, incident_value)
+
+        IncidentDocument.bulk_create([incident_document], action=BulkActionType.UPDATE)
 
 
 class IncidentListResource(IncidentBaseResource):
@@ -650,7 +677,8 @@ class EditIncidentResource(IncidentBaseResource):
 
         incident_info = api.bkdata.get_incident_detail(incident_id=incident_id)
         incident_info.update(validated_request_data)
-        api.bkdata.update_incident_detail(**incident_info)
+        updated_incident = api.bkdata.update_incident_detail(**incident_info)
+        self.update_incident_document(incident_info, arrow.get(updated_incident["updated_at"]))
         return incident_info
 
 
