@@ -183,7 +183,6 @@ class ClusteringReportHandler(BaseReportHandler):
         """
         获取渲染参数
         """
-        # TODO: 激活时区
         time_config = get_data_range(self.report.frequency)
         result = self.query_patterns(time_config)
         if not result:
@@ -228,6 +227,8 @@ class ClusteringReportHandler(BaseReportHandler):
             "percentage": 1 or round(max([i["percentage"] for i in result]), 2),
             "clustering_fields": clustering_config["clustering_fields"],
             "time": datetime.now().strftime("%Y%m%d"),
+            "is_link_enabled": content_config.get("is_link_enabled", True),
+            "generate_attachment": scenario_config.get("generate_attachment", False),
         }
 
         logger.info(f"{self.log_prefix} Before sending notification params: {render_params}")

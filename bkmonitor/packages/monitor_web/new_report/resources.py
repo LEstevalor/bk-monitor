@@ -11,7 +11,6 @@ specific language governing permissions and limitations under the License.
 import copy
 import logging
 from collections import defaultdict
-from datetime import datetime
 from urllib.parse import urljoin
 
 import arrow
@@ -31,6 +30,7 @@ from bkmonitor.report.serializers import (
     FrequencySerializer,
     ScenarioConfigSerializer,
 )
+from bkmonitor.report.utils import get_last_send_record_map
 from bkmonitor.utils.itsm import ApprovalStatusEnum
 from bkmonitor.utils.request import get_request, get_request_username
 from bkmonitor.utils.user import get_local_username
@@ -108,7 +108,7 @@ class GetReportListResource(Resource):
         username = get_request_username()
         # 已失效订阅列表
         for report in qs:
-            if report.is_invalid():
+            if Report.is_invalid(report.end_time):
                 invalid_report_ids.add(report.id)
         # 已取消订阅列表
         cancelled_report_ids = set(
@@ -189,7 +189,7 @@ class GetReportListResource(Resource):
             reverse_order = True
             order = order[1:]  # 去掉负号
 
-        sorted_reports = sorted(reports, key=lambda x: x[order] or datetime.min, reverse=reverse_order)
+        sorted_reports = sorted(reports, key=lambda x: arrow.get(x[order]).timestamp or 0, reverse=reverse_order)
         return sorted_reports
 
     def fill_external_info(self, reports, external_filter_dict, report_channels_map, last_send_record_map):
@@ -197,6 +197,7 @@ class GetReportListResource(Resource):
         current_user = get_request_username()
         for report in reports:
             report["channels"] = report_channels_map.get(report["id"], [])
+            report["is_invalid"] = Report.is_invalid(report["end_time"])
             report["is_self_subscribed"] = True if report["create_user"] == current_user else False
             record_info = last_send_record_map[report["id"]]
             if record_info:
@@ -234,18 +235,7 @@ class GetReportListResource(Resource):
             report_qs = self.filter_by_query_type(report_qs, validated_request_data["query_type"])
 
         # 获取订阅最后一次发送记录
-        last_send_record_map = defaultdict(lambda: {"send_time": None, "records": []})
-        total_Q = Q()
-        Q_list = [
-            Q(report_id=report_info["id"], send_round=report_info["send_round"])
-            for report_info in list(report_qs.values("id", "send_round"))
-        ]
-        for Q_item in Q_list:
-            total_Q |= Q_item
-        for record in ReportSendRecord.objects.filter(total_Q).order_by("-send_time").values():
-            if not last_send_record_map[record["report_id"]]["send_time"]:
-                last_send_record_map[record["report_id"]]["send_time"] = record["send_time"]
-            last_send_record_map[record["report_id"]]["records"].append(record)
+        last_send_record_map = get_last_send_record_map(report_qs)
 
         db_filter_dict, external_filter_dict = self.get_filter_dict_by_conditions(validated_request_data["conditions"])
 
