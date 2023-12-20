@@ -45,7 +45,7 @@ export default class FieldDetails extends tsc<FieldDetailsProps> {
   @Watch('detailData')
   handleDetailDataChange(val: DetailData) {
     if (val) {
-      this.metricList = val.metric_list.map(item => ({ ...item, collapse: true }));
+      this.metricList = val.metric_list.map((item, ind) => ({ ...item, collapse: ind === 0 }));
     }
   }
 
@@ -60,6 +60,7 @@ export default class FieldDetails extends tsc<FieldDetailsProps> {
     return (
       <div class='field-details-component'>
         <div class='metric-dimension'>
+          <div class='title'>{this.$t('指标/维度')}</div>
           <div class='table-wrap'>
             {this.metricList.map((item, index) => (
               <div class='table-item'>

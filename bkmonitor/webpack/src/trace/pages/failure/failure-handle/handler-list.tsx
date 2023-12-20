@@ -125,8 +125,9 @@ export default defineComponent({
           class={['list-item', { active: index === 2 }]}
           onClick={() => handleClickItem(item)}
         >
+          <i class={`icon-monitor icon-mc-all head-icon`} />
           <span class='item-head'>
-            <i class='icon-monitor icon-mc-user-one head-icon' />
+            <i class={`icon-monitor icon-mc-${item.id === 'all' ? 'user-one' : 'user-one'} head-icon`} />
           </span>
           <span
             class='item-name'
@@ -206,7 +207,7 @@ export default defineComponent({
         </div>
         <Loading loading={this.listLoading}>
           <div class='handler-list-main'>
-            {this.listFn([all, not_dispatch, mine])}
+            {this.listFn([all, mine])}
             <span class='item-line'></span>
             {this.listFn(this.searchResult, true)}
           </div>

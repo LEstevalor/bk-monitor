@@ -6,8 +6,20 @@
   padding-left: 12px;
   color: white;
   background-color: #454547;
-  padding-right: 16px;
+  padding-right: 0px;
   &-agg {
     margin-left: auto;
+  }
+  .topo-tools-list {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-left: 1px solid #313238;
+    font-size: 14px;
+    color: #c4c6cc;
+    margin-left: 15px;
+    cursor: pointer;
   }
 }

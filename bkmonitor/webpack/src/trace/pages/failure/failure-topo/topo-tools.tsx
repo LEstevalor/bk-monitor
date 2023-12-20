@@ -23,7 +23,7 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, ref, shallowRef } from 'vue';
+import { defineComponent, ref, shallowRef, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { incidentTopologyMenu } from '@api/modules/incident';
 import { random } from '@common/utils/utils';
@@ -34,6 +34,52 @@ import AggregationSelect from './aggregation-select';
 
 import './topo-tools.scss';
 
+const fullscreenHelper = (function () {
+  // 全屏请求的兼容性封装
+  function requestFullscreen(element) {
+    if (element.requestFullscreen) {
+      element.requestFullscreen();
+    } else if (element.webkitRequestFullscreen) {
+      element.webkitRequestFullscreen();
+    } else if (element.mozRequestFullScreen) {
+      element.mozRequestFullScreen();
+    } else if (element.msRequestFullscreen) {
+      element.msRequestFullscreen();
+    } else {
+      console.error('Fullscreen API is not supported in this browser');
+    }
+  }
+
+  // 全屏退出的兼容性封装
+  function exitFullscreen() {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    } else if (document.mozCancelFullScreen) {
+      document.mozCancelFullScreen();
+    } else if (document.msExitFullscreen) {
+      document.msExitFullscreen();
+    } else {
+      console.error('Fullscreen API is not supported in this browser');
+    }
+  }
+
+  // 监听全屏事件的处理
+  function onFullscreenChange(handler) {
+    document.addEventListener('fullscreenchange', handler, false);
+    document.addEventListener('webkitfullscreenchange', handler, false);
+    document.addEventListener('mozfullscreenchange', handler, false);
+    document.addEventListener('MSFullscreenChange', handler, false);
+  }
+
+  return {
+    requestFullscreen: requestFullscreen,
+    exitFullscreen: exitFullscreen,
+    onFullscreenChange: onFullscreenChange
+  };
+})();
+
 export default defineComponent({
   name: 'TopoTools',
   emits: ['update:AggregationConfig'],
@@ -41,6 +87,7 @@ export default defineComponent({
     const treeData = shallowRef([]);
     const checkedIds = ref([]);
     const autoAggregate = ref(true);
+    const isFullscreen = ref(false);
     const { t } = useI18n();
     const aggregateConfig = ref({});
     const incidentId = useIncidentInject();
@@ -122,10 +169,29 @@ export default defineComponent({
     const updateAggregationConfig = () => {
       emit('update:AggregationConfig', getAggregationConfigValue());
     };
+    const exitFullscreen = () => {
+      if (!document.fullscreenElement) {
+        isFullscreen.value = false;
+      }
+    };
+    const handleFullscreen = () => {
+      if (isFullscreen.value) {
+        fullscreenHelper.exitFullscreen();
+        isFullscreen.value = false;
+      } else {
+        fullscreenHelper.requestFullscreen(document.querySelector('.failure-topo'));
+        isFullscreen.value = true;
+      }
+    };
+    onMounted(() => {
+      fullscreenHelper.onFullscreenChange(exitFullscreen);
+    });
     return {
+      isFullscreen,
       treeData,
       checkedIds,
       autoAggregate,
+      handleFullscreen,
       handleUpdateAutoAggregate,
       handleUpdateCheckedIds
     };
@@ -142,6 +208,15 @@ export default defineComponent({
           onUpdate:autoAggregate={this.handleUpdateAutoAggregate}
           onUpdate:checkedIds={this.handleUpdateCheckedIds}
         />
+        <div
+          class='topo-tools-list'
+          v-bk-tooltips={{ content: this.$t('全屏'), disabled: this.isFullscreen }}
+          onClick={this.handleFullscreen}
+        >
+          <span class='fullscreen'>
+            <i class={['icon-monitor', !this.isFullscreen ? 'icon-zhankai1' : 'icon-shouqi1']}></i>
+          </span>
+        </div>
       </div>
     );
   }

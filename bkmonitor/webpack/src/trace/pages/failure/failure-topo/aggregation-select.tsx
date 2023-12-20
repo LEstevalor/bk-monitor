@@ -67,6 +67,7 @@ export default defineComponent({
         <Popover
           trigger='click'
           arrow={false}
+          boundary='parent'
           extCls='aggregation-select-popover'
           v-slots={{
             default: () => (

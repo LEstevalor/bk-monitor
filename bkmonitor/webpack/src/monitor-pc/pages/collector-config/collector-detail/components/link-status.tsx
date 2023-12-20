@@ -77,12 +77,16 @@ export default class LinkStatus extends tsc<LinkStatusProps, {}> {
   @Watch('show')
   handleShowChange(val) {
     if (val) {
-      if (this.collectId) this.init();
       this.$nextTick(() => {
         this.minuteChart.chartResize();
         this.dayChart.chartResize();
       });
     }
+  }
+
+  @Watch('collectId', { immediate: true })
+  handleCollectIdChange(val) {
+    val && this.init();
   }
 
   handleTimeRange(val, type: 'minute' | 'day') {
@@ -103,12 +107,10 @@ export default class LinkStatus extends tsc<LinkStatusProps, {}> {
       start_time: startTime,
       end_time: endTime
     }).catch(() => [{ datapoints: [] }]);
-    if (res.length) {
-      if (type === 'minute') {
-        this.minuteChartConfig.data = res[0].datapoints;
-      } else {
-        this.dayChartConfig.data = res[0].datapoints;
-      }
+    if (type === 'minute') {
+      this.minuteChartConfig.data = res[0].datapoints;
+    } else {
+      this.dayChartConfig.data = res[0].datapoints;
     }
   }
 
@@ -199,7 +201,7 @@ export default class LinkStatus extends tsc<LinkStatusProps, {}> {
               <TableColumn
                 type='index'
                 label={this.$t('序号')}
-                width='120'
+                width='90'
               />
               <TableColumn
                 label={this.$t('原始数据')}

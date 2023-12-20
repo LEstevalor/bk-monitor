@@ -25,22 +25,42 @@
  * IN THE SOFTWARE.
  */
 import { defineComponent, nextTick, onMounted, onUnmounted, ref, shallowRef } from 'vue';
-import { Arrow, Graph, registerEdge, registerLayout, registerNode, Tooltip } from '@antv/g6';
+import { Arrow, Graph, registerEdge, registerLayout, registerNode, Tooltip, Layout, registerBehavior } from '@antv/g6';
 import { incidentTopology } from '@api/modules/incident';
 import { addListener, removeListener } from 'resize-detector';
 import { debounce } from 'throttle-debounce';
-
+import { Popover, Slider } from 'bkui-vue';
 import ResourceGraph from '../resource-graph/resource-graph';
 import { useIncidentInject } from '../utils';
-
+import kyjs from 'klayjs';
 import dbsvg from './db.svg';
 import FailureTopoTooltips from './failure-topo-tooltips';
 import httpSvg from './http.svg';
 import TopoTools from './topo-tools';
 import { ITopoCombo, ITopoData, ITopoNode } from './types';
 import { getNodeAttrs } from './utils';
-
+import elk from 'elkjs';
 import './failure-topo.scss';
+import { divide } from 'lodash';
+
+const NODE_TYPE = [
+  {
+    text: '正常',
+    status: 'normal'
+  },
+  {
+    text: '异常',
+    status: 'error'
+  },
+  {
+    text: '根因',
+    status: 'root'
+  },
+  {
+    text: '反馈的根因',
+    status: 'feedBackRoot'
+  }
+];
 
 export default defineComponent({
   name: 'FailureTopo',
@@ -49,6 +69,9 @@ export default defineComponent({
     const graphRef = ref<HTMLDivElement>(null);
     let graph: Graph;
     let tooltips = null;
+    /** g6 默认缩放级别 数值 / 10 为真实结果值  */
+    const MIN_ZOOM = 2;
+    const MAX_ZOOM = 100;
     const tooltipsModel = shallowRef<ITopoNode | ITopoNode[]>();
     const tooltipsType = ref('node');
     const tooltipsRef = ref<InstanceType<typeof FailureTopoTooltips>>();
@@ -57,6 +80,7 @@ export default defineComponent({
     const aggregateConfig = ref({});
     const incidentId = useIncidentInject();
     const nodeEntityId = ref('');
+    const zoomValue = ref(0);
     const showResourceGraph = ref(false);
     const registerCustomNode = () => {
       registerNode('topo-node', {
@@ -238,6 +262,29 @@ export default defineComponent({
         'line'
       );
     };
+    const registerCustomBehavior = () => {
+      registerBehavior('custom-wheel-zoom', {
+        getEvents() {
+          return {
+            wheel: 'onWheel'
+          };
+        },
+        onWheel(evt) {
+          // 阻止默认的滚动行为
+          evt.preventDefault();
+          // 获取当前的缩放比例
+          const currentZoom = graph.getZoom();
+          // 根据 deltaY 值确定是放大还是缩小
+          const zoomFactor = evt.deltaY > 0 ? 0.9 : 1.1;
+          // 计算新的缩放比例
+          let newZoom = currentZoom * zoomFactor;
+          // 限制缩放比例在0.2至10之间
+          newZoom = Math.min(MAX_ZOOM / 10, Math.max(MIN_ZOOM / 10, newZoom));
+          // 使用 graph.zoomTo 方法设置新的缩放比例
+          graph.zoomTo(newZoom);
+        }
+      });
+    };
     const registerCustomLayout = () => {
       registerLayout('topo-layout', {
         executeX() {
@@ -256,6 +303,7 @@ export default defineComponent({
           const xBegin = nodeSize / 2;
           const padding = 16 * 2;
           let totalWidth = 0;
+
           instanceCombos.forEach(combo => {
             const comboNodes = nodes.filter(node => node.comboId.toString() === combo.id.toString());
             const comboWidth = xBegin + comboNodes.length * (nodeSize + nodeMargin) + padding;
@@ -272,8 +320,55 @@ export default defineComponent({
           });
         },
         execute() {
-          const { nodes, combos } = this;
+          return;
+          console.log('asdasasd,', 'execute');
+          const { nodes } = this;
           const width = graph.getWidth();
+          const height = graph.getHeight();
+          const combos = graph.getCombos();
+          const filterCombos = combos.filter(item => !item.get('model').parentId);
+
+          filterCombos.forEach((combo, index) => {
+            // 获取 Combo 中包含的节点和边的范围
+            const bbox = combo.getBBox();
+            const prevBox = filterCombos[index - 1]?.getBBox?.();
+            const height = graph.getHeight();
+            const comboxHeight = height / combos.length;
+            const padding = 16;
+            const y = prevBox ? prevBox.height + padding : '';
+
+            const h = bbox.maxY - bbox.minY;
+            const w = graph.getWidth();
+            const updateConfig = {
+              // fixSize: [w, comboxHeight],
+              x: -w,
+              y: y
+              // style: {
+              //   fill: fillColor,
+              //   stroke: fillColor
+              // }
+            };
+            console.log(updateConfig, 'updateConfig');
+            // const fillColor =
+            //   groups.findIndex(id => id === combo.get('model').groupId) % 2 === 1 ? '#292A2B' : '#1B1C1F';
+            graph.updateItem(combo, updateConfig);
+            const { id, parentId } = combo.get('model');
+            if (parentId) {
+              console.info('parentId', parentId);
+            }
+            const childCombo = combos.find(item => item.get('model').parentId === id);
+            if (childCombo) {
+              return;
+              console.log('childCombochildCombo', childCombo, combo.getBBox(), combo);
+              graph.updateItem(childCombo, {
+                // fixSize: [w, 108],
+                x: combo.getBBox().width - 30,
+                y: 108 / 2 + 16
+              });
+            }
+          });
+          return;
+          console.log(combos, '...', this, nodes);
           const nodeSize = 46;
           const comboLableHeight = 40;
           const begin = nodeSize / 2 + comboLableHeight;
@@ -284,6 +379,10 @@ export default defineComponent({
           const minComboHeight = 66 * maxColumnCount;
           let hasNoSpecial = false;
           console.info('minComboHeight', minComboHeight);
+<<<<<<< deploy/paas3-dev-v2 8efdabea9311ca88c33c3230ec9a0c0eaad0509f
+=======
+          return;
+>>>>>>> feat/failure_alert_frontend a6f764ba697fd0bf3a4c3199c6c9d7dee3d82501
           combos.forEach(combo => {
             const comboNodes = nodes.filter(node => node.comboId.toString() === combo.id.toString());
             const comboWidth = comboNodes.length * (nodeSize + nodeMargin) + 6;
@@ -336,8 +435,9 @@ export default defineComponent({
     };
     function handleResize() {
       if (!graph || graph.get('destroyed') || !graphRef.value) return;
-      const { width, height } = graphRef.value.getBoundingClientRect();
-      graph.changeSize(width, Math.max(160 * topoRawData.combos.length, height));
+      const { height } = document.querySelector('.failure-topo').getBoundingClientRect();
+      const { width, height: cHeight } = graphRef.value.getBoundingClientRect();
+      graph.changeSize(width, 1087 || Math.max(160 * topoRawData.combos.length, height - 40));
       graph.render();
     }
     const onResize = debounce(300, handleResize);
@@ -354,6 +454,25 @@ export default defineComponent({
           nodes: nodes.map(node => ({ ...node, id: node.id.toString(), comboId: node.comboId.toString() }))
         };
       });
+      // topoRawData.combos.forEach(combo => {
+      //   combo.children = topoRawData.nodes.filter(node => node.comboId.toString() === combo.id.toString());
+      // });
+      // topoRawData.edges.forEach(edge => (edge.id = edge.source + '_' + edge.target));
+      // new elk()
+      //   .layout({
+      //     // ...前面步骤中生成的ELK图形数据
+      //     layoutOptions: {
+      //       'elk.algorithm': 'org.eclipse.elk.layered', // 指定层次布局算法
+      //       'elk.spacing.nodeNode': '50', // 节点之间的最小间距
+      //       'org.eclipse.elk.edgeRouting': 'ORTHOGONAL', // 边的路由样式: 直角(ORTHOGONAL)可以帮助避免穿过节点
+      //       'org.eclipse.elk.layered.unnecessaryBendpoints': 'true', // 减少不必要的边拐点
+      //       'org.eclipse.elk.layered.spacing.edgeNodeBetweenLayers': '50' // 节点和边之间的层间距
+      //     }
+      //   })
+      //   .then(graph => {})
+      //   .catch(err => {
+      //     console.log(err);
+      //   });
     };
     const renderGraph = () => {
       graph.data(JSON.parse(JSON.stringify(topoRawData)));
@@ -362,22 +481,43 @@ export default defineComponent({
     onMounted(async () => {
       await getGraphData();
       const { width, height } = graphRef.value.getBoundingClientRect();
+      console.log(height, '....');
       console.info('topo graph', width, height);
+      const maxHeight = Math.max(160 * topoRawData.combos.length, height);
       registerCustomNode();
+      registerCustomBehavior();
       registerCustomEdge();
       registerCustomLayout();
       registerCustomTooltip();
       graph = new Graph({
         container: graphRef.value,
         width,
-        height: Math.max(160 * topoRawData.combos.length, height),
+        height: maxHeight,
         fitViewPadding: 0,
         fitCenter: false,
         fitView: false,
-        minZoom: 0.00000001,
+        minZoom: 0.2,
         groupByTypes: false,
         plugins: [tooltips],
         layout: {
+          type: 'comboCombined',
+          outerLayout: new Layout['grid']({
+            preventOverlap: true,
+            begin: [0, 0],
+            preventOverlapPadding: 16
+          }),
+          innerLayout: new Layout['dagre']({
+            sortByCombo: true,
+            rankdir: 'BT',
+            // sortBy: 'degree',
+            preventOverlap: true,
+            minNodeSpacing: 20,
+            linkDistance: 50, // 可选，边长
+            nodeStrength: 30, // 可选
+            edgeStrength: 0.1 // 可选
+            // align: 'DL',
+            // ranksep: 60
+          }) // rankdir: 'LR'
           // type: 'comboForce',
           // maxIteration: 1000,
           // nodeSpacing: () => 3,
@@ -386,20 +526,17 @@ export default defineComponent({
           // comboSpacing: () => 100,
           // preventComboOverlap: true,
           // preventNodeOverlap: true,
-
           // // center: [ 0, 0 ],     // 可选，默认为图的中心
           // // linkDistance: 1050,         // 可选，边长
           // // nodeStrength: 30,         // 可选
           // edgeStrength: 0.1,        // 可选
-
           // // gravity: 0.1,
           // // comboGravity: 0.1,
           // // workerEnabled: true,
           // gpuEnabled: true,
           // type: 'grid',
-
           // type: 'dagre',
-          type: 'topo-layout'
+          // type: 'topo-layout'
           // rankdir: 'LR',
           // align: 'UL',
           // nodesep: 10,
@@ -416,8 +553,9 @@ export default defineComponent({
         },
         defaultCombo: {
           type: 'rect',
-          // padding: [10, 10],
+          // padding: [100, 100],
           style: {
+            width: width - 80,
             fill: '#3A3B3D',
             radius: 6,
             stroke: '#3A3B3D'
@@ -430,7 +568,7 @@ export default defineComponent({
           }
         },
         modes: {
-          default: ['drag-combo', 'drag-node', 'drag-canvas', 'zoom-canvas']
+          default: ['drag-node', 'custom-wheel-zoom']
         }
       });
       graph.node(node => {
@@ -470,6 +608,14 @@ export default defineComponent({
         const nodeItem = e.item;
         graph.setItemState(nodeItem, 'hover', true);
       });
+      // 监听缩放变化
+      graph.on('viewportchange', e => {
+        // e 包含事件的细节，可能具有 action、matrix 等属性
+        if (e.action && e.action === 'zoom') {
+          const zoom = graph.getZoom();
+          zoomValue.value = Math.min(zoom * 10, MAX_ZOOM);
+        }
+      });
       // 监听鼠标离开节点
       graph.on('node:mouseleave', e => {
         const nodeItem = e.item;
@@ -488,7 +634,42 @@ export default defineComponent({
         tooltips.hide();
       });
       graph.on('afterlayout', () => {
+        console.log('-----------');
+        const zoom = graph.getZoom();
+        zoomValue.value = Math.min(zoom * 10, MAX_ZOOM);
+
+        const width = graph.getWidth();
+        const height = graph.getHeight();
         const combos = graph.getCombos();
+        const filterCombos = combos.filter(item => !item.get('model').parentId);
+
+        filterCombos.forEach((combo, index) => {
+          // 获取 Combo 中包含的节点和边的范围
+          const bbox = combo.getBBox();
+          const prevBox = filterCombos[index - 1]?.getBBox?.();
+          const height = graph.getHeight();
+          const comboxHeight = height / combos.length;
+          const padding = prevBox ? prevBox.height + 16 : 0;
+          const centerY = height / 2;
+          const y = prevBox ? prevBox.height : 0;
+          const h = bbox.maxY - bbox.minY;
+
+          const w = graph.getWidth();
+          const updateConfig = {
+            size: [w - 80, 0],
+            x: w / 2,
+            y: bbox.height / 2 + 40 + padding
+            // style: {
+            //   fill: fillColor,
+            //   stroke: fillColor
+            // }
+          };
+          // const fillColor =
+          //   groups.findIndex(id => id === combo.get('model').groupId) % 2 === 1 ? '#292A2B' : '#1B1C1F';
+          graph.updateItem(combo, updateConfig);
+        });
+
+        return;
         const instanceCombos = combos.filter(combo => combo.get('model').dataType === 'service_instance');
         let i = 0;
         let w = 0;
@@ -549,22 +730,42 @@ export default defineComponent({
     const handleExpandResourceChange = () => {
       showResourceGraph.value = !showResourceGraph.value;
     };
+    const handleResetZoom = () => {
+      zoomValue.value = 10;
+      graph.zoomTo(1);
+    };
+    const handleZoomChange = () => {
+      const value = zoomValue.value / 10;
+      graph.zoomTo(value);
+    };
+    const handleUpdateZoom = val => {
+      const value = Math.max(MIN_ZOOM, zoomValue.value + Number(val));
+      zoomValue.value = Math.min(MAX_ZOOM, value);
+      handleZoomChange();
+    };
     return {
       nodeEntityId,
       showResourceGraph,
       topoGraphRef,
       graphRef,
+      zoomValue,
       tooltipsRef,
       tooltipsModel,
       nodeEntityId,
       tooltipsType,
+      handleUpdateZoom,
+      handleZoomChange,
+      handleResetZoom,
       handleUpdateAggregateConfig,
       handleExpandResourceChange
     };
   },
   render() {
     return (
-      <div class='failure-topo'>
+      <div
+        class='failure-topo'
+        id='failure-topo'
+      >
         <TopoTools onUpdate:AggregationConfig={this.handleUpdateAggregateConfig} />
         <div
           class='topo-graph-wrapper'
@@ -575,6 +776,85 @@ export default defineComponent({
             class='topo-graph'
             id='topo-graph'
           />
+          <div class='failure-topo-graph-zoom'>
+            <Popover
+              extCls='failure-topo-graph-legend-popover'
+              minWidth={214}
+              boundary='parent'
+              offset={{ crossAxis: 90, mainAxis: 10 }}
+              trigger='click'
+              arrow={false}
+              theme='dark common-table'
+              placement='top'
+              v-slots={{
+                content: (
+                  <div class='failure-topo-graph-legend-content'>
+                    <ul class='node-type'>
+                      {NODE_TYPE.map(node => {
+                        return (
+                          <li>
+                            <span class={['circle', node.status]}></span>
+                            <span>{this.$t(node.text)}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <ul class='node-line-type'>
+                      <li>
+                        <span class='line'></span>
+                        <span>{this.$t('从属关系')}</span>
+                      </li>
+                      <li>
+                        <span class='line arrow'></span>
+                        <span>{this.$t('调用关系')}</span>
+                      </li>
+                      <li>
+                        <span class='line dash'></span>
+                        <span>{this.$t('故障传播')}</span>
+                      </li>
+                    </ul>
+                  </div>
+                ),
+                default: (
+                  <div
+                    class='failure-topo-graph-legend'
+                    v-bk-tooltips={{ content: this.$t('显示图例'), boundary: 'parent' }}
+                  >
+                    <i class='icon-monitor icon-legend'></i>
+                  </div>
+                )
+              }}
+            ></Popover>
+            <span class='failure-topo-graph-line'></span>
+            <div class='failure-topo-graph-zoom-slider'>
+              <div
+                class='failure-topo-graph-setting'
+                onClick={this.handleUpdateZoom.bind(this, -10)}
+              >
+                <i class='icon-monitor icon-minus-line'></i>
+              </div>
+              <Slider
+                minValue={2}
+                class='slider'
+                v-model={this.zoomValue}
+                onChange={this.handleZoomChange}
+              ></Slider>
+              <div
+                class='failure-topo-graph-setting'
+                onClick={this.handleUpdateZoom.bind(this, 10)}
+              >
+                <i class='icon-monitor icon-plus-line'></i>
+              </div>
+            </div>
+            <span class='failure-topo-graph-line'></span>
+            <div
+              class='failure-topo-graph-proportion'
+              v-bk-tooltips={{ content: this.$t('重置比例'), boundary: 'parent' }}
+              onClick={this.handleResetZoom}
+            >
+              <i class='icon-monitor icon-mc-restoration-ratio'></i>
+            </div>
+          </div>
           {this.showResourceGraph && <ResourceGraph entityId={this.nodeEntityId} />}
           <div
             class='expand-resource'
