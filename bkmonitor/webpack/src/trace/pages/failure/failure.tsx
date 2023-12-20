@@ -58,6 +58,7 @@ export default defineComponent({
         .then(res => {
           incidentDetailData.value = res;
           provide('incidentDetail', incidentDetailData.value);
+          console.log(incidentDetailData.value);
         })
         .catch(err => {
           console.log(err);
