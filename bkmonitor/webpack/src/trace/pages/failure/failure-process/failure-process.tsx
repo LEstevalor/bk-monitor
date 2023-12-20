@@ -29,7 +29,12 @@ import { Exception, Input, Loading, Popover, Tree } from 'bkui-vue';
 import { CogShape } from 'bkui-vue/lib/icon';
 import moment from 'moment';
 
-import { incidentOperations, incidentOperationTypes } from '../../../../monitor-api/modules/incident';
+import {
+  incidentOperations,
+  incidentOperationTypes,
+  incidentRecordOperation
+} from '../../../../monitor-api/modules/incident';
+import { useIncidentInject } from '../utils';
 
 import './failure-process.scss';
 
@@ -51,12 +56,16 @@ export default defineComponent({
     const operationTypeMap = ref({});
     const checkedNodes = ref([]);
     const tableLoading = ref(false);
+    const incidentId = useIncidentInject();
     /** 时间过滤 */
     const formatterTime = (time: number | string): string => {
       if (!time) return '--';
       if (typeof time !== 'number') return time;
       if (time.toString().length < 13) return moment(time * 1000).format('YYYY-MM-DD HH:mm:ss');
       return moment(time).format('YYYY-MM-DD HH:mm:ss');
+    };
+    const incidentRecordOperationApi = params => {
+      incidentRecordOperation(params);
     };
     const handleHide = () => {
       hidePopover.value = true;
@@ -345,8 +354,7 @@ export default defineComponent({
 
     const getIncidentOperations = () => {
       incidentOperations({
-        bk_biz_id: 2,
-        incident_id: 3
+        incident_id: incidentId.value
       })
         .then(res => {
           res.forEach(item => {
@@ -363,8 +371,7 @@ export default defineComponent({
     const getIncidentOperationTypes = () => {
       tableLoading.value = true;
       incidentOperationTypes({
-        bk_biz_id: 2,
-        incident_id: 3
+        incident_id: incidentId.value
       })
         .then(res => {
           res.forEach(item => {

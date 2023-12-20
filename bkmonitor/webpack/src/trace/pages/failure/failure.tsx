@@ -23,7 +23,7 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, onMounted, provide, ref, computed } from 'vue';
+import { defineComponent, onMounted, provide, ref, computed, provide } from 'vue';
 import { ResizeLayout } from 'bkui-vue';
 
 import { incidentDetail } from '../../../monitor-api/modules/incident';
@@ -58,6 +58,7 @@ export default defineComponent({
         .then(res => {
           incidentDetailData.value = res;
           provide('incidentDetail', incidentDetailData.value);
+          console.log(incidentDetailData.value);
         })
         .catch(err => {
           console.log(err);
@@ -85,7 +86,7 @@ export default defineComponent({
           initial-divide={500}
           v-slots={{
             aside: () => <FailureNav></FailureNav>,
-            main: () => <FailureContent></FailureContent>
+            main: () => <FailureContent incidentDetail={this.incidentDetailData}></FailureContent>
           }}
         ></ResizeLayout>
       </div>
