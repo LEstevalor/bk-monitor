@@ -29,7 +29,8 @@ import { Input, Loading, Select, Tree, PopConfirm, Checkbox } from 'bkui-vue';
 import { BkCheckboxGroup } from 'bkui-vue/lib/checkbox';
 
 import { incidentAlertAggregate } from '../../../../monitor-api/modules/incident';
-
+// import FilterSearchMain from './filter-search-main';
+import { useIncidentInject } from '../utils';
 import './handle-search.scss';
 
 export default defineComponent({
@@ -38,6 +39,7 @@ export default defineComponent({
     const alertAggregateData = ref([]);
     const listLoading = ref(false);
     const isShowDropdown = ref(false);
+    const cacheAggregateData = ref([]);
     const aggregateBysList = [
       {
         name: t('节点层级'),
@@ -60,7 +62,8 @@ export default defineComponent({
         key: 'metric_name'
       }
     ];
-    const aggregateBys = ref(['alert_name', 'node_name', 'node_type']);
+    const aggregateBys = ref(['alert_name', 'node_name']);
+    const incidentId = useIncidentInject();
     const filterListHandle = (key: string) => {
       if (aggregateBys.value.includes(key)) {
         aggregateBys.value = aggregateBys.value.filter(item => item !== key);
@@ -70,9 +73,10 @@ export default defineComponent({
     };
     const searchHeadFn = () => (
       <div class='handle-search-top'>
+        {/* <FilterSearchMain /> */}
         <Select
           class='top-select'
-          prefix={t('业务筛选')}
+          prefix={t('空间筛选')}
         />
         <Input
           placeholder={t('请输入搜索条件')}
@@ -96,7 +100,7 @@ export default defineComponent({
       listLoading.value = true;
       incidentAlertAggregate({
         bk_biz_id: 2,
-        id: 17024603108,
+        id: incidentId.value,
         aggregate_bys: aggregateBys.value
       })
         .then(res => {
@@ -121,6 +125,10 @@ export default defineComponent({
     };
     const handleFilter = () => {
       getIncidentAlertAggregate();
+      cacheAggregateData.value = JSON.parse(JSON.stringify(aggregateBys.value));
+    };
+    const cancelFilter = () => {
+      aggregateBys.value = cacheAggregateData.value;
     };
     const treeFn = () => (
       <Tree
@@ -176,6 +184,7 @@ export default defineComponent({
     );
     onMounted(() => {
       getIncidentAlertAggregate();
+      cacheAggregateData.value = JSON.parse(JSON.stringify(aggregateBys.value));
     });
     return {
       t,
@@ -187,7 +196,8 @@ export default defineComponent({
       treeFn,
       aggregateBysList,
       aggregateBys,
-      handleFilter
+      handleFilter,
+      cancelFilter
     };
   },
   render() {
@@ -202,6 +212,7 @@ export default defineComponent({
               trigger='click'
               placement={'bottom-start'}
               onConfirm={this.handleFilter}
+              onCancel={this.cancelFilter}
               v-slots={{
                 content: () => (
                   <div class='drop-main'>
@@ -212,6 +223,7 @@ export default defineComponent({
                     >
                       {this.aggregateBysList.map(item => (
                         <Checkbox
+                          disabled={this.aggregateBys.length === 1 && this.aggregateBys.includes(item.key)}
                           label={item.key}
                           size={'small'}
                           class='drop-item drop-item-checkbox'

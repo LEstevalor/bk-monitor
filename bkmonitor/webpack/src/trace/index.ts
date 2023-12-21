@@ -51,7 +51,6 @@ const bizId = getUrlParam('bizId')?.replace(/\//gim, '');
 if (process.env.NODE_ENV === 'development') {
   window.site_url = '/';
 }
-// 监控子应用
 if (window.__POWERED_BY_BK_WEWEB__) {
   const app = createApp(App);
   setVue(app);
@@ -75,7 +74,7 @@ if (window.__POWERED_BY_BK_WEWEB__) {
       window.username = window.uin;
       window.cc_biz_id = +window.bk_biz_id;
       window.bk_log_search_url = data.BKLOGSEARCH_HOST;
-      const bizId = setGlobalBizId();
+      setGlobalBizId();
       const app = createApp(App);
       setVue(app);
       app.use(store).use(router).use(i18n).use(directives).mount('#app');
@@ -87,7 +86,7 @@ if (window.__POWERED_BY_BK_WEWEB__) {
       Api.model
         .enhancedContext({
           space_uid: spaceUid || undefined,
-          bk_biz_id: bizId,
+          bk_biz_id: window.bk_biz_id,
           context_type: 'extra'
         })
         .then(data => {

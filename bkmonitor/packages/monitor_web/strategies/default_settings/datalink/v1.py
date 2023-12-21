@@ -85,7 +85,7 @@ STAGE_STRATEGY_MAPPING: Dict[DataLinkStage, List[DatalinkStrategy]] = {
 
 DEFAULT_DATALINK_COLLECTING_FLAG = "__datalink_collecting__"
 DEFAULT_DATALINK_LABEL = _("集成内置")
-DEFAULT_RULE_GROUP_NAME = _("系统内置-数据采集告警分派")
+DEFAULT_RULE_GROUP_NAME = _("集成内置-数据采集告警分派")
 
 
 DEFAULT_DATALINK_STRATEGIES = [
@@ -104,6 +104,7 @@ DEFAULT_DATALINK_STRATEGIES = [
                         "agg_condition": [
                             {"key": "bkm_up_code", "method": "nreg", "value": ["^2\\d{3}$"]},
                             {"key": "bkm_up_code", "method": "neq", "value": ["0"], "condition": "and"},
+                            {"key": "bk_collect_config_id", "method": "neq", "value": [""], "condition": "and"},
                         ],
                         "agg_dimension": [
                             "bkm_up_code",
@@ -128,7 +129,7 @@ DEFAULT_DATALINK_STRATEGIES = [
             }
         ],
         "labels": [DEFAULT_DATALINK_LABEL, "${{custom_label}}"],
-        "name": _("系统内置-数据采集系统运行异常告警"),
+        "name": _("集成内置-数据采集系统运行异常告警"),
         "notice": DEFAULT_NOTICE,
     },
     {
@@ -145,6 +146,7 @@ DEFAULT_DATALINK_STRATEGIES = [
                     {
                         "agg_condition": [
                             {"key": "bkm_up_code", "method": "reg", "value": ["^2\\d{3}$"]},
+                            {"key": "bk_collect_config_id", "method": "neq", "value": [""], "condition": "and"},
                         ],
                         "agg_dimension": [
                             "bkm_up_code",
@@ -169,7 +171,7 @@ DEFAULT_DATALINK_STRATEGIES = [
             }
         ],
         "labels": [DEFAULT_DATALINK_LABEL, "${{custom_label}}"],
-        "name": _("系统内置-数据采集插件执行异常告警"),
+        "name": _("集成内置-数据采集插件执行异常告警"),
         "notice": DEFAULT_NOTICE,
     },
 ]

@@ -30,7 +30,7 @@ import { useRouter } from 'vue-router';
 import { Dialog, Form, Input, Loading, Popover, Progress, Tag } from 'bkui-vue';
 
 import { incidentAlertAggregate } from '../../../../monitor-api/modules/incident';
-
+import { useIncidentInject } from '../utils';
 import FailureEditDialog from './failure-edit-dialog';
 import './failure-header.scss';
 
@@ -84,11 +84,12 @@ export default defineComponent({
         color: '#979BA5'
       }
     };
+    const incidentId = useIncidentInject();
     const getIncidentAlertAggregate = () => {
       listLoading.value = true;
       incidentAlertAggregate({
         bk_biz_id: 2,
-        id: 17024603108,
+        id: incidentId.value,
         aggregate_bys: []
       })
         .then(res => {

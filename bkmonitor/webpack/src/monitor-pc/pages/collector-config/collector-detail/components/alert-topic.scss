@@ -29,6 +29,7 @@
 
   .left-wrap {
     display: flex;
+    flex: 1;
     align-items: center;
     white-space: nowrap;
 
@@ -50,6 +51,7 @@
 
     .alert-histogram {
       display: flex;
+      flex: 1;
       align-items: center;
       line-height: 20px;
 
@@ -63,6 +65,9 @@
       }
 
       .alert-link {
+        flex: 1;
+        // max-width: 366px;
+        max-width: 188px;
         cursor: pointer;
       }
     }
@@ -112,7 +117,7 @@
 
   .alert-topic-component-alert-name {
     max-width: 400px;
-    max-height: 160px;
+    // max-height: 160px;
     padding: 0 12px 12px 20px;
     overflow-y: auto;
 
@@ -127,7 +132,7 @@
       &::before {
         position: absolute;
         top: 4px;
-        left: -4px;
+        left: -8px;
         width: 4px;
         height: 12px;
         content: '';
@@ -140,6 +145,7 @@
       font-size: 12px;
       line-height: 16px;
       color: #63656e;
+      white-space: pre-wrap;
     }
   }
 }

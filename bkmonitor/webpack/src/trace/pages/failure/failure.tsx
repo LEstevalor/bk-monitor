@@ -33,7 +33,6 @@ import FailureHeader from './failure-header/failure-header';
 import FailureNav from './failure-nav/failure-nav';
 import FailureTags from './failure-tags/failure-tags';
 import { useIncidentProvider } from './utils';
-
 import './failure.scss';
 
 export default defineComponent({
@@ -44,7 +43,7 @@ export default defineComponent({
     }
   },
   setup(props) {
-    useIncidentProvider(computed(() => props.id || '17024603108'));
+    useIncidentProvider(computed(() => props.id || '17031239204139'));
     const tagDomHeight = ref<Number>(40);
     const collapseTagHandle = (val: boolean, height: Number) => {
       tagDomHeight.value = height;
@@ -54,7 +53,7 @@ export default defineComponent({
     const getIncidentDetail = () => {
       incidentDetail({
         bk_biz_id: 2,
-        id: 17028676962127
+        id: props.id || '17031239204139'
       })
         .then(res => {
           incidentDetailData.value = res;
