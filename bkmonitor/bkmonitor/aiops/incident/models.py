@@ -336,14 +336,15 @@ class IncidentSnapshot(object):
                 # 按照聚合配置进行聚合
                 key = (
                     self.generate_aggregate_key(entity, aggregate_config),
-                    entity_id if entity.is_anomaly or entity.is_root else "normal",
+                    entity_id if entity.is_root else "not_root",
                 )
             if key not in group_by_entities:
                 group_by_entities[key] = set()
             group_by_entities[key].add(entity.entity_id)
 
+        merge_threshold = 2 if aggregate_config else 3
         for entity_ids in group_by_entities.values():
-            if len(entity_ids) >= 3:
+            if len(entity_ids) >= merge_threshold:
                 self.merge_entities(list(entity_ids))
 
     def generate_aggregate_key(self, entity: IncidentGraphEntity, aggregate_config: Dict) -> frozenset:
@@ -367,7 +368,10 @@ class IncidentSnapshot(object):
         for aggregate_by in aggregate_bys.keys():
             aggregate_bys[aggregate_by] = frozenset(aggregate_bys[aggregate_by])
 
-        return frozenset(aggregate_bys)
+        if not aggregate_config[entity.entity_type]["aggregate_anomaly"] and entity.is_anomaly:
+            aggregate_bys["anomaly_key"] = entity.entity_id
+
+        return frozenset(aggregate_bys.items())
 
     def merge_entities(self, entity_ids: List[str]) -> None:
         """合并同类实体
