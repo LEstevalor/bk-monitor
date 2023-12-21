@@ -100,7 +100,7 @@ export default defineComponent({
       listLoading.value = true;
       incidentAlertAggregate({
         bk_biz_id: 2,
-        id: incidentId,
+        id: incidentId.value,
         aggregate_bys: aggregateBys.value
       })
         .then(res => {

@@ -62,7 +62,7 @@ export default defineComponent({
       listLoading.value = true;
       incidentHandlers({
         bk_biz_id: 2,
-        id: incidentId,
+        id: incidentId.value,
         order_by: orderByType.value
       })
         .then(res => {
