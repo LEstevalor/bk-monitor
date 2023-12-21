@@ -23,7 +23,7 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { computed, defineComponent, nextTick, ref } from 'vue';
+import { computed, defineComponent, nextTick, ref, inject, Ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Tag } from 'bkui-vue';
 
@@ -42,9 +42,9 @@ export default defineComponent({
     const { t } = useI18n();
     const isShow = ref<boolean>(false);
     const failureTags = ref();
+    const incidentDetail = inject<Ref<object>>('incidentDetail');
     const incidentDetailData = computed(() => {
-      console.log(props.incidentDetail, 'props.incidentDetail');
-      return props.incidentDetail;
+      return incidentDetail.value;
     });
     const renderList = [
       {

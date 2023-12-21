@@ -60,7 +60,8 @@ export default defineComponent({
     const editIncidentHandle = () => {
       console.log('editIncidentHandle');
       btnLoading.value = true;
-      editIncident(props.data)
+      const {incident_name, level, assignees, labels, incident_reason, id, incident_id} = props.data;
+      editIncident({incident_name, level, assignees, labels, incident_reason, incident_id, id})
         .then(res => {
           console.log(res, '[[d[[[[');
         })

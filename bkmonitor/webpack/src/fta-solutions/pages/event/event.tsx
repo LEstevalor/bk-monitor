@@ -1348,6 +1348,12 @@ class Event extends Mixins(authorityMixinCreate(eventAuth)) {
     this.detailInfo.isShow = true;
     this.detailInfo.bizId = bizId;
     this.detailInfo.activeTab = activeTab;
+    this.$router.push({
+      name: 'incident-detail',
+      params: {
+        id
+      }
+    });
   }
 
   /**

@@ -23,7 +23,7 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, onBeforeMount, onMounted, reactive, ref } from 'vue';
+import { defineComponent, onBeforeMount, onMounted, reactive, ref, inject, Ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Loading, Popover, Table } from 'bkui-vue';
 import { $bkPopover } from 'bkui-vue/lib/popover';
@@ -67,6 +67,7 @@ export default defineComponent({
     const queryString = ref('');
     const tableData = ref([]);
     const alertData = ref([]);
+    const incidentDetail = inject<Ref<object>>('incidentDetail');
     const dialog = reactive({
       quickShield: {
         show: false,
@@ -131,6 +132,9 @@ export default defineComponent({
         name: t('一键拉群')
       });
     }
+    const incidentDetailData = computed(() => {
+      return incidentDetail.value;
+    });
     const formatterTime = (time: number | string): string => {
       if (!time) return '--';
       if (typeof time !== 'number') return time;
@@ -645,10 +649,12 @@ export default defineComponent({
       handleLoadData,
       handleAlarmDispatchSuccess,
       handleDebugStatus,
-      handleEnter
+      handleEnter,
+      incidentDetailData
     };
   },
   render() {
+    console.log(this.incidentDetailData, 'incidentDetailData-----');
     return (
       <Loading loading={this.tableLoading}>
         <div class='alarm-detail bk-scroll-y'>

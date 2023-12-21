@@ -24,26 +24,19 @@
  * IN THE SOFTWARE.
  */
 
-import { computed, defineComponent, inject, onMounted, ref } from 'vue';
+import { computed, defineComponent, inject, onMounted, ref, onBeforeUnmount, inject, Ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { Dialog, Form, Input, Loading, Popover, Progress, Tag } from 'bkui-vue';
 
 import { incidentAlertAggregate } from '../../../../monitor-api/modules/incident';
-
+import { useIncidentInject } from '../utils';
 import FailureEditDialog from './failure-edit-dialog';
-
 import './failure-header.scss';
 
 export default defineComponent({
   name: 'FailureHeader',
-  props: {
-    incidentDetail: {
-      type: Object,
-      default: () => {}
-    }
-  },
-  setup(props) {
+  setup() {
     const { t } = useI18n();
     const isShow = ref<boolean>(false);
     const isShowResolve = ref<boolean>(false);
@@ -51,27 +44,9 @@ export default defineComponent({
     const listLoading = ref(false);
     const alertAggregateData = ref([]);
     const alertAggregateTotal = ref(0);
-    const reactivityData = inject('incidentDetail');
-    const getIncidentAlertAggregate = () => {
-      listLoading.value = true;
-      incidentAlertAggregate({
-        bk_biz_id: 2,
-        id: 17024603108,
-        aggregate_bys: []
-      })
-        .then(res => {
-          alertAggregateData.value = res;
-          alertAggregateTotal.value = Object.values(res || {}).reduce((prev, cur) => {
-            return prev + cur.count;
-          }, 0);
-          console.log(res, '[[d[[[[');
-          console.log(reactivityData, 'reactivityData');
-        })
-        .catch(err => {
-          console.log(err);
-        })
-        .finally(() => (listLoading.value = false));
-    };
+    const showTime = ref('00:00:00');
+    const timer = ref(null);
+    const incidentDetail = inject<Ref<object>>('incidentDetail');
     const levelList = {
       /** 致命 */
       ERROR: {
@@ -109,6 +84,25 @@ export default defineComponent({
         color: '#979BA5'
       }
     };
+    const incidentId = useIncidentInject();
+    const getIncidentAlertAggregate = () => {
+      listLoading.value = true;
+      incidentAlertAggregate({
+        bk_biz_id: 2,
+        id: incidentId,
+        aggregate_bys: []
+      })
+        .then(res => {
+          alertAggregateData.value = res;
+          alertAggregateTotal.value = Object.values(res || {}).reduce((prev, cur) => {
+            return prev + cur?.count;
+          }, 0);
+        })
+        .catch(err => {
+          console.log(err);
+        })
+        .finally(() => (listLoading.value = false));
+    };
     const handleBack = () => {
       router.go(-1);
     };
@@ -123,7 +117,7 @@ export default defineComponent({
     //   </span>
     // );
     const incidentDetailData = computed(() => {
-      return props.incidentDetail;
+      return incidentDetail.value;
     });
     const statusTips = () => {
       const list = Object.values(alertAggregateData.value);
@@ -144,11 +138,9 @@ export default defineComponent({
       );
     };
     const renderStatusIcon = (status = 'closed') => {
-      console.log(status, 'status=======');
       // 未恢复
       if (status === 'abnormal') {
-        const data = alertAggregateData.value.ABNORMAL;
-        console.log(data, 'data', data.count);
+        const data = alertAggregateData.value?.ABNORMAL || {};
         return (
           <Popover
             placement='bottom-start'
@@ -165,12 +157,12 @@ export default defineComponent({
               text-inside
               type='circle'
               width={38}
-              percent={Math.round((data.count / alertAggregateTotal.value) * 100)}
+              percent={Math.round((data?.count / alertAggregateTotal.value) * 100)}
               stroke-width={12}
               bg-color='#EBECF0'
               color='#EB3333'
             >
-              <label class='status-num'>{data.count}</label>
+              <label class='status-num'>{data?.count}</label>
             </Progress>
           </Popover>
         );
@@ -204,8 +196,22 @@ export default defineComponent({
         </Form>
       </Dialog>
     );
+    const formatDuration = (timestamp1, timestamp2) => {
+      // 计算两个时间戳之间的差值（以毫秒为单位）
+      const diff = Math.abs(timestamp1 - timestamp2);
+      // 将差值转换为几时几分几秒的格式
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      const padZeros = (str: number) => `${str > 10 ? str : `0${str}`}`;
+      // 返回格式化后的字符串
+      return `${padZeros(hours)}:${padZeros(minutes)}:${padZeros(seconds)}`;
+    };
     onMounted(() => {
       getIncidentAlertAggregate();
+    });
+    onBeforeUnmount(() => {
+      clearInterval(timer);
     });
     return {
       DialogFn,
@@ -217,12 +223,29 @@ export default defineComponent({
       isShowResolve,
       renderStatusIcon,
       handleBack,
-      listLoading
+      listLoading,
+      formatDuration,
+      showTime,
+      timer
     };
   },
   render() {
-    const { id, incident_name, labels, status_alias, level, level_alias, status } = this.incidentDetailData;
+    const { id, incident_name, labels, status_alias, level, level_alias, status, begin_time, end_time } = this.incidentDetailData;
     const isRecovered = status !== 'recovered';
+    /** 持续时间 */
+    const handleShowTime = () => {
+      if (!begin_time) {
+        return '00:00:00';
+      }
+      if (!end_time) {
+        this.showTime = this.formatDuration(begin_time * 1000, new Date().getTime());
+        this.timer = setInterval(() => {
+          !!begin_time && (this.showTime = this.formatDuration(begin_time * 1000, new Date().getTime()));
+        }, 1000);
+        return this.showTime;
+      }
+      return this.formatDuration(begin_time * 1000, end_time * 1000);
+    };
     return (
       <Loading loading={this.listLoading}>
         <div class='failure-header'>
@@ -261,7 +284,7 @@ export default defineComponent({
               <span class='txt'>{status_alias}</span>
               <span class='txt'>
                 {this.t('故障持续时间：')}
-                <b>00:08:23</b>
+                <b>{handleShowTime()}</b>
               </span>
             </span>
           </div>
