@@ -325,11 +325,19 @@ class IncidentSnapshot(object):
         group_by_entities = {}
 
         for entity_id, entity in self.incident_graph_entities.items():
-            key = (
-                frozenset(self.entity_sources[entity_id]),
-                frozenset(self.entity_targets[entity_id]),
-                entity_id if entity.is_anomaly or entity.is_root else "normal",
-            )
+            if aggregate_config is None:
+                # 如果没有聚合配置，则执行自动聚合的逻辑
+                key = (
+                    frozenset(self.entity_sources[entity_id]),
+                    frozenset(self.entity_targets[entity_id]),
+                    entity_id if entity.is_anomaly or entity.is_root else "normal",
+                )
+            else:
+                # 按照聚合配置进行聚合
+                key = (
+                    self.generate_aggregate_key(entity, aggregate_config),
+                    entity_id if entity.is_anomaly or entity.is_root else "normal",
+                )
             if key not in group_by_entities:
                 group_by_entities[key] = set()
             group_by_entities[key].add(entity.entity_id)
@@ -337,6 +345,29 @@ class IncidentSnapshot(object):
         for entity_ids in group_by_entities.values():
             if len(entity_ids) >= 3:
                 self.merge_entities(list(entity_ids))
+
+    def generate_aggregate_key(self, entity: IncidentGraphEntity, aggregate_config: Dict) -> frozenset:
+        """根据聚合配置生成用于聚合的key
+
+        :param entity: 图谱试图
+        :param aggregate_config: 聚合配置
+        :return: 实体ID或者聚合key的frozenset
+        """
+        if entity.entity_type not in aggregate_config:
+            return entity.entity_id
+
+        aggregate_bys = defaultdict(list)
+        for aggregate_key in aggregate_config[entity.entity_type]["aggregate_keys"]:
+            for target_entity_id in self.entity_targets[entity.entity_id]:
+                if self.incident_graph_entities[target_entity_id].entity_type == aggregate_key:
+                    aggregate_bys[aggregate_key].append(target_entity_id)
+            for source_entity_id in self.entity_sources[entity.entity_id]:
+                if self.incident_graph_entities[source_entity_id].entity_type == aggregate_key:
+                    aggregate_bys[aggregate_key].append(source_entity_id)
+        for aggregate_by in aggregate_bys.keys():
+            aggregate_bys[aggregate_by] = frozenset(aggregate_bys[aggregate_by])
+
+        return frozenset(aggregate_bys)
 
     def merge_entities(self, entity_ids: List[str]) -> None:
         """合并同类实体

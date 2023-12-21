@@ -126,10 +126,11 @@ class IncidentBaseResource(Resource):
                         update_time.timestamp,
                         incident_key,
                         getattr(incident_document, incident_key),
-                        incident_key,
+                        incident_value,
                     )
                 setattr(incident_document, incident_key, incident_value)
 
+        incident_document.update_time = update_time.timestamp
         IncidentDocument.bulk_create([incident_document], action=BulkActionType.UPDATE)
 
 

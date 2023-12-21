@@ -159,6 +159,7 @@ class IncidentGraphEdgeType(CustomEnum):
     """故障图谱边类型."""
 
     DEPENDENCY = "dependency"
+    SPREAD = "spread"
 
 
 class IncidentAlertAggregateDimension(CustomEnum):
