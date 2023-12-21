@@ -379,10 +379,7 @@ export default defineComponent({
           const minComboHeight = 66 * maxColumnCount;
           let hasNoSpecial = false;
           console.info('minComboHeight', minComboHeight);
-<<<<<<< deploy/paas3-dev-v2 8efdabea9311ca88c33c3230ec9a0c0eaad0509f
-=======
           return;
->>>>>>> feat/failure_alert_frontend a6f764ba697fd0bf3a4c3199c6c9d7dee3d82501
           combos.forEach(combo => {
             const comboNodes = nodes.filter(node => node.comboId.toString() === combo.id.toString());
             const comboWidth = comboNodes.length * (nodeSize + nodeMargin) + 6;
