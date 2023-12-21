@@ -93,6 +93,8 @@ class IncidentBaseResource(Resource):
                     "comboId": str(entity.rank.rank_category.category_id),
                     "aggregated_nodes": self.generate_nodes_by_entites(snapshot, entity.aggregated_entities),
                     "entity": {key: value for key, value in asdict(entity).items() if key != "aggregated_entities"},
+                    "total_count": len(entity.aggregated_entities) + 1,
+                    "anomaly_count": self.get_anomaly_entity_count(entity),
                     "bk_biz_id": snapshot.bk_biz_id,
                     "bk_biz_name": bk_biz_name,
                     "alert_ids": alert_ids,
@@ -108,6 +110,19 @@ class IncidentBaseResource(Resource):
             )
 
         return nodes
+
+    def get_anomaly_entity_count(self, entity: IncidentGraphEntity) -> int:
+        """获取实体（包含聚合在这个实体的其他实体）的异常数量
+
+        :param entity: 图谱实体
+        :return: 异常实体数量
+        """
+        anomaly_count = 1 if entity.is_anomaly else 0
+        for aggregated_entity in entity.aggregated_entities:
+            if aggregated_entity.is_anomaly:
+                anomaly_count += 1
+
+        return anomaly_count
 
     def update_incident_document(self, incident_info: Dict, update_time: arrow.Arrow) -> None:
         """更新故障记录，并记录故障流转
