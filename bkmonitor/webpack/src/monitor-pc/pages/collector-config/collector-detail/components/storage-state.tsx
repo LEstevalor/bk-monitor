@@ -82,7 +82,15 @@ export default class StorageState extends tsc<StorageStateProps, {}> {
 
   infoData: LocalInfoField[] = [];
 
-  tableList: StatusItem[] = [];
+  clusterStatusTable = {
+    columns: [],
+    data: []
+  };
+
+  indexStatusTable = {
+    columns: [],
+    data: []
+  };
 
   @Watch('data')
   handleDataChange(val: DataInterface) {
@@ -97,8 +105,14 @@ export default class StorageState extends tsc<StorageStateProps, {}> {
       }
       return item;
     });
-
-    this.tableList = val.status;
+    this.clusterStatusTable = {
+      columns: val.status[0].content.keys,
+      data: val.status[0].content.values
+    };
+    this.indexStatusTable = {
+      columns: val.status[1].content.keys,
+      data: val.status[1].content.values
+    };
   }
 
   handleInfoEditStatusChange(field: LocalInfoField) {
@@ -174,40 +188,64 @@ export default class StorageState extends tsc<StorageStateProps, {}> {
 
   render() {
     return (
-      <div
-        class='storage-state-component'
-        v-bkloading={{ isLoading: this.loading }}
-      >
+      <div class='storage-state-component'>
         <div class='storage-info'>
           <div class='title'>{this.$t('存储信息')}</div>
-          <div class='info-form'>{this.infoData.map(field => this.renderInfoField(field))}</div>
-        </div>
-
-        {this.tableList.map(table => [
-          <Divider class='divider' />,
-          <div class='table-wrap'>
-            <div class='title'>{table.name}</div>
-            <div class='table-content'>
-              <Table
-                class='data-table'
-                data={table.content.values}
-                outer-border={false}
-                header-border={false}
-                max-height={350}
-              >
-                {table.content.keys.map(column => {
-                  return (
-                    <TableColumn
-                      key={column.key}
-                      label={column.name}
-                      prop={column.key}
-                    />
-                  );
-                })}
-              </Table>
-            </div>
+          <div
+            class='info-form'
+            v-bkloading={{ isLoading: this.loading }}
+          >
+            {this.infoData.map(field => this.renderInfoField(field))}
           </div>
-        ])}
+        </div>
+        <Divider class='divider' />
+        <div class='cluster-status'>
+          <div class='title'>{this.$t('集群状态')}</div>
+          <div class='table-content'>
+            <Table
+              class='data-table'
+              data={this.clusterStatusTable.data}
+              outer-border={false}
+              header-border={false}
+              max-height={350}
+              v-bkloading={{ isLoading: this.loading }}
+            >
+              {this.clusterStatusTable.columns.map(column => {
+                return (
+                  <TableColumn
+                    key={column.key}
+                    label={column.name}
+                    prop={column.key}
+                  />
+                );
+              })}
+            </Table>
+          </div>
+        </div>
+        <Divider class='divider' />
+        <div class='index-status'>
+          <div class='title'>{this.$t('索引状态')}</div>
+          <div class='table-content'>
+            <Table
+              class='data-table'
+              data={this.indexStatusTable.data}
+              outer-border={false}
+              header-border={false}
+              max-height={350}
+              v-bkloading={{ isLoading: this.loading }}
+            >
+              {this.indexStatusTable.columns.map(column => {
+                return (
+                  <TableColumn
+                    key={column.key}
+                    label={column.name}
+                    prop={column.key}
+                  />
+                );
+              })}
+            </Table>
+          </div>
+        </div>
       </div>
     );
   }

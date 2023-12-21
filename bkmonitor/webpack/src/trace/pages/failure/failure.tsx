@@ -23,7 +23,7 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, onMounted, provide, ref, computed } from 'vue';
+import { defineComponent, onMounted, provide, ref, computed, provide } from 'vue';
 import { ResizeLayout } from 'bkui-vue';
 
 import { incidentDetail } from '../../../monitor-api/modules/incident';
@@ -44,20 +44,20 @@ export default defineComponent({
     }
   },
   setup(props) {
-    const incidentId = computed(() => props.id || '17024603108')
-    useIncidentProvider(incidentId);
+    useIncidentProvider(computed(() => props.id || '17024603108'));
     const tagDomHeight = ref<Number>(40);
     const collapseTagHandle = (val: boolean, height: Number) => {
       tagDomHeight.value = height;
     };
     const incidentDetailData = ref({});
+    provide('incidentDetail', incidentDetailData);
     const getIncidentDetail = () => {
       incidentDetail({
-        id: incidentId.value
+        bk_biz_id: 2,
+        id: 17028676962127
       })
         .then(res => {
           incidentDetailData.value = res;
-          provide('incidentDetail', incidentDetailData.value);
         })
         .catch(err => {
           console.log(err);

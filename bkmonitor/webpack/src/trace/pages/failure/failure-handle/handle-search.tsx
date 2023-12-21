@@ -25,7 +25,8 @@
  */
 import { defineComponent, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Dropdown, Input, Loading, Select, Tree } from 'bkui-vue';
+import { Input, Loading, Select, Tree, PopConfirm, Checkbox } from 'bkui-vue';
+import { BkCheckboxGroup } from 'bkui-vue/lib/checkbox';
 
 import { incidentAlertAggregate } from '../../../../monitor-api/modules/incident';
 
@@ -100,7 +101,7 @@ export default defineComponent({
       })
         .then(res => {
           alertAggregateData.value = Object.values(res);
-          console.log(res, alertAggregateData.value);
+          // console.log(res, alertAggregateData.value);
         })
         .catch(err => {
           console.log(err);
@@ -117,6 +118,9 @@ export default defineComponent({
         showIcon = icon;
       }
       return <i class={`icon-monitor icon-${showIcon} tree-icon ${icon}`} />;
+    };
+    const handleFilter = () => {
+      getIncidentAlertAggregate();
     };
     const treeFn = () => (
       <Tree
@@ -182,7 +186,8 @@ export default defineComponent({
       listLoading,
       treeFn,
       aggregateBysList,
-      aggregateBys
+      aggregateBys,
+      handleFilter
     };
   },
   render() {
@@ -192,7 +197,36 @@ export default defineComponent({
         <div class='handle-search-list'>
           <div class='search-head'>
             {this.t('我负责的告警')}
-            <Dropdown
+            <PopConfirm
+              width='148'
+              trigger='click'
+              placement={'bottom-start'}
+              onConfirm={this.handleFilter}
+              v-slots={{
+                content: () => (
+                  <div class='drop-main'>
+                    <div class='drop-main-title'>{this.t('设置聚合维度')}</div>
+                    <BkCheckboxGroup
+                      class='drop-main-list'
+                      v-model={this.aggregateBys}
+                    >
+                      {this.aggregateBysList.map(item => (
+                        <Checkbox
+                          label={item.key}
+                          size={'small'}
+                          class='drop-item drop-item-checkbox'
+                        >
+                          {item.name}
+                        </Checkbox>
+                      ))}
+                    </BkCheckboxGroup>
+                  </div>
+                )
+              }}
+            >
+              <i class='icon-monitor icon-menu-setting search-head-icon' />
+            </PopConfirm>
+            {/* <Dropdown
               ext-cls='aggregate-dropdown'
               trigger='click'
               // is-show={this.isShowDropdown}
@@ -216,7 +250,7 @@ export default defineComponent({
               }}
             >
               <i class='icon-monitor icon-menu-setting search-head-icon' />
-            </Dropdown>
+            </Dropdown> */}
           </div>
           <Loading loading={this.listLoading}>
             <div class='search-tree'>{this.treeFn()}</div>

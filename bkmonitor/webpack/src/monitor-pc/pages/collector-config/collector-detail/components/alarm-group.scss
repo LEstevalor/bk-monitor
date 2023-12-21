@@ -41,7 +41,7 @@
       font-weight: 400;
       line-height: 20px;
       text-align: left;
-      text-overflow: ellipsis;
+      text-overflow: ellipsis; 
       white-space: nowrap;
     }
 
@@ -198,20 +198,16 @@
     align-items: center;
     justify-content: center;
     width: 42px;
-    height: 32px;
+    height: 100%;
     cursor: pointer;
 
     .status-loading {
       height: 16px;
     }
 
-    .icon-zhongzhi1 {
-      font-size: 12px;
-    }
-
     &::after {
       position: absolute;
-      top: 8px;
+      top: 10px;
       left: -1px;
       width: 1px;
       height: 16px;
