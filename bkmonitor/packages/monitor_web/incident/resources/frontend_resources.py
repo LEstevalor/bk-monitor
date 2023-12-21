@@ -596,6 +596,9 @@ class IncidentOperationsResource(IncidentBaseResource):
     def perform_request(self, validated_request_data: Dict) -> Dict:
         operations = IncidentOperationDocument.list_by_incident_id(validated_request_data["incident_id"])
         operations = [operation.to_dict() for operation in operations]
+        for operation in operations:
+            operation["operation_class"] = IncidentOperationType(operation["operation_type"]).operation_class.value
+        return operations
 
 
 class IncidentRecordOperationResource(IncidentBaseResource):
@@ -624,6 +627,7 @@ class IncidentRecordOperationResource(IncidentBaseResource):
 
 
 class IncidentOperationTypesResource(IncidentBaseResource):
+    """
     故障流转列表
     """
 
