@@ -342,9 +342,9 @@ class IncidentSnapshot(object):
                 group_by_entities[key] = set()
             group_by_entities[key].add(entity.entity_id)
 
-        merge_threshold = 2 if aggregate_config else 3
         for entity_ids in group_by_entities.values():
-            if len(entity_ids) >= merge_threshold:
+            # 聚合相同维度超过两个的图谱实体
+            if len(entity_ids) >= 2:
                 self.merge_entities(list(entity_ids))
 
     def generate_aggregate_key(self, entity: IncidentGraphEntity, aggregate_config: Dict) -> frozenset:
