@@ -113,13 +113,13 @@ export default defineComponent({
           channel_name: 'user'
         },
         {
-          is_enabled: true,
+          is_enabled: false,
           subscribers: [],
           send_text: '',
           channel_name: 'email'
         },
         {
-          is_enabled: true,
+          is_enabled: false,
           subscribers: [],
           channel_name: 'wxbot'
         }
@@ -156,7 +156,7 @@ export default defineComponent({
             if (subscriberList.length === 0) return false;
             return true;
           },
-          message: window.i18n.t('必填项'),
+          message: window.i18n.t('订阅人不能为空'),
           trigger: 'blur'
         }
       ]
@@ -524,7 +524,7 @@ export default defineComponent({
      * @param { * } val
      */
     function handleCopy(text) {
-      copyText(text, msg => {
+      copyText(`{${text}}`, msg => {
         Message({
           message: msg,
           theme: 'error'
@@ -565,7 +565,20 @@ export default defineComponent({
     // });
 
     function setFormData() {
-      Object.assign(formData, deepClone(props.detailInfo));
+      // 这里要保证 channels 的顺序是正确的
+      const clonedDetailInfo = deepClone(props.detailInfo);
+      formData.channels.map(item => {
+        const target = clonedDetailInfo.channels.find(clonedItem => {
+          return item.channel_name === clonedItem.channel_name;
+        });
+        if (target) {
+          Object.assign(item, target);
+        }
+        return item;
+      });
+      delete clonedDetailInfo.channels;
+      if (clonedDetailInfo.frequency.type === 1) isNotChooseOnlyOnce = false;
+      Object.assign(formData, clonedDetailInfo);
       // 时间范围
       // eslint-disable-next-line @typescript-eslint/naming-convention
       const { data_range } = formData.frequency;
@@ -682,12 +695,15 @@ export default defineComponent({
       { immediate: true }
     );
 
+    let isNotChooseOnlyOnce = true;
     watch(
       () => formData.frequency.type,
       () => {
         if (formData.frequency.type === 1) {
           formData.start_time = null;
           formData.end_time = null;
+          // 点击 仅一次 时刷新一次时间。
+          if (isNotChooseOnlyOnce) frequency.only_once_run_time = dayjs().format('YYYY-MM-DD HH:mm:ss');
         }
       }
     );
