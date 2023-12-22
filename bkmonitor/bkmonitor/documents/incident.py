@@ -125,6 +125,8 @@ class IncidentDocument(IncidentBaseDocument):
     dimensions = field.Object(enabled=False)
     # 故障额外信息，用于存放其他内容
     extra_info = field.Object(enabled=False)
+    # 反馈根因的信息
+    feedback = field.Object(enabled=False)
 
     class Index:
         name = "bkmonitor_aiops_incident_info"
