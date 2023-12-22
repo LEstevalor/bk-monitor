@@ -124,17 +124,25 @@ class IncidentBaseResource(Resource):
 
         return anomaly_count
 
-    def update_incident_document(self, incident_info: Dict, update_time: arrow.Arrow) -> None:
+    def update_incident_document(self, incident_info: Dict, update_time: arrow.Arrow, is_cancel: bool = False) -> None:
         """更新故障记录，并记录故障流转
 
         :param incident_info: 需要更新的信息
         :param update_time: 更新时间
+        :param is_cancel: 是否取消反馈
         """
         incident_document = IncidentDocument.get(incident_info["id"])
         for incident_key, incident_value in incident_info.items():
             if hasattr(incident_document, incident_key) and getattr(incident_document, incident_key) != incident_value:
                 if incident_key == "status" and incident_value == IncidentStatus.CLOSED.value:
                     IncidentOperationManager.record_close_incident(incident_info["incident_id"], update_time.timestamp)
+                elif incident_key == "feedback":
+                    IncidentOperationManager.record_feedback_incident(
+                        incident_info["incident_id"],
+                        update_time.timestamp,
+                        incident_info["feedback"]["incident_root"],
+                        is_cancel,
+                    )
                 else:
                     IncidentOperationManager.record_user_update_incident(
                         incident_info["incident_id"],
@@ -719,11 +727,16 @@ class FeedbackIncidentRootResource(IncidentBaseResource):
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         incident_id = validated_request_data["incident_id"]
+        is_cancel = validated_request_data["is_cancel"]
 
         incident_info = api.bkdata.get_incident_detail(incident_id=incident_id)
-        incident_info["feedback"].update(validated_request_data["feedback"])
+        incident_info["id"] = validated_request_data["id"]
+        if not is_cancel:
+            incident_info["feedback"].update(validated_request_data["feedback"])
+        else:
+            incident_info["feedback"] = {}
         updated_incident = api.bkdata.update_incident_detail(**incident_info)
-        self.update_incident_document(incident_info, arrow.get(updated_incident["updated_at"]))
+        self.update_incident_document(incident_info, arrow.get(updated_incident["updated_at"]), is_cancel)
         return incident_info["feedback"]
 
 
