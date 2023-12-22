@@ -969,6 +969,7 @@ class UpdateIncidentDetail(DataAccessAPIResource):
         assignee = serializers.ListField(required=False, label="故障负责人")
         handlers = serializers.ListField(required=False, label="故障处理人")
         labels = serializers.ListField(required=False, label="故障标签")
+        feedback = serializers.DictField(required=False, label="故障反馈内容")
 
 
 class GetIncidentSnapshot(DataAccessAPIResource):
