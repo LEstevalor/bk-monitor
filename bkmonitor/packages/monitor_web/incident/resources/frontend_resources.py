@@ -70,11 +70,11 @@ class IncidentBaseResource(Resource):
         for agg_value in aggregate_results.values():
             if isinstance(agg_value["children"], dict):
                 if agg_value["children"]:
-                    self.expand_children_dict_as_list(agg_value["children"])
+                    agg_value["children"] = self.expand_children_dict_as_list(agg_value["children"])
+                else:
+                    agg_value["children"] = []
 
-                agg_value["children"] = list(agg_value["children"].values())
-
-        return aggregate_results
+        return list(aggregate_results.values())
 
     def generate_nodes_by_entites(self, snapshot: IncidentSnapshot, entities: List[IncidentGraphEntity]) -> List[Dict]:
         """根据图谱实体生成拓扑图节点
@@ -451,9 +451,7 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
 
     class RequestSerializer(AlertSearchSerializer):
         id = serializers.IntegerField(required=True, label="故障UUID")
-        aggregate_bys = serializers.MultipleChoiceField(
-            required=True, choices=IncidentAlertAggregateDimension.get_enum_value_list(), label="聚合维度"
-        )
+        aggregate_bys = serializers.ListField(required=True, label="聚合维度")
         ordering = serializers.ListField(label="排序", child=serializers.CharField(), default=[])
         page = serializers.IntegerField(label="页数", min_value=1, default=1)
         page_size = serializers.IntegerField(label="每页大小", min_value=0, max_value=5000, default=300)
@@ -493,6 +491,7 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
             aggregate_results[status] = {
                 "id": status,
                 "name": str(EVENT_STATUS_DICT[status]),
+                "level_name": "status",
                 "count": 0,
                 "children": {},
                 "alert_ids": [],
@@ -500,6 +499,7 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
             }
 
         for alert in alerts:
+            alert["entity"] = asdict(snapshot.alert_entity_mapping[alert["id"]].entity)
             if (
                 alert["id"] in snapshot.alert_entity_mapping
                 and snapshot.alert_entity_mapping[alert["id"]].entity.is_root
@@ -509,14 +509,18 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
                 is_root = False
             aggregate_layer_results = aggregate_results
             for aggregate_by in aggregate_bys:
-                chain_key = IncidentAlertAggregateDimension(aggregate_by).chain_key
-                aggregate_by_value = IncidentAlertAggregateResource().get_item_by_chain_key(alert, chain_key)
+                agg_dim = IncidentAlertAggregateDimension(aggregate_by)
+                chain_key = agg_dim.chain_key
+                aggregate_by_value = self.get_item_by_chain_key(alert, chain_key)
                 if not aggregate_by_value:
                     continue
+                if agg_dim == IncidentAlertAggregateDimension.METRIC_NAME:
+                    aggregate_by_value = "|".join([item["id"] for item in aggregate_by_value])
                 if aggregate_by_value not in aggregate_layer_results:
                     aggregate_layer_results[aggregate_by_value] = {
                         "id": aggregate_by_value,
                         "name": aggregate_by_value,
+                        "level_name": agg_dim.value,
                         "count": 1,
                         "children": {},
                         "alert_ids": [alert["id"]],
@@ -710,15 +714,16 @@ class FeedbackIncidentRootResource(IncidentBaseResource):
         id = serializers.IntegerField(required=True, label="故障UUID")
         incident_id = serializers.IntegerField(required=True, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
-        contents = serializers.JSONField(required=True, label="反馈的内容")
+        feedback = serializers.JSONField(required=True, label="反馈的内容")
         is_cancel = serializers.BooleanField(required=False, default=False)
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         incident_id = validated_request_data["incident_id"]
 
         incident_info = api.bkdata.get_incident_detail(incident_id=incident_id)
-        incident_info["feedback"].update(validated_request_data["contents"])
-        api.bkdata.update_incident_detail(incident_id=incident_id, feedback=incident_info["feedback"])
+        incident_info["feedback"].update(validated_request_data["feedback"])
+        updated_incident = api.bkdata.update_incident_detail(**incident_info)
+        self.update_incident_document(incident_info, arrow.get(updated_incident["updated_at"]))
         return incident_info["feedback"]
 
 
