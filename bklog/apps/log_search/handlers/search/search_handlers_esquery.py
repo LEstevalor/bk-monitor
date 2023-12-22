@@ -110,7 +110,7 @@ from apps.utils.local import (
     get_request_username,
 )
 from apps.utils.log import logger
-from apps.utils.lucene import generate_query_string
+from apps.utils.lucene import EnhanceLuceneAdapter, generate_query_string
 from apps.utils.thread import MultiExecuteFunc
 from bkm_ipchooser.constants import CommonEnum
 
@@ -213,6 +213,8 @@ class SearchHandler(object):
 
         # 透传query string
         self.query_string: str = search_dict.get("keyword")
+        self.origin_query_string: str = search_dict.get("keyword")
+        self._enhance()
 
         # 透传start
         self.start: int = search_dict.get("begin", 0)
@@ -295,6 +297,14 @@ class SearchHandler(object):
         self.desensitize_handler = DesensitizeHandler(self.field_configs)
 
         self.text_fields_desensitize_handler = DesensitizeHandler(self.text_fields_field_configs)
+
+    def _enhance(self):
+        """
+        语法增强
+        """
+        if self.query_string is not None:
+            enhance_lucene_adapter = EnhanceLuceneAdapter(query_string=self.query_string)
+            self.query_string = enhance_lucene_adapter.enhance()
 
     def fields(self, scope="default"):
         is_union_search = self.search_dict.get("is_union_search", False)
@@ -733,7 +743,8 @@ class SearchHandler(object):
         return result
 
     def _save_history(self, result, search_type):
-        params = {"keyword": self.query_string, "ip_chooser": self.ip_chooser, "addition": self.addition}
+        # 避免回显尴尬, 检索历史存原始未增强的query_string
+        params = {"keyword": self.origin_query_string, "ip_chooser": self.ip_chooser, "addition": self.addition}
         self._cache_history(
             username=self.request_username,
             index_set_id=self.index_set_id,

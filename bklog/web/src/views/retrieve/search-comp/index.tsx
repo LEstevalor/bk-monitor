@@ -506,6 +506,7 @@ export default class SearchComp extends tsc<IProps> {
                 retrieved-keyword={this.retrievedKeyword}
                 dropdown-data={this.retrieveDropdownData}
                 is-show-ui-type={this.isShowUiType}
+                total-fields={this.totalFields}
                 onInputBlur={this.handleBlurSearchInput}
                 onIsCanSearch={val => this.handleUserOperate('isCanStorageFavorite', val)}
                 onRetrieve={this.handleRetrieveLog}

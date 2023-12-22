@@ -47,6 +47,7 @@ from apps.log_search.constants import (
 from apps.log_search.models import ProjectInfo, Scenario
 from apps.utils.drf import DateTimeFieldWithEpoch
 from apps.utils.local import get_local_param
+from apps.utils.lucene import EnhanceLuceneAdapter
 from bkm_space.serializers import SpaceUIDField
 
 HISTORY_MAX_DAYS = 7
@@ -256,6 +257,24 @@ class CreateIndexSetTagSerializer(serializers.Serializer):
     )
 
 
+class KeywordSerializer(serializers.Serializer):
+    """
+    检索关键词序列化, 针对keyword为必须的时候, 继承该类
+    """
+
+    keyword = serializers.CharField(label=_("检索关键词"), required=True, allow_null=True, allow_blank=True)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if attrs["keyword"].strip() == "":
+            attrs["keyword"] = WILDCARD_PATTERN
+            return attrs
+
+        enhance_lucene_adapter = EnhanceLuceneAdapter(query_string=attrs["keyword"])
+        attrs["keyword"] = enhance_lucene_adapter.enhance()
+        return attrs
+
+
 class SearchAttrSerializer(serializers.Serializer):
     bk_biz_id = serializers.IntegerField(label=_("业务ID"), required=False, default=None)
     ip_chooser = serializers.DictField(default={}, required=False)
@@ -284,7 +303,8 @@ class SearchAttrSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
-
+        if attrs.get("keyword") and attrs["keyword"].strip() == "":
+            attrs["keyword"] = WILDCARD_PATTERN
         # 校验sort_list
         if attrs.get("sort_list"):
             for sort_info in attrs.get("sort_list"):
@@ -426,9 +446,8 @@ class SearchExportSerializer(serializers.Serializer):
         return attrs
 
 
-class SearchAsyncExportSerializer(serializers.Serializer):
+class SearchAsyncExportSerializer(KeywordSerializer):
     bk_biz_id = serializers.IntegerField(label=_("业务id"), required=True)
-    keyword = serializers.CharField(label=_("搜索关键字"), required=True)
     time_range = serializers.CharField(label=_("时间范围"), required=False)
     start_time = DateTimeFieldWithEpoch(format="%Y-%m-%d %H:%M:%S", label=_("起始时间"), required=True)
     end_time = DateTimeFieldWithEpoch(format="%Y-%m-%d %H:%M:%S", label=_("结束时间"), required=True)
@@ -652,20 +671,6 @@ class UpdateFavoriteGroupOrderSerializer(serializers.Serializer):
     group_order = serializers.ListField(label=_("收藏组顺序"), child=serializers.IntegerField())
 
 
-class KeywordSerializer(serializers.Serializer):
-    """
-    检索关键词序列化
-    """
-
-    keyword = serializers.CharField(label=_("检索关键词"), required=True, allow_null=True, allow_blank=True)
-
-    def validate(self, attrs):
-        attrs = super().validate(attrs)
-        if attrs["keyword"].strip() == "":
-            attrs["keyword"] = WILDCARD_PATTERN
-        return attrs
-
-
 class GetSearchFieldsSerializer(KeywordSerializer):
     """获取检索语句中的字段序列化"""
 
@@ -685,12 +690,18 @@ class GenerateQuerySerializer(KeywordSerializer):
     params = serializers.ListField(required=False, default=[], label=_("替换Query请求参数"), child=GenerateQueryParam())
 
 
+class InspectFieldSerializer(serializers.Serializer):
+    field_name = serializers.CharField(label=_("字段名称"), required=False, allow_null=True, allow_blank=True)
+    field_type = serializers.CharField(label=_("字段类型"), required=False, allow_null=True, allow_blank=True)
+    is_analyzed = serializers.BooleanField(label=_("是否分词"), required=False, default=False)
+
+
 class InspectSerializer(KeywordSerializer):
     """
     语法检查以及转换序列化
     """
 
-    pass
+    fields = serializers.ListField(required=False, default=[], label=_("字段列表"), child=InspectFieldSerializer())
 
 
 class FavoriteGroupListSerializer(serializers.Serializer):
