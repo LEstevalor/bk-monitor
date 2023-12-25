@@ -50,6 +50,7 @@ export interface ICommonItem {
   id: string;
   name: string | TranslateResult;
 }
+
 export default defineComponent({
   emits: ['search', 'changeSpace'],
   setup(props, { emit }) {

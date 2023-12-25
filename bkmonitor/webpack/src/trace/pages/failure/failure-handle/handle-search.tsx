@@ -136,51 +136,12 @@ export default defineComponent({
         }}
       />
     );
-    const listFn = () => (
-      <div class='handle-search-list'>
-        <div class='search-head'>
-          {t('我负责的告警')}
-          <Dropdown
-            ext-cls='aggregate-dropdown'
-            trigger='manual'
-            is-show={isShowDropdown.value}
-            placement='bottom-start'
-            v-slots={{
-              content: () => (
-                <Dropdown.DropdownMenu extCls={'search-btn-drop'}>
-                  {aggregateBysList.map(item => (
-                    <Dropdown.DropdownItem
-                      // extCls={`${this.orderByType === item.key ? 'active' : ''}`}
-                      onclick={() => this.filterListHandle(item.key)}
-                    >
-                      {item.name}
-                    </Dropdown.DropdownItem>
-                  ))}
-                </Dropdown.DropdownMenu>
-              )
-            }}
-          >
-            <i class='icon-monitor icon-menu-setting search-head-icon' />
-          </Dropdown>
-        </div>
-        <Loading loading={listLoading.value}>
-          <div class='search-tree'>{treeFn()}</div>
-        </Loading>
-      </div>
-    );
-    const renderFn = () => (
-      <div class='handle-search'>
-        {searchHeadFn()}
-        {listFn()}
-      </div>
-    );
     onMounted(() => {
       getIncidentAlertAggregate();
       cacheAggregateData.value = JSON.parse(JSON.stringify(aggregateBys.value));
     });
     return {
       t,
-      renderFn,
       searchHeadFn,
       filterListHandle,
       isShowDropdown,

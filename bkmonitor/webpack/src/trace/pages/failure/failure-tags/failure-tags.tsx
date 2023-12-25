@@ -61,10 +61,10 @@ export default defineComponent({
       {
         label: t('故障根因'),
         renderFn: () => {
-          const snapshots = incidentDetailData.value.snapshots || [];
+          const snapshots = incidentDetailData.value?.current_snapshot || {};
           return (
             <span class='item-info'>
-              {snapshots[0]?.content?.incident_name || '--'}
+              {snapshots?.content?.incident_name || '--'}
               {/* Service ( <label class='name-target'>我是名称占位</label> ) 于 <b>2023-08-12 00:00:00 </b>
               发生异常，导致 141 个告警 */}
             </span>

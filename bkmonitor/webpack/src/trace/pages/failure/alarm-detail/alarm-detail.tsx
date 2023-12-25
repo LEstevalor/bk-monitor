@@ -602,7 +602,7 @@ export default defineComponent({
       //       item.appointee = data.users;
       //     }
       //   }
-      // });
+      // })
     };
     const handleChangeCollapse = ({ id, isCollapse }) => {
       if (isCollapse) {
