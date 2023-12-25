@@ -52,6 +52,7 @@ export interface ITopoNode extends ModelConfig {
   aggregated_nodes: ITopoNode[];
   comboId: string;
   entity: IEntity;
+  is_feedback_root: boolean;
   id: string;
   bk_biz_id: string;
   bk_biz_name: string;

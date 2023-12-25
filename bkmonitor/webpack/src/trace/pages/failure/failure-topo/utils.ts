@@ -39,6 +39,19 @@ const rootNodeAttrs = {
     fill: '#fff'
   }
 };
+const feedbackRootAttrs = {
+  groupAttrs: {
+    fill: '#FF9C01',
+    stroke: '#FF9C01'
+  },
+  rectAttrs: {
+    stroke: '#3A3B3D',
+    fill: '#FF9C01'
+  },
+  textAttrs: {
+    fill: '#fff'
+  }
+};
 const errorNodeAttrs = {
   groupAttrs: {
     fill: 'rgba(255, 102, 102, 0.4)',
@@ -55,6 +68,7 @@ const errorNodeAttrs = {
     fill: '#fff'
   }
 };
+
 const normalNodeAttrs = {
   groupAttrs: {
     fill: 'rgba(197, 197, 197, 0.2)',
@@ -69,6 +83,9 @@ const normalNodeAttrs = {
   }
 };
 export const getNodeAttrs = (node: ITopoNode) => {
+  if (node?.is_feedback_root) {
+    return { ...feedbackRootAttrs };
+  }
   if (node.entity?.is_root) {
     return { ...rootNodeAttrs };
   }

@@ -5,11 +5,73 @@
   box-shadow: 0 2px;
   position: relative;
   z-index: 999;
+  .tool-tips-list-wrap {
+    padding: 12px 0px;
+    min-width: 268px;
+    .title-wrap {
+      padding: 0px 16px;
+      width: 100%;
+      display: inline-block;
+    }
+    .tool-tips-list-title {
+      font-size: 14px;
+      display: inline-block;
+      line-height: 22px;
+      color: white;
+      width: 100%;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #63656e;
+      .weight {
+        font-weight: 700;
+      }
+      .error-color {
+        color: #ff5656;
+      }
+    }
+    .tool-tips-list {
+      margin-top: 8px;
+      li {
+        width: 100%;
+        padding: 0px 16px;
+        height: 36px;
+        background: #454547;
+        color: #ffffff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        i {
+          font-size: 20px;
+          color: #c5c6cd;
+        }
+        span {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          font-size: 14px;
+          i {
+            margin-right: 4px;
+          }
+          span {
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+          }
+        }
+        &:hover {
+          background: #4f4f52;
+        }
+      }
+      .active {
+        background: #4f4f52;
+      }
+    }
+  }
   &.edge-tooltip {
     min-width: 280px;
     min-height: 248px;
     padding: 0 16px;
-
   }
 
   .edge-tooltip-title {
@@ -45,7 +107,7 @@
         flex: 0 0 40px;
         margin-right: 8px;
         margin-left: 2px;
-        background-color: rgba(255, 102, 102, .4);
+        background-color: rgba(255, 102, 102, 0.4);
         border: 1px solid #f55555;
         border-radius: 50%;
       }
@@ -98,6 +160,9 @@
 
     @extend %item-target;
   }
+  .item-source-normal {
+    background-image: url('./db-normal.svg');
+  }
 
   .node-tooltip {
     display: flex;
@@ -118,6 +183,10 @@
         font-size: 14px;
         font-weight: 700;
         color: #699df4;
+        margin-right: 5px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
       }
 
       .root-mark {
@@ -165,6 +234,20 @@
           margin-left: 5px;
           margin-left: 4px;
           color: #fff;
+          .flex-label {
+            overflow: hidden;
+            .btn-text {
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+          }
+          .flex-text {
+            white-space: nowrap;
+            .icon-btn {
+              display: inline-block;
+            }
+          }
         }
 
         &:nth-child(2n + 1) {
@@ -192,6 +275,17 @@
       margin-left: 4px;
       font-size: 12px;
       color: #699df4;
+      white-space: nowrap;
     }
+  }
+}
+
+.failure-topo-tooltips-popover {
+  padding: 0px !important;
+  .bk-pop2-arrow {
+    background: #454547 !important;
+  }
+  .failure-topo-tooltips {
+    box-shadow: 0px 0px;
   }
 }

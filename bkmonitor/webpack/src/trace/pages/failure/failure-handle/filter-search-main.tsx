@@ -73,7 +73,7 @@ export default defineComponent({
       emit('changeSpace', space);
     };
     /* 整理space_list */
-    const getSpaceList = (spaceList) => {
+    const getSpaceList = spaceList => {
       const list = [];
       spaceList.forEach(item => {
         const tags = [{ id: item.space_type_id, name: item.type_name, type: item.space_type_id }];
@@ -104,8 +104,8 @@ export default defineComponent({
       }
     };
     onMounted(() => {
-      console.log(currentBizList.value, 'currentBizList')
-    })
+      console.log(currentBizList.value, 'currentBizList');
+    });
     return {
       t,
       handleQueryStringChange,
@@ -163,7 +163,9 @@ export default defineComponent({
                       >
                         {SPACE_TYPE_MAP[tag.id]?.name}
                       </Tag>
-                    ) : ''
+                    ) : (
+                      ''
+                    )
                   )}
                 </div>
               </Select.Option>

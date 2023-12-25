@@ -87,31 +87,53 @@ export default defineComponent({
     const treeData = shallowRef([]);
     const checkedIds = ref([]);
     const autoAggregate = ref(true);
+    let autoAggregateIdText = '';
     const isFullscreen = ref(false);
     const { t } = useI18n();
     const aggregateConfig = ref({});
     const incidentId = useIncidentInject();
+    /** 缓存默认聚合id */
+    const setAutoAggregated = data => {
+      Object.keys(data.default_aggregated_config).forEach(key => {
+        const treeNode = treeData.value.find(item => item.key === key);
+        if (treeNode) {
+          const select = data.default_aggregated_config[key];
+          if (select.includes(treeNode.key)) {
+            checkedIds.value.push(treeNode.children.map(({ id }) => id).concat(treeNode.id));
+          } else {
+            treeNode.children.map(({ key, id }) => {
+              select.includes(key) && checkedIds.value.push(id);
+            });
+          }
+        }
+      });
+      autoAggregateIdText = checkedIds.value.join('|');
+    };
     incidentTopologyMenu({
       id: incidentId.value
     }).then(data => {
-      treeData.value = data.map(item => {
+      // checkedIds.value = data
+      treeData.value = data.menu.map(item => {
         return {
           ...item,
           id: random(10),
           name: item.entity_type,
+          key: item.entity_type,
           children: item.aggregate_bys?.map(child => {
-            const name = child.aggreate_key
-              ? t(`按 {0} 聚合`, [child.aggreate_key])
+            const name = child.aggregate_key
+              ? t(`按 {0} 聚合`, [child.aggregate_key])
               : `${`${t('聚合异常')}${item.entity_type}`}  (${child.count})`;
             return {
               ...child,
               parentId: item.id,
               id: random(10),
-              name
+              name,
+              key: child.aggregate_key
             };
           })
         };
       });
+      setAutoAggregated(data);
     });
     const setTreeDataChecked = () => {
       const config = {};
@@ -131,7 +153,7 @@ export default defineComponent({
               if (child.is_anomaly) {
                 config[item.entity_type].aggregate_anomaly = true;
               } else {
-                config[item.entity_type].aggregate_keys.push(child.aggreate_key);
+                config[item.entity_type].aggregate_keys.push(child.aggregate_key);
               }
             }
             return {
@@ -144,14 +166,18 @@ export default defineComponent({
       aggregateConfig.value = config;
     };
     const handleUpdateAutoAggregate = (v: boolean) => {
+      if (v) {
+        checkedIds.value = autoAggregateIdText.split('|');
+      } else {
+        checkedIds.value = [];
+      }
       autoAggregate.value = v;
-      checkedIds.value = [];
       setTreeDataChecked();
       updateAggregationConfig();
     };
     const handleUpdateCheckedIds = (v: string[]) => {
       checkedIds.value = v;
-      autoAggregate.value = false;
+      autoAggregate.value = v.join('|') === autoAggregateIdText;
       setTreeDataChecked();
       updateAggregationConfig();
     };
@@ -188,6 +214,7 @@ export default defineComponent({
     });
     return {
       isFullscreen,
+      autoAggregateIdText,
       treeData,
       checkedIds,
       autoAggregate,
