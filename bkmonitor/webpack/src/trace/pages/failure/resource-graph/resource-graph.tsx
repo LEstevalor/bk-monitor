@@ -837,6 +837,7 @@ export default defineComponent({
           if (parentId) {
             console.info('parentId', parentId);
           }
+
           const childCombo = combos.find(item => item.get('model').parentId === id);
           if (childCombo) {
             return;
