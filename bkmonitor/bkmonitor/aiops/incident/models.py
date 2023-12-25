@@ -95,6 +95,7 @@ class IncidentGraphEdge:
     target: IncidentGraphEntity
     edge_type: IncidentGraphEdgeType
     count: int = 1
+    aggregated: bool = False
 
     def to_src_dict(self):
         return {
@@ -103,6 +104,7 @@ class IncidentGraphEdge:
             "target_type": self.target.entity_type,
             "target_id": self.target.entity_id,
             "edge_type": self.edge_type.value,
+            "aggregated": self.aggregated,
         }
 
 
@@ -132,12 +134,13 @@ class IncidentSnapshot(object):
 
     incident_snapshot_content: Dict
 
-    def __post_init__(self, prepare=True):
+    def __post_init__(self, prepare: bool = True):
         self.incident_graph_categories = {}
         self.incident_graph_ranks = {}
         self.incident_graph_entities = {}
         self.incident_graph_edges = {}
         self.alert_entity_mapping = {}
+        self.bk_biz_id = None
         self.entity_targets = defaultdict(set)
         self.entity_sources = defaultdict(set)
 
@@ -167,20 +170,35 @@ class IncidentSnapshot(object):
                 source=source, target=target, edge_type=IncidentGraphEdgeType(edge_info["edge_type"])
             )
 
+        self.bk_biz_id = self.incident_snapshot_content["bk_biz_id"]
+
     def prepare_alerts(self):
         """根据故障分析结果快照构建告警所在实体的关系."""
         for alert_info in self.incident_snapshot_content["incident_alerts"]:
-            entity_id = alert_info.pop("entity_id")
-            alert_info["entity"] = self.incident_graph_entities[entity_id] if entity_id else None
-            incident_alert = IncidentAlert(**alert_info)
+            incident_alert_info = copy.deepcopy(alert_info)
+            entity_id = incident_alert_info.pop("entity_id")
+            incident_alert_info["entity"] = self.incident_graph_entities[entity_id] if entity_id else None
+            incident_alert = IncidentAlert(**incident_alert_info)
             self.alert_entity_mapping[incident_alert.id] = incident_alert
 
-    def get_related_alert_ids(self) -> List[Dict]:
+    def get_related_alert_ids(self) -> List[int]:
         """检索故障根因定位快照关联的告警详情列表.
 
         :return: 告警详情列表
         """
         return [int(item["id"]) for item in self.incident_snapshot_content["incident_alerts"]]
+
+    def entity_alerts(self, entity_id) -> List[int]:
+        """实体告警列表
+
+        :param entity_id: 实体ID
+        :return: 实体告警ID列表
+        """
+        return [
+            int(item["id"])
+            for item in self.incident_snapshot_content["incident_alerts"]
+            if item["entity_id"] == entity_id
+        ]
 
     def generate_entity_sub_graph(self, entity_id: str) -> "IncidentSnapshot":
         """生成资源子图
@@ -243,20 +261,61 @@ class IncidentSnapshot(object):
         ranks = {
             rank.rank_id: {
                 **asdict(rank),
-                "entities": [],
+                "sub_ranks": {},
                 "total": 0,
                 "anomaly_count": 0,
             }
             for rank in self.incident_graph_ranks.values()
         }
+        entity_type_depths = {}
+        for entity in self.incident_graph_entities.values():
+            if len(self.entity_sources[entity.entity_id]) == 0:
+                entity_type_depths[entity.entity_type] = 0
+                self.find_entity_type_depths(entity.entity_type, 0, entity_type_depths)
 
         for entity in self.incident_graph_entities.values():
-            ranks[entity.rank.rank_id]["entities"].append(entity)
+            sub_rank_key = (entity.rank.rank_id, -entity_type_depths[entity.entity_type])
+            if sub_rank_key not in ranks[entity.rank.rank_id]["sub_ranks"]:
+                ranks[entity.rank.rank_id]["sub_ranks"][sub_rank_key] = []
+            ranks[entity.rank.rank_id]["sub_ranks"][sub_rank_key].append(entity)
+
             if entity.is_anomaly:
                 ranks[entity.rank.rank_id]["anomaly_count"] += 1
             ranks[entity.rank.rank_id]["total"] += 1
 
-        return list(ranks.values())
+            for aggregated_entity in entity.aggregated_entities:
+                if aggregated_entity.is_anomaly:
+                    ranks[entity.rank.rank_id]["anomaly_count"] += 1
+                ranks[entity.rank.rank_id]["total"] += 1
+
+        final_ranks = []
+        for rank_info in ranks.values():
+            sorted_sub_rank_keys = sorted(rank_info["sub_ranks"].keys())
+            for index, sub_rank_key in enumerate(sorted_sub_rank_keys):
+                new_rank = {key: value for key, value in rank_info.items() if key != "sub_ranks"}
+                new_rank["entities"] = rank_info["sub_ranks"][sub_rank_key]
+                new_rank["is_sub_rank"] = True if index > 0 else False
+                final_ranks.append(new_rank)
+
+        return final_ranks
+
+    def find_entity_type_depths(self, entity_type: str, current_depth: int, entity_type_depths: Dict) -> None:
+        """递归设置每种实体在拓扑图中的深度.
+
+        :param entity_type: 实体类型
+        :param current_depth: 当前深度
+        :param entity_type_depths: 实体类型深度字典
+        """
+        next_entity_types = set()
+        for entity in self.incident_graph_entities.values():
+            if entity_type == entity.entity_type:
+                for target_entity_id in self.entity_targets[entity.entity_id]:
+                    target = self.incident_graph_entities[target_entity_id]
+                    next_entity_types.add(target.entity_type)
+                    entity_type_depths[target.entity_type] = current_depth + 1
+
+        for next_entity_type in list(next_entity_types):
+            self.find_entity_type_depths(next_entity_type, current_depth + 1, entity_type_depths)
 
     def aggregate_graph(self, aggregate_config: Dict = None) -> None:
         """聚合图谱
@@ -266,18 +325,53 @@ class IncidentSnapshot(object):
         group_by_entities = {}
 
         for entity_id, entity in self.incident_graph_entities.items():
-            key = (
-                frozenset(self.entity_sources[entity_id]),
-                frozenset(self.entity_targets[entity_id]),
-                entity_id if entity.is_anomaly or entity.is_root else "normal",
-            )
+            if aggregate_config is None:
+                # 如果没有聚合配置，则执行自动聚合的逻辑
+                key = (
+                    frozenset(self.entity_sources[entity_id]),
+                    frozenset(self.entity_targets[entity_id]),
+                    entity_id if entity.is_anomaly or entity.is_root else "normal",
+                )
+            else:
+                # 按照聚合配置进行聚合
+                key = (
+                    self.generate_aggregate_key(entity, aggregate_config),
+                    entity_id if entity.is_root else "not_root",
+                )
             if key not in group_by_entities:
                 group_by_entities[key] = set()
             group_by_entities[key].add(entity.entity_id)
 
         for entity_ids in group_by_entities.values():
-            if len(entity_ids) >= 3:
+            # 聚合相同维度超过两个的图谱实体
+            if len(entity_ids) >= 2:
                 self.merge_entities(list(entity_ids))
+
+    def generate_aggregate_key(self, entity: IncidentGraphEntity, aggregate_config: Dict) -> frozenset:
+        """根据聚合配置生成用于聚合的key
+
+        :param entity: 图谱试图
+        :param aggregate_config: 聚合配置
+        :return: 实体ID或者聚合key的frozenset
+        """
+        if entity.entity_type not in aggregate_config:
+            return entity.entity_id
+
+        aggregate_bys = defaultdict(list)
+        for aggregate_key in aggregate_config[entity.entity_type]["aggregate_keys"]:
+            for target_entity_id in self.entity_targets[entity.entity_id]:
+                if self.incident_graph_entities[target_entity_id].entity_type == aggregate_key:
+                    aggregate_bys[aggregate_key].append(target_entity_id)
+            for source_entity_id in self.entity_sources[entity.entity_id]:
+                if self.incident_graph_entities[source_entity_id].entity_type == aggregate_key:
+                    aggregate_bys[aggregate_key].append(source_entity_id)
+        for aggregate_by in aggregate_bys.keys():
+            aggregate_bys[aggregate_by] = frozenset(aggregate_bys[aggregate_by])
+
+        if not aggregate_config[entity.entity_type]["aggregate_anomaly"] and entity.is_anomaly:
+            aggregate_bys["anomaly_key"] = entity.entity_id
+
+        return frozenset(aggregate_bys.items())
 
     def merge_entities(self, entity_ids: List[str]) -> None:
         """合并同类实体
@@ -291,11 +385,13 @@ class IncidentSnapshot(object):
                 self.entity_sources[target_entity_id].remove(entity.entity_id)
                 self.entity_sources[target_entity_id].add(main_entity.entity_id)
                 self.incident_graph_edges[(main_entity.entity_id, target_entity_id)].count += 1
+                self.incident_graph_edges[(main_entity.entity_id, target_entity_id)].aggregated = True
                 del self.incident_graph_edges[(entity.entity_id, target_entity_id)]
             for source_entity_id in self.entity_sources[entity.entity_id]:
                 self.entity_targets[source_entity_id].remove(entity.entity_id)
                 self.entity_targets[source_entity_id].add(main_entity.entity_id)
                 self.incident_graph_edges[(source_entity_id, main_entity.entity_id)].count += 1
+                self.incident_graph_edges[(source_entity_id, main_entity.entity_id)].aggregated = True
                 del self.incident_graph_edges[(source_entity_id, entity.entity_id)]
 
             del self.entity_targets[entity.entity_id]

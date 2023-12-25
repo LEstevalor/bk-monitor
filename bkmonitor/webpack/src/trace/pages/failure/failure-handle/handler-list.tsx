@@ -26,7 +26,7 @@
 import { computed, defineComponent, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Dropdown, Exception, Input, Loading } from 'bkui-vue';
-
+import { useIncidentInject } from '../utils';
 import { incidentHandlers } from '../../../../monitor-api/modules/incident';
 
 import './handler-list.scss';
@@ -57,11 +57,12 @@ export default defineComponent({
     const listLoading = ref(false);
     const isShowDropdown = ref(false);
     const searchText = ref('');
+    const incidentId = useIncidentInject();
     const getIncidentHandlers = () => {
       listLoading.value = true;
       incidentHandlers({
         bk_biz_id: 2,
-        id: 17024603108,
+        id: incidentId.value,
         order_by: orderByType.value
       })
         .then(res => {
@@ -125,8 +126,9 @@ export default defineComponent({
           class={['list-item', { active: index === 2 }]}
           onClick={() => handleClickItem(item)}
         >
+          <i class={`icon-monitor icon-mc-all head-icon`} />
           <span class='item-head'>
-            <i class='icon-monitor icon-mc-user-one head-icon' />
+            <i class={`icon-monitor icon-mc-${item.id === 'all' ? 'user-one' : 'user-one'} head-icon`} />
           </span>
           <span
             class='item-name'
@@ -206,7 +208,7 @@ export default defineComponent({
         </div>
         <Loading loading={this.listLoading}>
           <div class='handler-list-main'>
-            {this.listFn([all, not_dispatch, mine])}
+            {this.listFn([all, mine])}
             <span class='item-line'></span>
             {this.listFn(this.searchResult, true)}
           </div>

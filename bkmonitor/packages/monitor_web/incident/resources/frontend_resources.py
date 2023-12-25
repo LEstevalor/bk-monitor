@@ -13,8 +13,12 @@ from collections import Counter, defaultdict
 from dataclasses import asdict
 from typing import Any, Dict, List
 
+import arrow
+
 from bkmonitor.aiops.incident.models import IncidentGraphEntity, IncidentSnapshot
 from bkmonitor.aiops.incident.operation import IncidentOperationManager
+from bkmonitor.documents.alert import AlertDocument
+from bkmonitor.documents.base import BulkActionType
 from bkmonitor.documents.incident import (
     IncidentDocument,
     IncidentOperationDocument,
@@ -27,6 +31,7 @@ from constants.incident import (
     IncidentAlertAggregateDimension,
     IncidentOperationClass,
     IncidentOperationType,
+    IncidentStatus,
 )
 from core.drf_resource import api, resource
 from core.drf_resource.base import Resource
@@ -65,27 +70,94 @@ class IncidentBaseResource(Resource):
         for agg_value in aggregate_results.values():
             if isinstance(agg_value["children"], dict):
                 if agg_value["children"]:
-                    self.expand_children_dict_as_list(agg_value["children"])
+                    agg_value["children"] = self.expand_children_dict_as_list(agg_value["children"])
+                else:
+                    agg_value["children"] = []
 
-                agg_value["children"] = list(agg_value["children"].values())
+        return list(aggregate_results.values())
 
-        return aggregate_results
-
-    def generate_nodes_by_entites(self, entities: List[IncidentGraphEntity]) -> List[Dict]:
+    def generate_nodes_by_entites(
+        self, incident: IncidentDocument, snapshot: IncidentSnapshot, entities: List[IncidentGraphEntity]
+    ) -> List[Dict]:
         """根据图谱实体生成拓扑图节点
 
         :param entites: 实体列表
         :return: 拓扑图节点列表
         """
-        return [
-            {
-                "id": entity.entity_id,
-                "comboId": str(entity.rank.rank_category.category_id),
-                "aggregated_nodes": [],
-                "entity": asdict(entity),
-            }
-            for entity in entities
-        ]
+        nodes = []
+
+        for entity in entities:
+            alert_ids = snapshot.entity_alerts(entity.entity_id)
+            bk_biz_name = resource.cc.get_app_by_id(snapshot.bk_biz_id).name
+            nodes.append(
+                {
+                    "id": entity.entity_id,
+                    "comboId": str(entity.rank.rank_category.category_id),
+                    "aggregated_nodes": self.generate_nodes_by_entites(incident, snapshot, entity.aggregated_entities),
+                    "entity": {key: value for key, value in asdict(entity).items() if key != "aggregated_entities"},
+                    "total_count": len(entity.aggregated_entities) + 1,
+                    "anomaly_count": self.get_anomaly_entity_count(entity),
+                    "is_feedback_root": incident.feedback["incident_root"] == entity.entity_id,
+                    "bk_biz_id": snapshot.bk_biz_id,
+                    "bk_biz_name": bk_biz_name,
+                    "alert_ids": alert_ids,
+                    "alert_display": (
+                        {
+                            "alert_id": alert_ids[0],
+                            "alert_name": AlertDocument.get(alert_ids[0]).alert_name,
+                        }
+                        if len(alert_ids) > 0
+                        else {}
+                    ),
+                }
+            )
+
+        return nodes
+
+    def get_anomaly_entity_count(self, entity: IncidentGraphEntity) -> int:
+        """获取实体（包含聚合在这个实体的其他实体）的异常数量
+
+        :param entity: 图谱实体
+        :return: 异常实体数量
+        """
+        anomaly_count = 1 if entity.is_anomaly else 0
+        for aggregated_entity in entity.aggregated_entities:
+            if aggregated_entity.is_anomaly:
+                anomaly_count += 1
+
+        return anomaly_count
+
+    def update_incident_document(self, incident_info: Dict, update_time: arrow.Arrow, is_cancel: bool = False) -> None:
+        """更新故障记录，并记录故障流转
+
+        :param incident_info: 需要更新的信息
+        :param update_time: 更新时间
+        :param is_cancel: 是否取消反馈
+        """
+        incident_document = IncidentDocument.get(incident_info["id"])
+        for incident_key, incident_value in incident_info.items():
+            if hasattr(incident_document, incident_key) and getattr(incident_document, incident_key) != incident_value:
+                if incident_key == "status" and incident_value == IncidentStatus.CLOSED.value:
+                    IncidentOperationManager.record_close_incident(incident_info["incident_id"], update_time.timestamp)
+                elif incident_key == "feedback":
+                    IncidentOperationManager.record_feedback_incident(
+                        incident_info["incident_id"],
+                        update_time.timestamp,
+                        incident_info["feedback"]["incident_root"],
+                        is_cancel,
+                    )
+                else:
+                    IncidentOperationManager.record_user_update_incident(
+                        incident_info["incident_id"],
+                        update_time.timestamp,
+                        incident_key,
+                        getattr(incident_document, incident_key),
+                        incident_value,
+                    )
+                setattr(incident_document, incident_key, incident_value)
+
+        incident_document.update_time = update_time.timestamp
+        IncidentDocument.bulk_create([incident_document], action=BulkActionType.UPDATE)
 
 
 class IncidentListResource(IncidentBaseResource):
@@ -223,17 +295,18 @@ class IncidentTopologyResource(IncidentBaseResource):
             snapshot.aggregate_graph()
         elif validated_request_data["aggregate_config"]:
             snapshot.aggregate_graph(validated_request_data["aggregate_config"])
-        topology_data = self.generate_topology_data_from_snapshot(snapshot)
+        topology_data = self.generate_topology_data_from_snapshot(incident, snapshot)
 
         return topology_data
 
-    def generate_topology_data_from_snapshot(self, snapshot: IncidentSnapshot) -> Dict:
+    def generate_topology_data_from_snapshot(self, incident: IncidentDocument, snapshot: IncidentSnapshot) -> Dict:
         """根据快照内容生成拓扑图数据
 
         :param snapshot: 快照内容
         :return: 拓扑图数据
         """
-        nodes = self.generate_nodes_by_entites(snapshot.incident_graph_entities.values())
+        nodes = self.generate_nodes_by_entites(incident, snapshot, snapshot.incident_graph_entities.values())
+
         node_categories = [node["entity"]["rank"]["rank_category"]["category_id"] for node in nodes]
         topology_data = {
             "nodes": nodes,
@@ -243,6 +316,7 @@ class IncidentTopologyResource(IncidentBaseResource):
                     "target": edge.target.entity_id,
                     "count": edge.count,
                     "type": edge.edge_type.value,
+                    "aggregated": edge.aggregated,
                 }
                 for edge in snapshot.incident_graph_edges.values()
             ],
@@ -277,7 +351,16 @@ class IncidentTopologyMenuResource(IncidentBaseResource):
 
         topology_menu = self.generate_topology_menu(snapshot)
 
-        return topology_menu
+        default_aggregated_config = {}
+        for menu in topology_menu:
+            default_aggregated_config[menu["entity_type"]] = [
+                item["aggregate_key"] for item in menu["aggregate_bys"] if not item["is_anomaly"]
+            ]
+
+        return {
+            "menu": topology_menu,
+            "default_aggregated_config": default_aggregated_config,
+        }
 
     def generate_topology_menu(self, snapshot: IncidentSnapshot) -> Dict:
         """根据快照内容生成拓扑图目录选项
@@ -303,12 +386,18 @@ class IncidentTopologyMenuResource(IncidentBaseResource):
                     anomaly_count += 1
 
             aggregate_keys = [
-                {"count": value, "aggreate_key": key, "is_anomaly": False} for key, value in neighbors.items()
+                {"count": value, "aggregate_key": key, "is_anomaly": False} for key, value in neighbors.items()
             ]
-            aggregate_keys.append({"count": anomaly_count, "aggreate_key": None, "is_anomaly": True})
-            menu_data[entity_type] = sorted(aggregate_keys, key=lambda x: -x["count"])
+            aggregate_keys.append({"count": anomaly_count, "aggregate_key": None, "is_anomaly": True})
+            menu_data[entity_type] = {
+                "entity_type": entity_type,
+                "aggregate_bys": sorted(aggregate_keys, key=lambda x: -x["count"]),
+            }
+            menu_data[entity_type]["total_count"] = sum(
+                [item["count"] for item in menu_data[entity_type]["aggregate_bys"]]
+            )
 
-        return menu_data
+        return list(sorted(menu_data.values(), key=lambda x: -x["total_count"]))
 
 
 class IncidentTopologyUpstreamResource(IncidentBaseResource):
@@ -333,10 +422,10 @@ class IncidentTopologyUpstreamResource(IncidentBaseResource):
         ranks = sub_snapshot.group_by_rank()
 
         for rank_info in ranks:
-            rank_info["nodes"] = self.generate_nodes_by_entites(rank_info["entities"])
+            rank_info["nodes"] = self.generate_nodes_by_entites(incident, sub_snapshot, rank_info["entities"])
             for index, entity_info in enumerate(rank_info["entities"]):
                 rank_info["nodes"][index]["aggregated_nodes"] = self.generate_nodes_by_entites(
-                    entity_info.aggregated_entities
+                    incident, sub_snapshot, entity_info.aggregated_entities
                 )
             rank_info.pop("entities")
 
@@ -382,9 +471,7 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
 
     class RequestSerializer(AlertSearchSerializer):
         id = serializers.IntegerField(required=True, label="故障UUID")
-        aggregate_bys = serializers.MultipleChoiceField(
-            required=True, choices=IncidentAlertAggregateDimension.get_enum_value_list(), label="聚合维度"
-        )
+        aggregate_bys = serializers.ListField(required=True, label="聚合维度")
         ordering = serializers.ListField(label="排序", child=serializers.CharField(), default=[])
         page = serializers.IntegerField(label="页数", min_value=1, default=1)
         page_size = serializers.IntegerField(label="每页大小", min_value=0, max_value=5000, default=300)
@@ -424,6 +511,7 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
             aggregate_results[status] = {
                 "id": status,
                 "name": str(EVENT_STATUS_DICT[status]),
+                "level_name": "status",
                 "count": 0,
                 "children": {},
                 "alert_ids": [],
@@ -431,6 +519,7 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
             }
 
         for alert in alerts:
+            alert["entity"] = asdict(snapshot.alert_entity_mapping[alert["id"]].entity)
             if (
                 alert["id"] in snapshot.alert_entity_mapping
                 and snapshot.alert_entity_mapping[alert["id"]].entity.is_root
@@ -440,14 +529,18 @@ class IncidentAlertAggregateResource(IncidentBaseResource):
                 is_root = False
             aggregate_layer_results = aggregate_results
             for aggregate_by in aggregate_bys:
-                chain_key = IncidentAlertAggregateDimension(aggregate_by).chain_key
-                aggregate_by_value = IncidentAlertAggregateResource().get_item_by_chain_key(alert, chain_key)
+                agg_dim = IncidentAlertAggregateDimension(aggregate_by)
+                chain_key = agg_dim.chain_key
+                aggregate_by_value = self.get_item_by_chain_key(alert, chain_key)
                 if not aggregate_by_value:
                     continue
+                if agg_dim == IncidentAlertAggregateDimension.METRIC_NAME:
+                    aggregate_by_value = "|".join([item["id"] for item in aggregate_by_value])
                 if aggregate_by_value not in aggregate_layer_results:
                     aggregate_layer_results[aggregate_by_value] = {
                         "id": aggregate_by_value,
                         "name": aggregate_by_value,
+                        "level_name": agg_dim.value,
                         "count": 1,
                         "children": {},
                         "alert_ids": [alert["id"]],
@@ -542,6 +635,9 @@ class IncidentOperationsResource(IncidentBaseResource):
     def perform_request(self, validated_request_data: Dict) -> Dict:
         operations = IncidentOperationDocument.list_by_incident_id(validated_request_data["incident_id"])
         operations = [operation.to_dict() for operation in operations]
+        for operation in operations:
+            operation["operation_class"] = IncidentOperationType(operation["operation_type"]).operation_class.value
+        return operations
 
 
 class IncidentRecordOperationResource(IncidentBaseResource):
@@ -570,6 +666,7 @@ class IncidentRecordOperationResource(IncidentBaseResource):
 
 
 class IncidentOperationTypesResource(IncidentBaseResource):
+    """
     故障流转列表
     """
 
@@ -620,7 +717,8 @@ class EditIncidentResource(IncidentBaseResource):
 
         incident_info = api.bkdata.get_incident_detail(incident_id=incident_id)
         incident_info.update(validated_request_data)
-        api.bkdata.update_incident_detail(incident_id=incident_id, **incident_info)
+        updated_incident = api.bkdata.update_incident_detail(**incident_info)
+        self.update_incident_document(incident_info, arrow.get(updated_incident["updated_at"]))
         return incident_info
 
 
@@ -636,15 +734,21 @@ class FeedbackIncidentRootResource(IncidentBaseResource):
         id = serializers.IntegerField(required=True, label="故障UUID")
         incident_id = serializers.IntegerField(required=True, label="故障ID")
         bk_biz_id = serializers.IntegerField(required=True, label="业务ID")
-        contents = serializers.JSONField(required=True, label="反馈的内容")
+        feedback = serializers.JSONField(required=True, label="反馈的内容")
         is_cancel = serializers.BooleanField(required=False, default=False)
 
     def perform_request(self, validated_request_data: Dict) -> Dict:
         incident_id = validated_request_data["incident_id"]
+        is_cancel = validated_request_data["is_cancel"]
 
         incident_info = api.bkdata.get_incident_detail(incident_id=incident_id)
-        incident_info["feedback"].update(validated_request_data["contents"])
-        api.bkdata.update_incident_detail(incident_id=incident_id, feedback=incident_info["feedback"])
+        incident_info["id"] = validated_request_data["id"]
+        if not is_cancel:
+            incident_info["feedback"].update(validated_request_data["feedback"])
+        else:
+            incident_info["feedback"] = {}
+        updated_incident = api.bkdata.update_incident_detail(**incident_info)
+        self.update_incident_document(incident_info, arrow.get(updated_incident["updated_at"]), is_cancel)
         return incident_info["feedback"]
 
 

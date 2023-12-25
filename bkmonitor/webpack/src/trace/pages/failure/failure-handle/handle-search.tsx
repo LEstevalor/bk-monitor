@@ -25,10 +25,12 @@
  */
 import { defineComponent, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Dropdown, Input, Loading, Select, Tree } from 'bkui-vue';
+import { Input, Loading, Select, Tree, PopConfirm, Checkbox } from 'bkui-vue';
+import { BkCheckboxGroup } from 'bkui-vue/lib/checkbox';
 
 import { incidentAlertAggregate } from '../../../../monitor-api/modules/incident';
-
+// import FilterSearchMain from './filter-search-main';
+import { useIncidentInject } from '../utils';
 import './handle-search.scss';
 
 export default defineComponent({
@@ -37,6 +39,7 @@ export default defineComponent({
     const alertAggregateData = ref([]);
     const listLoading = ref(false);
     const isShowDropdown = ref(false);
+    const cacheAggregateData = ref([]);
     const aggregateBysList = [
       {
         name: t('节点层级'),
@@ -59,7 +62,8 @@ export default defineComponent({
         key: 'metric_name'
       }
     ];
-    const aggregateBys = ref(['alert_name', 'node_name', 'node_type']);
+    const aggregateBys = ref(['alert_name', 'node_name']);
+    const incidentId = useIncidentInject();
     const filterListHandle = (key: string) => {
       if (aggregateBys.value.includes(key)) {
         aggregateBys.value = aggregateBys.value.filter(item => item !== key);
@@ -69,9 +73,10 @@ export default defineComponent({
     };
     const searchHeadFn = () => (
       <div class='handle-search-top'>
+        {/* <FilterSearchMain /> */}
         <Select
           class='top-select'
-          prefix={t('业务筛选')}
+          prefix={t('空间筛选')}
         />
         <Input
           placeholder={t('请输入搜索条件')}
@@ -95,12 +100,12 @@ export default defineComponent({
       listLoading.value = true;
       incidentAlertAggregate({
         bk_biz_id: 2,
-        id: 17024603108,
+        id: incidentId.value,
         aggregate_bys: aggregateBys.value
       })
         .then(res => {
           alertAggregateData.value = Object.values(res);
-          console.log(res, alertAggregateData.value);
+          // console.log(res, alertAggregateData.value);
         })
         .catch(err => {
           console.log(err);
@@ -117,6 +122,13 @@ export default defineComponent({
         showIcon = icon;
       }
       return <i class={`icon-monitor icon-${showIcon} tree-icon ${icon}`} />;
+    };
+    const handleFilter = () => {
+      getIncidentAlertAggregate();
+      cacheAggregateData.value = JSON.parse(JSON.stringify(aggregateBys.value));
+    };
+    const cancelFilter = () => {
+      aggregateBys.value = cacheAggregateData.value;
     };
     const treeFn = () => (
       <Tree
@@ -172,6 +184,7 @@ export default defineComponent({
     );
     onMounted(() => {
       getIncidentAlertAggregate();
+      cacheAggregateData.value = JSON.parse(JSON.stringify(aggregateBys.value));
     });
     return {
       t,
@@ -182,7 +195,9 @@ export default defineComponent({
       listLoading,
       treeFn,
       aggregateBysList,
-      aggregateBys
+      aggregateBys,
+      handleFilter,
+      cancelFilter
     };
   },
   render() {
@@ -192,7 +207,38 @@ export default defineComponent({
         <div class='handle-search-list'>
           <div class='search-head'>
             {this.t('我负责的告警')}
-            <Dropdown
+            <PopConfirm
+              width='148'
+              trigger='click'
+              placement={'bottom-start'}
+              onConfirm={this.handleFilter}
+              onCancel={this.cancelFilter}
+              v-slots={{
+                content: () => (
+                  <div class='drop-main'>
+                    <div class='drop-main-title'>{this.t('设置聚合维度')}</div>
+                    <BkCheckboxGroup
+                      class='drop-main-list'
+                      v-model={this.aggregateBys}
+                    >
+                      {this.aggregateBysList.map(item => (
+                        <Checkbox
+                          disabled={this.aggregateBys.length === 1 && this.aggregateBys.includes(item.key)}
+                          label={item.key}
+                          size={'small'}
+                          class='drop-item drop-item-checkbox'
+                        >
+                          {item.name}
+                        </Checkbox>
+                      ))}
+                    </BkCheckboxGroup>
+                  </div>
+                )
+              }}
+            >
+              <i class='icon-monitor icon-menu-setting search-head-icon' />
+            </PopConfirm>
+            {/* <Dropdown
               ext-cls='aggregate-dropdown'
               trigger='click'
               // is-show={this.isShowDropdown}
@@ -216,7 +262,7 @@ export default defineComponent({
               }}
             >
               <i class='icon-monitor icon-menu-setting search-head-icon' />
-            </Dropdown>
+            </Dropdown> */}
           </div>
           <Loading loading={this.listLoading}>
             <div class='search-tree'>{this.treeFn()}</div>

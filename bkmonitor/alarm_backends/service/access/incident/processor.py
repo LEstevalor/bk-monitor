@@ -34,6 +34,7 @@ class AccessIncidentProcess(BaseAccessIncidentProcess):
         self.broker_url = broker_url
         self.queue_name = queue_name
         self.client = RabbitMQClient(broker_url=broker_url)
+        self.client.ping()
 
     def process(self) -> None:
         def callback(ch: BlockingChannel, method: Basic.Deliver, properties: Dict, body: str):
@@ -49,7 +50,7 @@ class AccessIncidentProcess(BaseAccessIncidentProcess):
         :param sync_info: 同步内容
         """
         if sync_info["sync_type"] == IncidentSyncType.CREATE.value:
-            self.create_incdent(sync_info)
+            self.create_incident(sync_info)
         elif sync_info["sync_type"] == IncidentSyncType.UPDATE.value:
             self.update_incident(sync_info)
 

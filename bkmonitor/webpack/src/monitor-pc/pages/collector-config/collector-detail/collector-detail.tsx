@@ -79,14 +79,18 @@ export default class CollectorDetail extends Mixins(authorityMixinCreate(collect
       pollingCount: 1,
       needPolling: true,
       timer: null,
-      topicKey: random(8)
+      topicKey: ''
     },
     [TabEnum.StorageState]: {
       loading: false,
-      data: null
+      data: null,
+      topicKey: ''
     },
     [TabEnum.Configuration]: {
       renderKey: random(8)
+    },
+    [TabEnum.DataLink]: {
+      topicKey: ''
     }
   };
 
@@ -94,6 +98,8 @@ export default class CollectorDetail extends Mixins(authorityMixinCreate(collect
   alarmGroupList: IAlarmGroupList[] = [];
   /* 从采集列表获取当前采集数据 */
   collectConfigData = null;
+
+  alarmGroupListLoading = false;
 
   public beforeRouteEnter(to: Route, from: Route, next: Function) {
     const { params } = to;
@@ -107,13 +113,22 @@ export default class CollectorDetail extends Mixins(authorityMixinCreate(collect
     this.getCollectConfigListItem();
     this.getAlarmGroupList();
     this.getDetails();
-    this.getStorageStateData();
+    this.$store.commit('app/SET_NAV_ROUTE_LIST', [
+      { name: this.$t('route-数据采集'), id: 'collect-config' },
+      { name: this.$t('route-采集详情'), id: 'collect-config-detail' }
+    ]);
   }
 
   handleTabChange(v: TabEnum) {
     this.active = v;
     if (this.active === TabEnum.TargetDetail) {
       this.getHosts(this.allData[TabEnum.TargetDetail].pollingCount);
+      this.allData[TabEnum.TargetDetail].topicKey = random(8);
+    } else if (this.active === TabEnum.StorageState) {
+      this.getStorageStateData();
+      this.allData[TabEnum.StorageState].topicKey = random(8);
+    } else if (this.active === TabEnum.DataLink) {
+      this.allData[TabEnum.DataLink].topicKey = random(8);
     }
   }
 
@@ -166,15 +181,19 @@ export default class CollectorDetail extends Mixins(authorityMixinCreate(collect
   }
 
   getAlarmGroupList() {
-    return listUserGroup({ exclude_detail_info: 1 }).then(data => {
-      this.alarmGroupList = data.map(item => ({
-        id: item.id,
-        name: item.name,
-        needDuty: item.need_duty,
-        receiver:
-          item?.users?.map(rec => rec.display_name).filter((item, index, arr) => arr.indexOf(item) === index) || []
-      }));
-    });
+    return listUserGroup({ exclude_detail_info: 1 })
+      .then(data => {
+        this.alarmGroupList = data.map(item => ({
+          id: item.id,
+          name: item.name,
+          needDuty: item.need_duty,
+          receiver:
+            item?.users?.map(rec => rec.display_name).filter((item, index, arr) => arr.indexOf(item) === index) || []
+        }));
+      })
+      .catch(e => {
+        console.log(e);
+      });
   }
 
   getHosts(count) {
@@ -242,6 +261,12 @@ export default class CollectorDetail extends Mixins(authorityMixinCreate(collect
     window.open(url.href);
   }
 
+  async handleAlarmGroupListRefresh() {
+    this.alarmGroupListLoading = true;
+    await this.getAlarmGroupList();
+    this.alarmGroupListLoading = false;
+  }
+
   render() {
     return (
       <div
@@ -269,14 +294,17 @@ export default class CollectorDetail extends Mixins(authorityMixinCreate(collect
             )}
           </TabPanel>
           <TabPanel
-            label={this.$t('采集详情')}
+            label={this.$t('采集状态')}
             name={TabEnum.TargetDetail}
           >
             <AlertTopic
               class='mb-24'
               stage={TCollectorAlertStage.collecting}
               id={this.collectId as any}
+              updateKey={this.allData[TabEnum.TargetDetail].topicKey}
               alarmGroupList={this.alarmGroupList}
+              alarmGroupListLoading={this.alarmGroupListLoading}
+              onAlarmGroupListRefresh={this.handleAlarmGroupListRefresh}
             ></AlertTopic>
             <CollectorStatusDetails
               data={this.allData[TabEnum.TargetDetail].data}
@@ -293,7 +321,10 @@ export default class CollectorDetail extends Mixins(authorityMixinCreate(collect
               class='mb-24'
               stage={TCollectorAlertStage.transfer}
               id={this.collectId as any}
+              updateKey={this.allData[TabEnum.DataLink].topicKey}
               alarmGroupList={this.alarmGroupList}
+              alarmGroupListLoading={this.alarmGroupListLoading}
+              onAlarmGroupListRefresh={this.handleAlarmGroupListRefresh}
             ></AlertTopic>
             <LinkStatus
               show={this.active === TabEnum.DataLink}
@@ -308,7 +339,10 @@ export default class CollectorDetail extends Mixins(authorityMixinCreate(collect
               class='mb-24'
               stage={TCollectorAlertStage.storage}
               id={this.collectId as any}
+              updateKey={this.allData[TabEnum.StorageState].topicKey}
               alarmGroupList={this.alarmGroupList}
+              alarmGroupListLoading={this.alarmGroupListLoading}
+              onAlarmGroupListRefresh={this.handleAlarmGroupListRefresh}
             ></AlertTopic>
             <StorageState
               loading={this.allData[TabEnum.StorageState].loading}
@@ -317,7 +351,7 @@ export default class CollectorDetail extends Mixins(authorityMixinCreate(collect
             />
           </TabPanel>
           <TabPanel
-            label={this.$t('字段详情')}
+            label={this.$t('指标/维度')}
             name={TabEnum.FieldDetails}
           >
             <FieldDetails detailData={this.detailData} />

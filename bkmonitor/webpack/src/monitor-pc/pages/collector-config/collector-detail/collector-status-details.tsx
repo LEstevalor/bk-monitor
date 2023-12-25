@@ -85,7 +85,7 @@ export default class CollectorStatusDetails extends tsc<IProps> {
   /* 表格字段 */
   tableColumns = [
     { id: EColumn.name, name: window.i18n.t('目标'), width: 278 },
-    { id: EColumn.alert, name: window.i18n.t('告警'), width: 298 },
+    { id: EColumn.alert, name: window.i18n.t('告警'), minWidth: 217, width: 217 },
     { id: EColumn.status, name: window.i18n.t('状态'), width: 165 },
     { id: EColumn.version, name: window.i18n.t('版本'), width: 228 },
     { id: EColumn.detail, name: window.i18n.t('详情') },
@@ -147,7 +147,8 @@ export default class CollectorStatusDetails extends tsc<IProps> {
         };
         let showAlertHistogram = true;
         item.child.forEach(set => {
-          const alertHistogram = set?.alert_histogram?.map(a => ({ level: a[1] })) || [];
+          // const alertHistogram = set?.alert_histogram?.map(a => ({ level: a[1] })) || [];
+          const alertHistogram = set?.alert_histogram || [];
           showAlertHistogram = !!set?.alert_histogram;
           // 表格内容
           if (
@@ -238,7 +239,8 @@ export default class CollectorStatusDetails extends tsc<IProps> {
       let showAlertHistogram = true;
       item.child.forEach(set => {
         if ((id === EStatus.RUNNING && STATUS_LIST.includes(set.status)) || set.status === id || id === EStatus.ALL) {
-          const alertHistogram = set?.alert_histogram?.map(a => ({ level: a[1] })) || [];
+          // const alertHistogram = set?.alert_histogram?.map(a => ({ level: a[1] })) || [];
+          const alertHistogram = set?.alert_histogram || [];
           showAlertHistogram = !!set?.alert_histogram;
           table.push({
             ...set,
@@ -615,6 +617,7 @@ export default class CollectorStatusDetails extends tsc<IProps> {
                           prop={column.id}
                           label={column.name}
                           width={column.width}
+                          minWidth={column?.minWidth}
                           formatter={(row: any) => {
                             switch (column.id) {
                               case EColumn.name: {

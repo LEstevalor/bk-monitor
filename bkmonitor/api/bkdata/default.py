@@ -13,18 +13,18 @@ specific language governing permissions and limitations under the License.
 import abc
 
 import six
-from constants.dataflow import AutoOffsetResets
-from core.drf_resource import APIResource
 from django.conf import settings
 from rest_framework import serializers
 
 from bkmonitor.utils.cache import CacheType
 from bkmonitor.utils.request import get_request
+from constants.dataflow import AutoOffsetResets
+from core.drf_resource import APIResource
 
 
 class BkDataAPIGWResource(six.with_metaclass(abc.ABCMeta, APIResource)):
     base_url_statement = None
-    base_url = settings.BKDATA_API_BASE_URL or "%s/api/c/compapi/data/" % settings.BK_COMPONENT_API_URL
+    base_url = settings.BKDATA_API_BASE_URL or "%s/api/bk-base/prod/" % settings.BK_COMPONENT_API_URL
 
     # 模块名
     module_name = "bkdata"
@@ -962,6 +962,14 @@ class UpdateIncidentDetail(DataAccessAPIResource):
 
     class RequestSerializer(CommonRequestSerializer):
         incident_id = serializers.CharField(required=True, label="故障ID")
+        bk_biz_id = serializers.IntegerField(required=False, label="业务ID")
+        incident_name = serializers.CharField(required=False, label="故障名称")
+        incident_reason = serializers.CharField(required=False, label="故障原因")
+        level = serializers.CharField(required=False, label="故障级别")
+        assignee = serializers.ListField(required=False, label="故障负责人")
+        handlers = serializers.ListField(required=False, label="故障处理人")
+        labels = serializers.ListField(required=False, label="故障标签")
+        feedback = serializers.DictField(required=False, label="故障反馈内容")
 
 
 class GetIncidentSnapshot(DataAccessAPIResource):
