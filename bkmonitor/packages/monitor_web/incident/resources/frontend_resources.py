@@ -76,7 +76,9 @@ class IncidentBaseResource(Resource):
 
         return list(aggregate_results.values())
 
-    def generate_nodes_by_entites(self, snapshot: IncidentSnapshot, entities: List[IncidentGraphEntity]) -> List[Dict]:
+    def generate_nodes_by_entites(
+        self, incident: IncidentDocument, snapshot: IncidentSnapshot, entities: List[IncidentGraphEntity]
+    ) -> List[Dict]:
         """根据图谱实体生成拓扑图节点
 
         :param entites: 实体列表
@@ -91,10 +93,11 @@ class IncidentBaseResource(Resource):
                 {
                     "id": entity.entity_id,
                     "comboId": str(entity.rank.rank_category.category_id),
-                    "aggregated_nodes": self.generate_nodes_by_entites(snapshot, entity.aggregated_entities),
+                    "aggregated_nodes": self.generate_nodes_by_entites(incident, snapshot, entity.aggregated_entities),
                     "entity": {key: value for key, value in asdict(entity).items() if key != "aggregated_entities"},
                     "total_count": len(entity.aggregated_entities) + 1,
                     "anomaly_count": self.get_anomaly_entity_count(entity),
+                    "is_feedback_root": incident.feedback["incident_root"] == entity.entity_id,
                     "bk_biz_id": snapshot.bk_biz_id,
                     "bk_biz_name": bk_biz_name,
                     "alert_ids": alert_ids,
@@ -292,17 +295,17 @@ class IncidentTopologyResource(IncidentBaseResource):
             snapshot.aggregate_graph()
         elif validated_request_data["aggregate_config"]:
             snapshot.aggregate_graph(validated_request_data["aggregate_config"])
-        topology_data = self.generate_topology_data_from_snapshot(snapshot)
+        topology_data = self.generate_topology_data_from_snapshot(incident, snapshot)
 
         return topology_data
 
-    def generate_topology_data_from_snapshot(self, snapshot: IncidentSnapshot) -> Dict:
+    def generate_topology_data_from_snapshot(self, incident: IncidentDocument, snapshot: IncidentSnapshot) -> Dict:
         """根据快照内容生成拓扑图数据
 
         :param snapshot: 快照内容
         :return: 拓扑图数据
         """
-        nodes = self.generate_nodes_by_entites(snapshot, snapshot.incident_graph_entities.values())
+        nodes = self.generate_nodes_by_entites(incident, snapshot, snapshot.incident_graph_entities.values())
 
         node_categories = [node["entity"]["rank"]["rank_category"]["category_id"] for node in nodes]
         topology_data = {
@@ -348,7 +351,16 @@ class IncidentTopologyMenuResource(IncidentBaseResource):
 
         topology_menu = self.generate_topology_menu(snapshot)
 
-        return topology_menu
+        default_aggregated_config = {}
+        for menu in topology_menu:
+            default_aggregated_config[menu["entity_type"]] = [
+                item["aggregate_key"] for item in menu["aggregate_bys"] if not item["is_anomaly"]
+            ]
+
+        return {
+            "menu": topology_menu,
+            "default_aggregated_config": default_aggregated_config,
+        }
 
     def generate_topology_menu(self, snapshot: IncidentSnapshot) -> Dict:
         """根据快照内容生成拓扑图目录选项
@@ -374,9 +386,9 @@ class IncidentTopologyMenuResource(IncidentBaseResource):
                     anomaly_count += 1
 
             aggregate_keys = [
-                {"count": value, "aggreate_key": key, "is_anomaly": False} for key, value in neighbors.items()
+                {"count": value, "aggregate_key": key, "is_anomaly": False} for key, value in neighbors.items()
             ]
-            aggregate_keys.append({"count": anomaly_count, "aggreate_key": None, "is_anomaly": True})
+            aggregate_keys.append({"count": anomaly_count, "aggregate_key": None, "is_anomaly": True})
             menu_data[entity_type] = {
                 "entity_type": entity_type,
                 "aggregate_bys": sorted(aggregate_keys, key=lambda x: -x["count"]),
@@ -410,10 +422,10 @@ class IncidentTopologyUpstreamResource(IncidentBaseResource):
         ranks = sub_snapshot.group_by_rank()
 
         for rank_info in ranks:
-            rank_info["nodes"] = self.generate_nodes_by_entites(sub_snapshot, rank_info["entities"])
+            rank_info["nodes"] = self.generate_nodes_by_entites(incident, sub_snapshot, rank_info["entities"])
             for index, entity_info in enumerate(rank_info["entities"]):
                 rank_info["nodes"][index]["aggregated_nodes"] = self.generate_nodes_by_entites(
-                    sub_snapshot, entity_info.aggregated_entities
+                    incident, sub_snapshot, entity_info.aggregated_entities
                 )
             rank_info.pop("entities")
 
