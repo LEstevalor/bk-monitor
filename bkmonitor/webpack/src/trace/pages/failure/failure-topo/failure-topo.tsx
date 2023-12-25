@@ -1192,11 +1192,7 @@ export default defineComponent({
         </div>
         <FeedbackCauseDialog
           visible={this.feedbackCauseShow}
-<<<<<<< feat/failure_alert_frontend-by 98a55dbb73b86bc75023854e961822e17c35519a
           onEditSuccess={this.handleFeedBackChange}
-=======
-          onChange={this.handleFeedBackChange}
->>>>>>> feat/failure_alert_frontend 2a2309e0988c4bbe3a8cdf469391d340e49909a8
           data={this.feedbackModel}
         ></FeedbackCauseDialog>
         <div style='display: none'>
