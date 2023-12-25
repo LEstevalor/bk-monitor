@@ -29,7 +29,7 @@ import { Input, Loading, Select, Tree, PopConfirm, Checkbox } from 'bkui-vue';
 import { BkCheckboxGroup } from 'bkui-vue/lib/checkbox';
 
 import { incidentAlertAggregate } from '../../../../monitor-api/modules/incident';
-// import FilterSearchMain from './filter-search-main';
+import FilterSearchMain from './filter-search-main';
 import { useIncidentInject } from '../utils';
 import './handle-search.scss';
 
@@ -40,6 +40,8 @@ export default defineComponent({
     const listLoading = ref(false);
     const isShowDropdown = ref(false);
     const cacheAggregateData = ref([]);
+    const bkBizIds = ref([]);
+    const queryString = ref('');
     const aggregateBysList = [
       {
         name: t('节点层级'),
@@ -73,25 +75,14 @@ export default defineComponent({
     };
     const searchHeadFn = () => (
       <div class='handle-search-top'>
-        {/* <FilterSearchMain /> */}
-        <Select
-          class='top-select'
-          prefix={t('空间筛选')}
-        />
-        <Input
-          placeholder={t('请输入搜索条件')}
-          v-slots={{
-            prefix: () => {
-              return <i class='icon-monitor icon-filter-fill prefix-slot'></i>;
-            },
-            suffix: () => {
-              return (
-                <span class='suffix-slot'>
-                  <i class='icon-monitor icon-mc-uncollect suffix-icon' />
-                  {t('收藏')}
-                </span>
-              );
-            }
+        <FilterSearchMain
+          onSearch={(val: string) => {
+            queryString.value = val;
+            getIncidentAlertAggregate();
+          }}
+          onChangeSpace={(val: Array<string>) => {
+            bkBizIds.value = val;
+            getIncidentAlertAggregate();
           }}
         />
       </div>
@@ -101,11 +92,12 @@ export default defineComponent({
       incidentAlertAggregate({
         bk_biz_id: 2,
         id: incidentId.value,
-        aggregate_bys: aggregateBys.value
+        aggregate_bys: aggregateBys.value,
+        bk_biz_ids: bkBizIds.value,
+        query_string: queryString.value
       })
         .then(res => {
           alertAggregateData.value = Object.values(res);
-          // console.log(res, alertAggregateData.value);
         })
         .catch(err => {
           console.log(err);

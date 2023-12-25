@@ -25,7 +25,7 @@
  */
 import { defineComponent, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Dialog, Form, Input, Radio, TagInput } from 'bkui-vue';
+import { Dialog, Form, Input, Radio, TagInput, Message } from 'bkui-vue';
 
 import { editIncident } from '../../../../monitor-api/modules/incident';
 
@@ -51,22 +51,26 @@ export default defineComponent({
       default: _v => {}
     }
   },
-  setup(props) {
+  emits: ['editSuccess'],
+  setup(props, { emit }) {
     const { t } = useI18n();
     const btnLoading = ref(false);
     function valueChange(v) {
       props.onChange(v);
     }
     const editIncidentHandle = () => {
-      console.log('editIncidentHandle');
       btnLoading.value = true;
       const {incident_name, level, assignees, labels, incident_reason, id, incident_id} = props.data;
       editIncident({incident_name, level, assignees, labels, incident_reason, incident_id, id})
-        .then(res => {
-          console.log(res, '[[d[[[[');
+        .then(() => {
+          Message({
+            theme: 'success',
+            message: t('修改成功')
+          });
+          emit('editSuccess');
         })
         .catch(err => {
-          console.log(err);
+          valueChange(true);
         })
         .finally(() => (btnLoading.value = false));
     };
