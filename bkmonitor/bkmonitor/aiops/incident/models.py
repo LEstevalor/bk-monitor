@@ -134,7 +134,7 @@ class IncidentSnapshot(object):
 
     incident_snapshot_content: Dict
 
-    def __post_init__(self, prepare=True):
+    def __post_init__(self, prepare: bool = True):
         self.incident_graph_categories = {}
         self.incident_graph_ranks = {}
         self.incident_graph_entities = {}
