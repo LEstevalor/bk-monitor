@@ -198,5 +198,7 @@ export default {
   采集状态: 'Collection status',
   设置展示类型: 'Set display type',
   取消反馈根因: 'Cancel feedback root cause',
-  反馈根因: 'Feedback root cause'
+  反馈根因: 'Feedback root cause',
+  '共 {slot0} 个 Pod节点': 'There are {slot0} Pod nodes in total',
+  '共 {slot0} 个 Pod节点，其中 {slot1} 个异常': 'There are {slot0} Pod nodes in total, of which {slot1} are abnormal.'
 };

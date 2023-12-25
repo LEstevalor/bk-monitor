@@ -32,14 +32,13 @@ import { debounce } from 'throttle-debounce';
 import { Popover, Slider } from 'bkui-vue';
 import ResourceGraph from '../resource-graph/resource-graph';
 import { useIncidentInject } from '../utils';
-import kyjs from 'klayjs';
 import dbsvg from './db.svg';
 import FailureTopoTooltips from './failure-topo-tooltips';
 import httpSvg from './http.svg';
 import TopoTools from './topo-tools';
 import { ITopoCombo, ITopoData, ITopoNode } from './types';
 import { getNodeAttrs } from './utils';
-import elk from 'elkjs';
+import FeedbackCauseDialog from './feedback-cause-dialog';
 import './failure-topo.scss';
 import { divide } from 'lodash';
 
@@ -70,42 +69,50 @@ export default defineComponent({
     let graph: Graph;
     let tooltips = null;
     /** g6 默认缩放级别 数值 / 10 为真实结果值  */
-    const MIN_ZOOM = 2;
-    const MAX_ZOOM = 100;
+    const MIN_ZOOM = 5;
+    const MAX_ZOOM = 30;
     const tooltipsModel = shallowRef<ITopoNode | ITopoNode[]>();
     const tooltipsType = ref('node');
     const tooltipsRef = ref<InstanceType<typeof FailureTopoTooltips>>();
     let topoRawData: ITopoData = null;
     const autoAggregate = ref(true);
     const aggregateConfig = ref({});
+    const showLegend = ref(true);
+    const feedbackCauseShow = ref(false);
+    const feedbackModel = ref({});
     const incidentId = useIncidentInject();
     const nodeEntityId = ref('');
+    let activeAnimation = [];
+    let activeNode = null;
+    let resourceNodeId = null;
     const zoomValue = ref(0);
     const showResourceGraph = ref(false);
+    /** 检测文字长度 */
+    const accumulatedWidth = text => {
+      const maxWidth = 150; // 设定的最大文本宽度
+      const context = graph.get('canvas').get('context'); // 获取canvas上下文用于测量文本
+      let textWidth = context.measureText(text).width;
+
+      if (textWidth > maxWidth) {
+        let truncatedText = '';
+        let accumulatedWidth = 0;
+
+        // 逐个字符检查，直到累计宽度超过最大宽度，然后截断
+        for (let char of text) {
+          accumulatedWidth += context.measureText(char).width;
+          if (accumulatedWidth > maxWidth) break;
+          truncatedText += char;
+        }
+        return `${truncatedText}...`;
+      }
+      return text;
+    };
     const registerCustomNode = () => {
       registerNode('topo-node', {
         afterDraw(cfg, group) {
           const nodeAttrs = getNodeAttrs(cfg as ITopoNode);
-          if ((cfg as ITopoNode).entity.is_root) {
-            group.addShape('circle', {
-              zIndex: -11,
-              attrs: {
-                lineWidth: 2, // 描边宽度
-                cursor: 'pointer', // 手势类型
-                r: 22, // 圆半径
-                stroke: 'rgba(58, 59, 61, 1)'
-              },
-              name: 'topo-node-running'
-            });
-            const circle2 = group.addShape('circle', {
-              attrs: {
-                lineWidth: 0, // 描边宽度
-                cursor: 'pointer', // 手势类型
-                r: 22, // 圆半径
-                stroke: 'rgba(5, 122, 234, 1)'
-              },
-              name: 'topo-node-running'
-            });
+          if ((cfg as ITopoNode).entity.is_root || (cfg as ITopoNode).is_feedback_root) {
+            console.log('asdassadsdasadads');
             group.addShape('rect', {
               zIndex: 10,
               attrs: {
@@ -133,23 +140,23 @@ export default defineComponent({
               },
               name: 'topo-node-text'
             });
-            circle2.animate(
-              {
-                lineWidth: 6,
-                r: 24,
-                strokeOpacity: 0.3
-              },
-              {
-                repeat: true, // 循环
-                duration: 3000,
-                // easing: 'easeCubic',
-                delay: 100 // 无延迟
-              }
-            );
+            // circle2.animate(
+            //   {
+            //     lineWidth: 6,
+            //     r: 24,
+            //     strokeOpacity: 0.3
+            //   },
+            //   {
+            //     repeat: true, // 循环
+            //     duration: 3000,
+            //     // easing: 'easeCubic',
+            //     delay: 100 // 无延迟
+            //   }
+            // );
           }
         },
         draw(cfg, group) {
-          const { entity } = cfg as ITopoNode;
+          const { entity, aggregated_nodes, anomaly_count, is_feedback_root } = cfg as ITopoNode;
           const nodeAttrs = getNodeAttrs(cfg as ITopoNode);
           const nodeShape = group.addShape('circle', {
             zIndex: 10,
@@ -159,9 +166,11 @@ export default defineComponent({
               r: 20, // 圆半径
               ...nodeAttrs.groupAttrs
             },
+            draggable: true,
             name: 'topo-node-shape'
           });
           group.addShape('image', {
+            zIndex: 12,
             attrs: {
               x: -12,
               y: -12,
@@ -170,15 +179,25 @@ export default defineComponent({
               cursor: 'pointer', // 手势类型
               img: entity.is_anomaly ? dbsvg : httpSvg // 图片资源
             },
+            draggable: true,
             name: 'topo-node-img'
           });
-          if (entity.aggregated_entites?.length) {
+          const circle2 = group.addShape('circle', {
+            attrs: {
+              lineWidth: 0, // 描边宽度
+              cursor: 'pointer', // 手势类型
+              r: 22, // 圆半径
+              stroke: 'rgba(5, 122, 234, 1)'
+            },
+            name: 'topo-node-running'
+          });
+          if (aggregated_nodes?.length) {
             group.addShape('rect', {
               zIndex: 10,
               attrs: {
-                x: -15,
+                x: -17,
                 y: 12,
-                width: 30,
+                width: 32,
                 height: 16,
                 radius: 8,
                 fill: '#fff',
@@ -186,27 +205,72 @@ export default defineComponent({
               },
               name: 'topo-node-rect'
             });
+            (anomaly_count as number) > 0 &&
+              group.addShape('text', {
+                zIndex: 11,
+                attrs: {
+                  x: -9,
+                  y: 20,
+                  textAlign: 'center',
+                  textBaseline: 'middle',
+                  text: anomaly_count,
+                  fontSize: 11,
+                  fill: '#F55555',
+                  ...nodeAttrs.textAttrs
+                },
+                name: 'topo-node-err-text'
+              });
+            (anomaly_count as number) > 0 &&
+              group.addShape('text', {
+                zIndex: 11,
+                attrs: {
+                  x: -2,
+                  y: 20,
+                  textAlign: 'center',
+                  textBaseline: 'middle',
+                  text: '/',
+                  fontSize: 11,
+                  fill: '#979BA5',
+                  ...nodeAttrs.textAttrs
+                },
+                name: 'topo-node-err-text'
+              });
+
             group.addShape('text', {
               zIndex: 11,
               attrs: {
-                x: 0,
+                x: 0 + ((anomaly_count as number) > 0 ? 5 : 0),
                 y: 20,
                 textAlign: 'center',
                 textBaseline: 'middle',
-                text: entity.is_root ? '根因' : entity.aggregated_entites.length,
-                fontSize: 12,
+                text: entity.is_root || is_feedback_root ? '根因' : aggregated_nodes.length + 1,
+                fontSize: 11,
                 fill: '#fff',
                 ...nodeAttrs.textAttrs
               },
               name: 'topo-node-text'
             });
           }
+          group.addShape('text', {
+            zIndex: 11,
+            attrs: {
+              x: 0,
+              y: aggregated_nodes?.length || entity.is_root || is_feedback_root ? 36 : 28,
+              textAlign: 'center',
+              textBaseline: 'middle',
+              text: accumulatedWidth(entity.entity_name),
+              fontSize: 10,
+              fill: entity.is_root || is_feedback_root ? '#F55555' : entity.is_anomaly ? '#FD9C9C' : '#979BA5'
+            },
+            name: 'topo-node-err-text'
+          });
+          group.sort();
           return nodeShape;
         },
         setState(name, value, item) {
           const group = item.getContainer();
-          const shape = group.get('children')[0]; // 顺序根据 draw 时确定
           if (name === 'hover') {
+            const shape = group.find(e => e.get('name') === 'topo-node-shape');
             // box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.5);
             shape?.attr({
               shadowColor: value ? 'rgba(0, 0, 0, 0.5)' : false,
@@ -216,6 +280,70 @@ export default defineComponent({
               strokeOpacity: value ? 0.6 : 1,
               cursor: 'pointer' // 手势类型
             });
+          } else if (name === 'running') {
+            const runningShape = group.find(e => e.get('name') === 'topo-node-running');
+            if (value) {
+              runningShape.animate(
+                {
+                  lineWidth: 6,
+                  r: 24,
+                  strokeOpacity: 0.3
+                },
+                {
+                  repeat: true, // 循环
+                  duration: 3000,
+                  // easing: 'easeCubic',
+                  delay: 100 // 无延迟
+                }
+              );
+              const animateCycle = () => {
+                const end = () => {
+                  activeAnimation.push(
+                    runningShape?.animate(
+                      {
+                        r: 24,
+                        // opacity: 1
+                        strokeOpacity: 0.1
+                      },
+                      {
+                        duration: 1500, // 缩小的动画持续时间更长，以产生前放后缩的效果
+                        easing: 'easeCubic',
+                        callback: animateCycle // 动画完成后递归调用以循环执行
+                      }
+                    )
+                  );
+                };
+                activeAnimation.push(
+                  runningShape?.animate(
+                    {
+                      stroke: 'rgba(5, 122, 234, 1)',
+                      lineWidth: 6,
+                      r: shape.attr('r') + 2,
+                      strokeOpacity: 0.3
+                      // opacity: 1
+                    },
+                    {
+                      // repeat: true, // 循环
+                      duration: 2000,
+                      easing: 'easeCubic',
+                      delay: 0, // 无延迟
+                      callback: end
+                    }
+                  )
+                );
+              };
+            } else {
+              runningShape.stopAnimate();
+              runningShape.attr({
+                lineWidth: 0, // 描边宽度
+                cursor: 'pointer', // 手势类型
+                r: 22, // 圆半径
+                stroke: 'rgba(5, 122, 234, 1)'
+              });
+              console.log('activeAnimationactiveAnimationactiveAnimation', activeAnimation);
+              activeAnimation.forEach(animation => animation?.stop?.());
+              activeAnimation = [];
+            }
           }
         }
       });
@@ -234,6 +362,7 @@ export default defineComponent({
             group.addShape('rect', {
               zIndex: 10,
               attrs: {
+                cursor: 'pointer',
                 width: 10,
                 height: 10,
                 fill: 'rgba(58, 59, 61, 1)',
@@ -246,6 +375,7 @@ export default defineComponent({
             group.addShape('text', {
               zIndex: 11,
               attrs: {
+                cursor: 'pointer',
                 x: midPoint.x,
                 y: midPoint.y,
                 textAlign: 'center',
@@ -263,6 +393,72 @@ export default defineComponent({
       );
     };
     const registerCustomBehavior = () => {
+      registerBehavior('drag-node-with-fixed-combo', {
+        getEvents() {
+          return {
+            'node:dragstart': 'onDragStart',
+            'node:drag': 'onDrag',
+            'node:dragend': 'onDragEnd'
+          };
+        },
+        onDragStart(e) {
+          const { item } = e;
+          const combos = graph.getCombos();
+          // combos.forEach(combo => {
+          //   // 存储原始宽度
+          //   combo.getModel().originalSize = combo.getKeyShape().getCanvasBBox().width;
+          // });
+          // 存储当前节点所在的 combo ID
+          if (item.get('type') === 'node') {
+            const model = item.getModel();
+            const combo = combos.find(combo => combo.getID() === model.comboId);
+            this.currentComboId = combo ? combo.getID() : null;
+          }
+        },
+        onDrag(e) {
+          const { item, x, y } = e;
+          if (this.currentComboId) {
+            const combos = graph.getCombos();
+            const combo = combos.find(combo => combo.getID() === this.currentComboId);
+            const comboBBox = combo.getBBox();
+            const nodeSize = 40; // 假设节点的边长为40
+            // 获取节点内名为'topo-node-err-text'的Shape
+            const errTextShape = item.get('group').find(s => s.get('name') === 'topo-node-err-text');
+            // 获取该Shape相对于画布的边界框
+            const shapeBBox = errTextShape.getBBox();
+            const nodeCenter = {
+              x: x,
+              y: y
+            };
+            // 根据节点中心位置和边长计算出节点的新边界框
+            const newNodeBBox = {
+              minX: nodeCenter.x - shapeBBox.width / 2,
+              maxX: nodeCenter.x + shapeBBox.width / 2,
+              minY: nodeCenter.y - nodeSize / 2,
+              maxY: nodeCenter.y + (nodeSize + shapeBBox.height + shapeBBox.y) / 2
+            };
+
+            // 检查新的中心位置是否在Combo边界内
+            const isXInside = newNodeBBox.minX >= comboBBox.minX && newNodeBBox.maxX <= comboBBox.maxX;
+            const isYInside = newNodeBBox.minY >= comboBBox.minY && newNodeBBox.maxY <= comboBBox.maxY;
+
+            if (isXInside && isYInside) {
+              // 如果节点新位置还在Combo内，可以移动
+              item.toFront(); // 如果需要的话可以让节点到最前方显示
+              graph.updateItem(item, {
+                x,
+                y
+              });
+            } else {
+              return false;
+            }
+          }
+        },
+        onDragEnd(e) {
+          // 清楚临时信息
+          delete this.currentComboId;
+        }
+      });
       registerBehavior('custom-wheel-zoom', {
         getEvents() {
           return {
@@ -272,6 +468,7 @@ export default defineComponent({
         onWheel(evt) {
           // 阻止默认的滚动行为
           evt.preventDefault();
+          return;
           // 获取当前的缩放比例
           const currentZoom = graph.getZoom();
           // 根据 deltaY 值确定是放大还是缩小
@@ -423,7 +620,7 @@ export default defineComponent({
             tooltipsModel.value = [targetModel, sourceModel];
           } else {
             tooltipsModel.value = model as ITopoNode;
-            nodeEntityId.value = tooltipsModel.value.entity.entity_id;
+            // nodeEntityId.value = tooltipsModel.value.entity.entity_id;
           }
           tooltipsType.value = type;
           return tooltipsRef.value.$el;
@@ -434,8 +631,16 @@ export default defineComponent({
       if (!graph || graph.get('destroyed') || !graphRef.value) return;
       const { height } = document.querySelector('.failure-topo').getBoundingClientRect();
       const { width, height: cHeight } = graphRef.value.getBoundingClientRect();
-      graph.changeSize(width, 1087 || Math.max(160 * topoRawData.combos.length, height - 40));
+      console.log(width, 'weqeqeqweqwqwe');
+      tooltipsRef?.value?.hide?.();
+      tooltips?.hide?.();
+      graph.changeSize(width, Math.max(160 * topoRawData.combos.length, height - 40));
       graph.render();
+      /** 打开时会触发导致动画消失 */
+      if (resourceNodeId) {
+        const node = graph.findById(resourceNodeId);
+        node && graph.setItemState(node, 'running', true);
+      }
     }
     const onResize = debounce(300, handleResize);
     const getGraphData = async () => {
@@ -451,6 +656,12 @@ export default defineComponent({
           nodes: nodes.map(node => ({ ...node, id: node.id.toString(), comboId: node.comboId.toString() }))
         };
       });
+      const rootNode = topoRawData.nodes.find(node => node.entity.is_root);
+      if (rootNode) {
+        activeNode = rootNode;
+        resourceNodeId = rootNode.id;
+        nodeEntityId.value = rootNode.id;
+      }
       // topoRawData.combos.forEach(combo => {
       //   combo.children = topoRawData.nodes.filter(node => node.comboId.toString() === combo.id.toString());
       // });
@@ -478,7 +689,6 @@ export default defineComponent({
     onMounted(async () => {
       await getGraphData();
       const { width, height } = graphRef.value.getBoundingClientRect();
-      console.log(height, '....');
       console.info('topo graph', width, height);
       const maxHeight = Math.max(160 * topoRawData.combos.length, height);
       registerCustomNode();
@@ -546,11 +756,14 @@ export default defineComponent({
         },
         defaultEdge: {
           size: 1,
-          color: '#63656D'
+          color: '#63656D',
+          style: {
+            cursor: 'pointer'
+          }
         },
         defaultCombo: {
           type: 'rect',
-          // padding: [100, 100],
+          refX: 20,
           style: {
             width: width - 80,
             fill: '#3A3B3D',
@@ -565,7 +778,27 @@ export default defineComponent({
           }
         },
         modes: {
-          default: ['drag-node', 'custom-wheel-zoom']
+          default: [
+            'drag-node-with-fixed-combo',
+            // {
+            //   type: 'drag-node',
+            //   onlyChangeComboSize: true
+            // },
+
+            {
+              type: 'drag-canvas',
+              scalableRange: -1
+            },
+            {
+              type: 'scroll-canvas',
+              scalableRange: -1,
+              allowDrag: e => {
+                if (e.ctrlKey) return false;
+                return true;
+              }
+            },
+            'custom-wheel-zoom'
+          ]
         }
       });
       graph.node(node => {
@@ -579,6 +812,7 @@ export default defineComponent({
         const edg = {
           ...cfg,
           style: {
+            cursor: 'pointer',
             endArrow: isInvoke
               ? {
                   path: Arrow.triangle(),
@@ -610,62 +844,95 @@ export default defineComponent({
         // e 包含事件的细节，可能具有 action、matrix 等属性
         if (e.action && e.action === 'zoom') {
           const zoom = graph.getZoom();
-          zoomValue.value = Math.min(zoom * 10, MAX_ZOOM);
+          // zoomValue.value = Math.min(zoom * 10, MAX_ZOOM);
         }
       });
       // 监听鼠标离开节点
       graph.on('node:mouseleave', e => {
         const nodeItem = e.item;
         graph.setItemState(nodeItem, 'hover', false);
-        graph.setItemState(nodeItem, 'running', false);
       });
       graph.on('node:click', e => {
         const nodeItem = e.item;
-        const { entity } = nodeItem.getModel() as ITopoNode;
-        if (entity.is_root) {
-          graph.setItemState(nodeItem, 'running', true);
-          return;
-        }
+        activeNode = nodeItem;
+        // console.log(nodeItem, activeNode);
+        // const { entity } = nodeItem.getModel() as ITopoNode;
+
+        // graph.setItemState(nodeItem, 'running', true);
+        // console.log(shape, '====>', activeNode);
+      });
+      graph.on('mouseenter', e => {
+        const canvas = graph.get('canvas');
+        const el = canvas.get('el'); // 获取到画布实际的 DOM 元素
+        el.style.cursor = 'grab'; // 设置光标为 'grab'
+      });
+
+      graph.on('mousedown', e => {
+        const canvas = graph.get('canvas');
+        const el = canvas.get('el');
+        el.style.cursor = 'grabbing'; // 鼠标按下时设置光标为 'grabbing'
+      });
+
+      graph.on('mouseup', e => {
+        const canvas = graph.get('canvas');
+        const el = canvas.get('el');
+        el.style.cursor = 'grab'; // 鼠标释放回复 'grab' 样式
+      });
+
+      graph.on('mouseleave', e => {
+        const canvas = graph.get('canvas');
+        const el = canvas.get('el');
+        el.style.cursor = ''; // 恢复默认光标
       });
       graph.on('combo:click', () => {
+        tooltipsRef.value.hide();
         tooltips.hide();
       });
+      const calculateFitScale = (combos, maxWidth) => {
+        let maxComboWidth = 0;
+        combos.forEach(combo => {
+          const bbox = combo.getBBox();
+          if (bbox.width > maxComboWidth) {
+            maxComboWidth = bbox.width;
+          }
+        });
+
+        // 如果最大combo宽度超出了画布宽度，计算缩放比例
+        if (maxComboWidth > maxWidth) {
+          // 自动缩小比例最小到0.5 超过0.5已经不能看清，采用画布拖放即可
+          const Scale = maxWidth / maxComboWidth;
+          zoomValue.value = Scale * 10;
+          Scale > 0.5 && graph.zoomTo(Scale);
+        }
+      };
       graph.on('afterlayout', () => {
-        console.log('-----------');
         const zoom = graph.getZoom();
         zoomValue.value = Math.min(zoom * 10, MAX_ZOOM);
-
         const width = graph.getWidth();
-        const height = graph.getHeight();
         const combos = graph.getCombos();
         const filterCombos = combos.filter(item => !item.get('model').parentId);
 
         filterCombos.forEach((combo, index) => {
-          // 获取 Combo 中包含的节点和边的范围
           const bbox = combo.getBBox();
+          // 获取 Combo 中包含的节点和边的范围
           const prevBox = filterCombos[index - 1]?.getBBox?.();
-          const height = graph.getHeight();
-          const comboxHeight = height / combos.length;
           const padding = prevBox ? prevBox.height + 16 : 0;
-          const centerY = height / 2;
-          const y = prevBox ? prevBox.height : 0;
-          const h = bbox.maxY - bbox.minY;
-
           const w = graph.getWidth();
-          const updateConfig = {
-            size: [w - 80, 0],
-            x: w / 2,
-            y: bbox.height / 2 + 40 + padding
-            // style: {
-            //   fill: fillColor,
-            //   stroke: fillColor
-            // }
-          };
-          // const fillColor =
-          //   groups.findIndex(id => id === combo.get('model').groupId) % 2 === 1 ? '#292A2B' : '#1B1C1F';
-          graph.updateItem(combo, updateConfig);
-        });
 
+          /** 先调整宽度，再进行位置判断，如果是窗口变化默认进入拿到的宽度会瘦窗口前的宽度 */
+          setTimeout(() => {
+            const bbox = combo.getBBox();
+            console.log(bbox.width, width);
+            graph.updateItem(combo, {
+              x: bbox.width > width ? bbox.width / 2 : width / 2
+            });
+          }, 50);
+          graph.updateItem(combo, {
+            size: [w - 40, 0],
+            y: bbox.height / 2 + padding
+          });
+        });
+        console.log(calculateFitScale(filterCombos, width), 'calculateFitScalecalculateFitScale');
         return;
         const instanceCombos = combos.filter(combo => combo.get('model').dataType === 'service_instance');
         let i = 0;
@@ -718,6 +985,34 @@ export default defineComponent({
     onUnmounted(() => {
       graphRef.value && removeListener(graphRef.value, onResize);
     });
+    const handleViewResource = model => {
+      const activeModel = activeNode.getModel() as ITopoNode;
+      console.log(activeModel, model, '======>', activeNode);
+      // activeNode
+      if (!showResourceGraph.value) {
+        showResourceGraph.value = !showResourceGraph.value;
+      } else {
+        const node = graph.findById(model.id);
+        graph.setItemState(node, 'running', true);
+      }
+      if (resourceNodeId && resourceNodeId !== model.id) {
+        const node = graph.findById(resourceNodeId);
+        graph.setItemState(node, 'running', false);
+      }
+      resourceNodeId = model.id;
+      console.log(resourceNodeId);
+      nodeEntityId.value = model.entity.entity_id;
+      activeNode = null;
+      tooltipsRef.value.hide();
+      tooltips.hide();
+    };
+    /** 反馈新根因， 反馈后需要重新调用接口拉取数据 */
+    const handleFeedBack = model => {
+      feedbackCauseShow.value = true;
+      feedbackModel.value = model;
+      tooltipsRef.value.hide();
+      tooltips.hide();
+    };
     const handleUpdateAggregateConfig = async config => {
       aggregateConfig.value = config.aggregate_config;
       autoAggregate.value = config.auto_aggregate;
@@ -726,19 +1021,34 @@ export default defineComponent({
     };
     const handleExpandResourceChange = () => {
       showResourceGraph.value = !showResourceGraph.value;
+      // if (!showResourceGraph.value) {
+      //   graph.setItemState(activeNode, 'running', false);
+      //   activeNode = null;
+      // }
     };
     const handleResetZoom = () => {
       zoomValue.value = 10;
       graph.zoomTo(1);
     };
-    const handleZoomChange = () => {
-      const value = zoomValue.value / 10;
-      graph.zoomTo(value);
+    const handleZoomChange = value => {
+      if (graph?.zoomTo) {
+        graph.zoomTo(value / 10);
+      }
     };
     const handleUpdateZoom = val => {
       const value = Math.max(MIN_ZOOM, zoomValue.value + Number(val));
       zoomValue.value = Math.min(MAX_ZOOM, value);
-      handleZoomChange();
+      handleZoomChange(zoomValue.value);
+    };
+    const handleShowLegend = () => {
+      showLegend.value = !showLegend.value;
+    };
+    const handleFeedBackChange = async value => {
+      if (value) {
+        await getGraphData();
+        renderGraph();
+      }
+      feedbackCauseShow.value = false;
     };
     return {
       nodeEntityId,
@@ -747,9 +1057,16 @@ export default defineComponent({
       graphRef,
       zoomValue,
       tooltipsRef,
+      showLegend,
       tooltipsModel,
+      feedbackCauseShow,
+      feedbackModel,
       nodeEntityId,
       tooltipsType,
+      handleFeedBackChange,
+      handleFeedBack,
+      handleShowLegend,
+      handleViewResource,
       handleUpdateZoom,
       handleZoomChange,
       handleResetZoom,
@@ -769,102 +1086,124 @@ export default defineComponent({
           ref='topoGraphRef'
         >
           <div
-            ref='graphRef'
-            class='topo-graph'
-            id='topo-graph'
-          />
-          <div class='failure-topo-graph-zoom'>
-            <Popover
-              extCls='failure-topo-graph-legend-popover'
-              minWidth={214}
-              boundary='parent'
-              offset={{ crossAxis: 90, mainAxis: 10 }}
-              trigger='click'
-              arrow={false}
-              theme='dark common-table'
-              placement='top'
-              v-slots={{
-                content: (
-                  <div class='failure-topo-graph-legend-content'>
-                    <ul class='node-type'>
-                      {NODE_TYPE.map(node => {
-                        return (
-                          <li>
-                            <span class={['circle', node.status]}></span>
-                            <span>{this.$t(node.text)}</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    <ul class='node-line-type'>
-                      <li>
-                        <span class='line'></span>
-                        <span>{this.$t('从属关系')}</span>
-                      </li>
-                      <li>
-                        <span class='line arrow'></span>
-                        <span>{this.$t('调用关系')}</span>
-                      </li>
-                      <li>
-                        <span class='line dash'></span>
-                        <span>{this.$t('故障传播')}</span>
-                      </li>
-                    </ul>
-                  </div>
-                ),
-                default: (
-                  <div
-                    class='failure-topo-graph-legend'
-                    v-bk-tooltips={{ content: this.$t('显示图例'), boundary: 'parent' }}
-                  >
-                    <i class='icon-monitor icon-legend'></i>
-                  </div>
-                )
-              }}
-            ></Popover>
-            <span class='failure-topo-graph-line'></span>
-            <div class='failure-topo-graph-zoom-slider'>
-              <div
-                class='failure-topo-graph-setting'
-                onClick={this.handleUpdateZoom.bind(this, -10)}
-              >
-                <i class='icon-monitor icon-minus-line'></i>
+            class='topo-graph-wrapper-padding'
+            style={{ width: this.showResourceGraph ? '70%' : '100%' }}
+          >
+            <div
+              ref='graphRef'
+              class='topo-graph'
+              id='topo-graph'
+            />
+            <div class='failure-topo-graph-zoom'>
+              <Popover
+                extCls='failure-topo-graph-legend-popover'
+                minWidth={214}
+                boundary='parent'
+                renderType='auto'
+                offset={{ crossAxis: 90, mainAxis: 10 }}
+                trigger='manual'
+                always={true}
+                isShow={this.showLegend}
+                arrow={false}
+                theme='dark common-table'
+                placement='top'
+                v-slots={{
+                  content: (
+                    <div class='failure-topo-graph-legend-content'>
+                      <ul class='node-type'>
+                        {NODE_TYPE.map(node => {
+                          return (
+                            <li>
+                              <span class={['circle', node.status]}></span>
+                              <span>{this.$t(node.text)}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <ul class='node-line-type'>
+                        <li>
+                          <span class='line'></span>
+                          <span>{this.$t('从属关系')}</span>
+                        </li>
+                        <li>
+                          <span class='line arrow'></span>
+                          <span>{this.$t('调用关系')}</span>
+                        </li>
+                        <li>
+                          <span class='line dash'></span>
+                          <span>{this.$t('故障传播')}</span>
+                        </li>
+                      </ul>
+                    </div>
+                  ),
+                  default: (
+                    <div
+                      onClick={this.handleShowLegend}
+                      class='failure-topo-graph-legend'
+                      v-bk-tooltips={{
+                        content: this.$t('显示图例'),
+                        disabled: this.showLegend,
+                        boundary: () => document.getElementById('#failure-topo')
+                      }}
+                    >
+                      <i class='icon-monitor icon-legend'></i>
+                    </div>
+                  )
+                }}
+              ></Popover>
+              <span class='failure-topo-graph-line'></span>
+              <div class='failure-topo-graph-zoom-slider'>
+                <div
+                  class='failure-topo-graph-setting'
+                  onClick={this.handleUpdateZoom.bind(this, -2)}
+                >
+                  <i class='icon-monitor icon-minus-line'></i>
+                </div>
+                <Slider
+                  minValue={5}
+                  maxValue={20}
+                  class='slider'
+                  v-model={this.zoomValue}
+                  onUpdate:modelValue={this.handleZoomChange}
+                  onChange={this.handleZoomChange}
+                ></Slider>
+                <div
+                  class='failure-topo-graph-setting'
+                  onClick={this.handleUpdateZoom.bind(this, 2)}
+                >
+                  <i class='icon-monitor icon-plus-line'></i>
+                </div>
               </div>
-              <Slider
-                minValue={2}
-                class='slider'
-                v-model={this.zoomValue}
-                onChange={this.handleZoomChange}
-              ></Slider>
+              <span class='failure-topo-graph-line'></span>
               <div
-                class='failure-topo-graph-setting'
-                onClick={this.handleUpdateZoom.bind(this, 10)}
+                class='failure-topo-graph-proportion'
+                v-bk-tooltips={{ content: this.$t('重置比例'), boundary: 'parent' }}
+                onClick={this.handleResetZoom}
               >
-                <i class='icon-monitor icon-plus-line'></i>
+                <i class='icon-monitor icon-mc-restoration-ratio'></i>
               </div>
             </div>
-            <span class='failure-topo-graph-line'></span>
             <div
-              class='failure-topo-graph-proportion'
-              v-bk-tooltips={{ content: this.$t('重置比例'), boundary: 'parent' }}
-              onClick={this.handleResetZoom}
+              class='expand-resource'
+              onClick={this.handleExpandResourceChange}
             >
-              <i class='icon-monitor icon-mc-restoration-ratio'></i>
+              <i class={`icon-monitor ${this.showResourceGraph ? 'icon-arrow-right' : 'icon-mc-tree'} expand-icon`} />
             </div>
           </div>
           {this.showResourceGraph && <ResourceGraph entityId={this.nodeEntityId} />}
-          <div
-            class='expand-resource'
-            onClick={this.handleExpandResourceChange}
-          >
-            <i class={`icon-monitor ${this.showResourceGraph ? 'icon-arrow-right' : 'icon-mc-tree'} expand-icon`} />
-          </div>
         </div>
+        <FeedbackCauseDialog
+          visible={this.feedbackCauseShow}
+          onChange={this.handleFeedBackChange}
+          data={this.feedbackModel}
+        ></FeedbackCauseDialog>
         <div style='display: none'>
           <FailureTopoTooltips
             ref='tooltipsRef'
             model={this.tooltipsModel}
             type={this.tooltipsType}
+            onFeedBack={this.handleFeedBack}
+            onViewResource={this.handleViewResource}
           />
         </div>
       </div>

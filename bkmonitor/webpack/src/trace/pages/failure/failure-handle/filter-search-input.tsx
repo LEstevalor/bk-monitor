@@ -32,11 +32,11 @@ import { getEventPaths } from '../../../../monitor-pc/utils';
 import { listSearchHistory } from '../../../../monitor-api/modules/alert';
 import debounceDecorator from '../../common/debounce-decorator';
 import {
-    createSearchFavorite,
-    destroySearchFavorite,
-    listSearchFavorite,
-    partialUpdateSearchFavorite
-  } from '../../../../monitor-api/modules/model';
+  createSearchFavorite,
+  destroySearchFavorite,
+  listSearchFavorite,
+  partialUpdateSearchFavorite
+} from '../../../../monitor-api/modules/model';
 import { FilterInputStatus, ICommonItem, SearchType } from '../../../../fta-solutions/pages/event/typings/event';
 import './filter-search-input.scss';
 type PanelType = 'history' | 'field' | 'favorite';
@@ -406,7 +406,7 @@ export default defineComponent({
       return isEn.value ? list.map(item => ({ ...item, name: item.id })) : list;
     });
     const menuList = computed(() => {
-      console.log(focusData.value, 'focusData.value.show')
+      console.log(focusData.value, 'focusData.value.show');
       if (focusData.value.show === 'condition') return conditionList;
       if (focusData.value.show === 'method') return methodList;
       if (focusData.value.show === 'value') return props.valueMap?.[focusData.value.filedId] || [];
@@ -460,7 +460,7 @@ export default defineComponent({
           textListArr.value = textList;
           console.log(textList, 'textList', textListArr.value);
           const filterItemIndex = textList.findIndex(item => {
-            console.log(item, inputRef.value, offset, item.startOffset, item.endOffset, 'item.endOffset===')
+            console.log(item, inputRef.value, offset, item.startOffset, item.endOffset, 'item.endOffset===');
             return offset >= item.startOffset && offset <= item.endOffset;
           });
           const filterItem = filterItemIndex > -1 ? textList[filterItemIndex] : null;
@@ -762,7 +762,7 @@ export default defineComponent({
       e.stopPropagation();
       blurInPanel.value = true;
       item.edit = true;
-      console.log(`favorite-input-${item.id}`, '`favorite-input-${item.id}`')
+      console.log(`favorite-input-${item.id}`, '`favorite-input-${item.id}`');
       setTimeout(() => {
         // (this.$refs[`favorite-input-${item.id}`] as any)?.focus();
       }, 20);
@@ -780,7 +780,7 @@ export default defineComponent({
         favoriteList.value.splice(index, 1);
         item.edit = false;
       }
-    //   await this.$nextTick();
+      //   await this.$nextTick();
       inputRef.value.focus();
       blurInPanel.value = false;
     };

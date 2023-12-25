@@ -67,6 +67,7 @@ export default defineComponent({
         <Popover
           trigger='click'
           arrow={false}
+          renderType='shown'
           boundary='parent'
           extCls='aggregation-select-popover'
           v-slots={{
@@ -82,7 +83,7 @@ export default defineComponent({
                   <div
                     class={{
                       'panel-btn': true,
-                      'is-active': this.autoAggregate && !this.checkedIds.length
+                      'is-active': this.autoAggregate
                     }}
                     onClick={() => this.$emit('update:autoAggregate', true)}
                   >
@@ -109,7 +110,7 @@ export default defineComponent({
                 </div>
                 <Tree
                   data={this.treeData}
-                  selected={this.checkedIds}
+                  checked={this.checkedIds}
                   label='name'
                   showCheckbox={true}
                   levelLine={false}

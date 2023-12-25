@@ -23,11 +23,12 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, onMounted, ref, shallowRef, watch } from 'vue';
+import { defineComponent, onMounted, ref, shallowRef, watch, nextTick, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { Arrow, Graph, registerCombo, registerEdge, registerLayout, registerNode, Tooltip } from '@antv/g6';
 import { Loading } from 'bkui-vue';
-
+import { addListener, removeListener } from 'resize-detector';
+import { debounce } from 'throttle-debounce';
 import { incidentTopologyUpstream } from '../../../../monitor-api/modules/incident';
 import dbsvg from '../failure-topo/db.svg';
 import FailureTopoTooltips from '../failure-topo/failure-topo-tooltips';
@@ -214,6 +215,7 @@ export default defineComponent({
             group.addShape('rect', {
               zIndex: 10,
               attrs: {
+                cursor: 'pointer',
                 width: 10,
                 height: 10,
                 fill: 'rgba(58, 59, 61, 1)',
@@ -261,7 +263,6 @@ export default defineComponent({
             });
             const w = graph.getWidth();
             const height = graph.getHeight();
-            console.log(height, graphData.value.combos.length, '====>');
             const combos = graphData.value.combos.filter(combos => !combos.parentId);
             const comboxHeight = height / combos.length; //graphData.value.combos.length;
             if (cfg.groupName) {
@@ -441,7 +442,6 @@ export default defineComponent({
           // labelAutoRotate: false,
           drawShape(cfg, group) {
             const { children = [] } = cfg;
-            console.log('custom-combocustom-combo', cfg, cfg.collapsed, group, children);
             if (cfg.collapsed) {
               const collapseIcon = (x, y, r) => {
                 return [
@@ -498,7 +498,6 @@ export default defineComponent({
                 draggable: true,
                 name: 'combo-marker-shape'
               });
-              console.log(keyShape, '..keyShape.');
               // group.addShape('rect', {
               //   zIndex: 10,
               //   attrs: {
@@ -531,7 +530,6 @@ export default defineComponent({
               //   },
               //   name: 'resource-combo-text'
               // });
-              console.log('=======>');
               // // 将子节点放置在容器内部
               // const offsetX = x - xRadius;
               // const offsetY = y - yRadius;
@@ -619,8 +617,8 @@ export default defineComponent({
           const type = e.item.getType();
           const model = e.item.getModel();
           if (type === 'edge') {
-            const targetModel = graphData.nodes.find(item => item.id === model.target);
-            const sourceModel = graphData.nodes.find(item => item.id === model.source);
+            const targetModel = graphData.value.nodes.find(item => item.id === model.target);
+            const sourceModel = graphData.value.nodes.find(item => item.id === model.source);
             tooltipsModel.value = [targetModel, sourceModel];
           } else {
             tooltipsModel.value = model as ITopoNode;
@@ -633,20 +631,19 @@ export default defineComponent({
     const registerCustomLayout = () => {
       registerLayout('resource-layout', {
         execute() {
-          console.info('execute', this);
+          // console.info('execute', this);
           const { nodes, combos } = this;
-          console.log(combos);
           const nodeBegin = 80;
           const width = graph.getWidth() - nodeBegin - 100;
           const height = graph.getHeight();
           const combosArr = graphData.value.combos.filter(combos => !combos.parentId);
           const comboxHeight = height / combosArr.length; //combos.length;
-          console.info(
-            combos.filter(item => !item.parentId),
-            height,
-            comboxHeight,
-            '=========='
-          );
+          // console.info(
+          //   combos.filter(item => !item.parentId),
+          //   height,
+          //   comboxHeight,
+          //   '=========='
+          // );
           const nodeSize = 46;
           combos
             .filter(item => !item.parentId)
@@ -661,7 +658,6 @@ export default defineComponent({
                 node.y = yBegin + 22;
               });
               const childCombo = combos.find(item => item.parentId === combo.id);
-              console.log(childCombo, '...');
               if (childCombo) {
                 return;
                 const childNodes = nodes.filter(node => node.comboId.toString() === childCombo.id.toString());
@@ -698,7 +694,6 @@ export default defineComponent({
           });
           // nodeData.value = res;
           graphData.value = createGraphData1(ranksMap, edges); // createGraphData(res);
-          console.log(graphData.value, '..graphData.value.');
           graph.data(JSON.parse(JSON.stringify(graphData.value)));
           graph.render();
           // console.log(res, getRawData(), combos.value, createGraphData(res));
@@ -713,7 +708,6 @@ export default defineComponent({
     watch(
       () => props.entityId,
       () => {
-        console.log('----');
         getTopologyUpstream();
       },
       { immediate: true }
@@ -726,7 +720,6 @@ export default defineComponent({
       registerCustomCombo();
       registerCustomTooltip();
       registerCustomLayout();
-      console.log(tooltips, '..tooltips...');
       graph = new Graph({
         container: graphRef.value,
         width,
@@ -740,7 +733,10 @@ export default defineComponent({
         },
         defaultNode: {
           type: 'circle',
-          size: 40
+          size: 40,
+          style: {
+            cursor: 'pointer'
+          }
         },
         defaultEdge: {
           type: 'cubic-vertical',
@@ -758,7 +754,7 @@ export default defineComponent({
           }
         },
         modes: {
-          default: ['drag-combo', 'drag-node', 'drag-canvas', 'zoom-canvas']
+          default: []
         }
       });
       graph.node(node => {
@@ -773,6 +769,7 @@ export default defineComponent({
           ...cfg,
           shape: 'cubic-vertical',
           style: {
+            cursor: 'pointer',
             endArrow:
               cfg.type === EdgeStatus.Invoke
                 ? {
@@ -811,7 +808,6 @@ export default defineComponent({
       });
       graph.on('afterlayout', () => {
         const combos = graph.getCombos();
-        console.log(combos, 'afterlayout');
         const groups = Array.from(new Set(combos.map(combo => combo.get('model').groupId)));
         const filterCombos = combos.filter(item => !item.get('model').parentId);
 
@@ -841,7 +837,6 @@ export default defineComponent({
           const childCombo = combos.find(item => item.get('model').parentId === id);
           if (childCombo) {
             return;
-            console.log('childCombochildCombo', childCombo, combo.getBBox(), combo);
             graph.updateItem(childCombo, {
               // fixSize: [w, 108],
               x: combo.getBBox().width - 30,
@@ -861,7 +856,6 @@ export default defineComponent({
         graph.setItemState(nodeItem, 'running', false);
       });
       graph.on('combo:click', () => {
-        console.log('---');
         tooltips.hide();
       });
       graph.on('node:click', e => {
@@ -874,16 +868,13 @@ export default defineComponent({
 
         return;
         const { item, target } = e;
-        console.log('=====', target, item, item.get('model'));
         if (target.cfg.name !== 'resource-node-rect') return;
         const { comboId, aggregated_nodes, id } = item.get('model');
         if (target.cfg.name === 'resource-node-text') {
-          console.log('sadasd');
           return;
         }
         openNode.value = item.get('model');
         const rawData = getRawData();
-        console.log(rawData, '...===>');
         rawData.combos.push({
           id: 'resource-child-combo',
           parentId: comboId,
@@ -935,9 +926,24 @@ export default defineComponent({
       // graph.data(graphData.value);
       // graph.render();
     };
-
+    function handleResize() {
+      if (!graph || graph.get('destroyed') || !graphRef.value) return;
+      const { height } = document.querySelector('.resource-graph').getBoundingClientRect();
+      const { width, height: cHeight } = graphRef.value.getBoundingClientRect();
+      tooltipsRef?.value?.hide?.();
+      tooltips?.hide?.();
+      graph.changeSize(width, Math.max(160 * graphData.value.combos.length, height - 40));
+      graph.render();
+    }
+    const onResize = debounce(300, handleResize);
     onMounted(() => {
       init();
+      nextTick(() => {
+        addListener(graphRef.value, onResize);
+      });
+    });
+    onUnmounted(() => {
+      graphRef.value && removeListener(graphRef.value, onResize);
     });
     return {
       graphRef,
@@ -950,25 +956,26 @@ export default defineComponent({
   },
   render() {
     return (
-      <Loading
-        loading={this.loading}
-        color='#292A2B'
-      >
-        <div class='resource-graph'>
+      <div class='resource-graph'>
+        <Loading
+          class='resource-graph-loading'
+          loading={this.loading}
+          color='#292A2B'
+        >
           <div
             ref='graphRef'
             class='graph-wrapper'
           />
-          <div style='display: none'>
-            <FailureTopoTooltips
-              ref='tooltipsRef'
-              showViewResource={false}
-              model={this.tooltipsModel}
-              type={this.tooltipsType}
-            />
-          </div>
+        </Loading>
+        <div style='display: none'>
+          <FailureTopoTooltips
+            ref='tooltipsRef'
+            showViewResource={false}
+            model={this.tooltipsModel}
+            type={this.tooltipsType}
+          />
         </div>
-      </Loading>
+      </div>
     );
   }
 });

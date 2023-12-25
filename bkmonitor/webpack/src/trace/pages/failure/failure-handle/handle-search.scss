@@ -66,6 +66,8 @@
       width: 32px;
       height: 32px;
       font-size: 14px;
+      position: absolute;
+      right: 0px;
       color: #c4c6cc;
       text-align: center;
       border-left: 1px solid #eaebf0;
@@ -99,7 +101,7 @@
       }
 
       .bk-node-prefix {
-        color: #c4c6cc; 
+        color: #c4c6cc;
       }
 
       .bk-node-text {
@@ -163,8 +165,8 @@
     margin: 6px 0 12px;
     .drop-item {
       height: 26px;
-      line-height: 26px; 
-      color: #63656E;
+      line-height: 26px;
+      color: #63656e;
     }
     .drop-item-checkbox {
       display: block;

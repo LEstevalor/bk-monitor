@@ -25,7 +25,7 @@
  */
 import { defineComponent, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Input, Loading, Select, Tree, PopConfirm, Checkbox } from 'bkui-vue';
+import { Input, Loading, Select, Tree, PopConfirm, Checkbox, Dropdown } from 'bkui-vue';
 import { BkCheckboxGroup } from 'bkui-vue/lib/checkbox';
 
 import { incidentAlertAggregate } from '../../../../monitor-api/modules/incident';
