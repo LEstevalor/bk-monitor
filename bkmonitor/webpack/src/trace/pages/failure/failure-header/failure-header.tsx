@@ -130,7 +130,7 @@ export default defineComponent({
           </div>
           {list.map((item: any, ind: number) => (
             <span class={['tips-item', { marked: ind === 0 }]}>
-              {item.name}：<b>{item.count}</b> (<b>{Math.round((item.count / total) * 100)}%</b>)
+              {item.name}：<b>{item.count}</b> (<b>{Math.round((item.count / total) * 100) || 0}%</b>)
               {/* {ind === 0 && tipsItem(10)} */}
             </span>
           ))}
@@ -140,7 +140,7 @@ export default defineComponent({
     const renderStatusIcon = (status = 'closed') => {
       // 未恢复
       if (status === 'abnormal') {
-        const data = alertAggregateData.value?.ABNORMAL || {};
+        const data = alertAggregateData.value.filter(item => item.id === 'ABNORMAL')[0] || {};
         return (
           <Popover
             placement='bottom-start'
@@ -162,7 +162,7 @@ export default defineComponent({
               bg-color='#EBECF0'
               color='#EB3333'
             >
-              <label class='status-num'>{data?.count}</label>
+              <label class='status-num'>{data?.count || 0}</label>
             </Progress>
           </Popover>
         );
@@ -226,7 +226,8 @@ export default defineComponent({
       listLoading,
       formatDuration,
       showTime,
-      timer
+      timer,
+      getIncidentAlertAggregate
     };
   },
   render() {
@@ -313,6 +314,7 @@ export default defineComponent({
             levelList={this.levelList}
             data={this.incidentDetailData}
             onChange={val => (this.isShow = val)}
+            onEditSuccess={this.getIncidentAlertAggregate}
           />
           {this.DialogFn()}
         </div>

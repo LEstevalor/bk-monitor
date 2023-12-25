@@ -43,7 +43,7 @@ export default defineComponent({
     }
   },
   setup(props) {
-    useIncidentProvider(computed(() => props.id || '17031239204139'));
+    useIncidentProvider(computed(() => props.id || '17031269834139'));
     const tagDomHeight = ref<Number>(40);
     const collapseTagHandle = (val: boolean, height: Number) => {
       tagDomHeight.value = height;
@@ -53,7 +53,7 @@ export default defineComponent({
     const getIncidentDetail = () => {
       incidentDetail({
         bk_biz_id: 2,
-        id: props.id || '17031239204139'
+        id: props.id || '17031269834139'
       })
         .then(res => {
           incidentDetailData.value = res;
