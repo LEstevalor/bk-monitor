@@ -25,11 +25,11 @@
  */
 import { defineComponent, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Input, Loading, Select, Tree, PopConfirm, Checkbox } from 'bkui-vue';
+import { Input, Loading, Select, Tree, PopConfirm, Checkbox, Dropdown } from 'bkui-vue';
 import { BkCheckboxGroup } from 'bkui-vue/lib/checkbox';
 
 import { incidentAlertAggregate } from '../../../../monitor-api/modules/incident';
-// import FilterSearchMain from './filter-search-main';
+import FilterSearchMain from './filter-search-main';
 import { useIncidentInject } from '../utils';
 import './handle-search.scss';
 
@@ -40,6 +40,8 @@ export default defineComponent({
     const listLoading = ref(false);
     const isShowDropdown = ref(false);
     const cacheAggregateData = ref([]);
+    const bkBizIds = ref([]);
+    const queryString = ref('');
     const aggregateBysList = [
       {
         name: t('节点层级'),
@@ -73,25 +75,14 @@ export default defineComponent({
     };
     const searchHeadFn = () => (
       <div class='handle-search-top'>
-        {/* <FilterSearchMain /> */}
-        <Select
-          class='top-select'
-          prefix={t('空间筛选')}
-        />
-        <Input
-          placeholder={t('请输入搜索条件')}
-          v-slots={{
-            prefix: () => {
-              return <i class='icon-monitor icon-filter-fill prefix-slot'></i>;
-            },
-            suffix: () => {
-              return (
-                <span class='suffix-slot'>
-                  <i class='icon-monitor icon-mc-uncollect suffix-icon' />
-                  {t('收藏')}
-                </span>
-              );
-            }
+        <FilterSearchMain
+          onSearch={(val: string) => {
+            queryString.value = val;
+            getIncidentAlertAggregate();
+          }}
+          onChangeSpace={(val: Array<string>) => {
+            bkBizIds.value = val;
+            getIncidentAlertAggregate();
           }}
         />
       </div>
@@ -101,11 +92,12 @@ export default defineComponent({
       incidentAlertAggregate({
         bk_biz_id: 2,
         id: incidentId.value,
-        aggregate_bys: aggregateBys.value
+        aggregate_bys: aggregateBys.value,
+        bk_biz_ids: bkBizIds.value,
+        query_string: queryString.value
       })
         .then(res => {
           alertAggregateData.value = Object.values(res);
-          // console.log(res, alertAggregateData.value);
         })
         .catch(err => {
           console.log(err);
@@ -144,51 +136,12 @@ export default defineComponent({
         }}
       />
     );
-    const listFn = () => (
-      <div class='handle-search-list'>
-        <div class='search-head'>
-          {t('我负责的告警')}
-          <Dropdown
-            ext-cls='aggregate-dropdown'
-            trigger='manual'
-            is-show={isShowDropdown.value}
-            placement='bottom-start'
-            v-slots={{
-              content: () => (
-                <Dropdown.DropdownMenu extCls={'search-btn-drop'}>
-                  {aggregateBysList.map(item => (
-                    <Dropdown.DropdownItem
-                      // extCls={`${this.orderByType === item.key ? 'active' : ''}`}
-                      onclick={() => this.filterListHandle(item.key)}
-                    >
-                      {item.name}
-                    </Dropdown.DropdownItem>
-                  ))}
-                </Dropdown.DropdownMenu>
-              )
-            }}
-          >
-            <i class='icon-monitor icon-menu-setting search-head-icon' />
-          </Dropdown>
-        </div>
-        <Loading loading={listLoading.value}>
-          <div class='search-tree'>{treeFn()}</div>
-        </Loading>
-      </div>
-    );
-    const renderFn = () => (
-      <div class='handle-search'>
-        {searchHeadFn()}
-        {listFn()}
-      </div>
-    );
     onMounted(() => {
       getIncidentAlertAggregate();
       cacheAggregateData.value = JSON.parse(JSON.stringify(aggregateBys.value));
     });
     return {
       t,
-      renderFn,
       searchHeadFn,
       filterListHandle,
       isShowDropdown,

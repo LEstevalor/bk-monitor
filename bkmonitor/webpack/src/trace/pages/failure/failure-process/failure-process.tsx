@@ -354,7 +354,8 @@ export default defineComponent({
 
     const getIncidentOperations = () => {
       incidentOperations({
-        incident_id: incidentId.value
+        incident_id: incidentId.value,
+        id: incidentId.value
       })
         .then(res => {
           res.forEach(item => {
@@ -371,7 +372,7 @@ export default defineComponent({
     const getIncidentOperationTypes = () => {
       tableLoading.value = true;
       incidentOperationTypes({
-        incident_id: incidentId.value
+        id: incidentId.value
       })
         .then(res => {
           res.forEach(item => {

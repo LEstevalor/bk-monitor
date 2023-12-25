@@ -23,9 +23,10 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-import { defineComponent, ref } from 'vue';
+import { defineComponent, ref, inject, Ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Collapse, Dialog, Form, Input } from 'bkui-vue';
+import { Collapse, Dialog, Form, Input, Message } from 'bkui-vue';
+import { feedbackIncidentRoot } from '../../../../monitor-api/modules/incident';
 
 import './feedback-cause-dialog.scss';
 
@@ -36,6 +37,7 @@ export default defineComponent({
       type: Boolean,
       required: false
     },
+    /** 节点信息 */
     data: {
       type: Object,
       default: () => ({})
@@ -45,64 +47,113 @@ export default defineComponent({
       default: _v => {}
     }
   },
-  setup(props) {
+  emits: ['editSuccess'],
+  setup(props, { emit }) {
     const { t } = useI18n();
     const activeIndex = ref([0, 1]);
-    const originalFaultFn = () => (
-      <div class='fault-item'>
-        Service（我是告警名称占位) 于 <b>2023-10-10 00:00:00</b> 发生异常，导致
-        <b> 141</b> 个告警
-      </div>
-    );
-    const newFeedback = () => (
-      <Form
-        label-width={100}
-        class='feedback-form'
-      >
-        <Form.FormItem label={t('根因所属节点:')}>节点名称名称（id=XXXXXXX)</Form.FormItem>
-        <Form.FormItem label={t('分类:')}>服务</Form.FormItem>
-        <Form.FormItem label={t('节点类型:')}>Service</Form.FormItem>
-        <Form.FormItem label={t('所属业务:')}>[100147] DNF 地下城与勇士</Form.FormItem>
-        <Form.FormItem
-          required
-          label={t('故障根因文案')}
-        >
-          <Input
-            type='textarea'
-            maxlength={300}
-          />
-        </Form.FormItem>
-      </Form>
-    );
-    const collapseList = ref([
-      { name: t('原故障根因'), renderFn: originalFaultFn },
-      { name: t('反馈新根因'), renderFn: newFeedback }
-    ]);
+    const btnLoading = ref(false);
+    const formData = ref({
+      feedbackContent: ''
+    });
+    const formRef = ref('');
+    const incidentDetail = inject<Ref<object>>('incidentDetail');
+    const incidentDetailData = computed(() => {
+      return incidentDetail.value;
+    });
     function valueChange(v) {
       props.onChange(v);
     }
+    const handleFeedbackIncidentRoot = () => {
+      formRef.value.validate().then(() => {
+        btnLoading.value = true;
+        const { id, incident_id, bk_biz_id } = incidentDetailData.value;
+        const params = {
+          id,
+          incident_id,
+          bk_biz_id,
+          feedback: {
+            incident_root: props.data.entity.entity_id,
+            content: formData.value.feedbackContent
+          }
+        };
+        console.log(params);
+        feedbackIncidentRoot(params)
+          .then(() => {
+            Message({
+              theme: 'success',
+              message: t('反馈成功')
+            });
+            emit('editSuccess');
+          })
+          .catch(() => {
+            // valueChange(true);
+          })
+          .finally(() => (btnLoading.value = false));
+      });
+    };
+
     return {
       t,
       valueChange,
-      collapseList,
-      activeIndex
+      formData,
+      formRef,
+      activeIndex,
+      handleFeedbackIncidentRoot,
+      btnLoading,
+      incidentDetailData
     };
   },
   render() {
+    const originalFaultFn = () => <div class='fault-item'>{this.incidentDetailData?.incident_name || '--'}</div>;
+    const newFeedback = () => {
+      const { bk_biz_id, bk_biz_name, entity } = this.$props.data;
+      const { entity_type, rank, entity_id } = entity;
+      return (
+        <Form
+          ref='formRef'
+          label-width={100}
+          class='feedback-form'
+          model={this.formData}
+        >
+          <Form.FormItem label={this.t('根因所属节点:')}>{entity_id}</Form.FormItem>
+          <Form.FormItem label={this.t('分类:')}>{rank?.rank_alias || '--'}</Form.FormItem>
+          <Form.FormItem label={this.t('节点类型:')}>{entity_type}</Form.FormItem>
+          <Form.FormItem label={this.t('所属业务:')}>{`[${bk_biz_id}] ${bk_biz_name}`}</Form.FormItem>
+          <Form.FormItem
+            required
+            property='feedbackContent'
+            label={this.t('故障根因文案')}
+          >
+            <Input
+              v-model={this.formData.feedbackContent}
+              type='textarea'
+              maxlength={300}
+            />
+          </Form.FormItem>
+        </Form>
+      );
+    };
+    const collapseList = [
+      { name: this.t('原故障根因'), renderFn: originalFaultFn },
+      { name: this.t('反馈新根因'), renderFn: newFeedback }
+    ];
     return (
       <Dialog
         ext-cls='feedback-cause-dialog'
         is-show={this.$props.visible}
         title={this.t('反馈新根因')}
         dialog-type='operation'
+        is-loading={this.btnLoading}
         width={660}
         onUpdate:isShow={this.valueChange}
+        onConfirm={this.handleFeedbackIncidentRoot}
+        onClosed={() => (this.formData.feedbackContent = '')}
       >
         <Collapse
           v-model={this.activeIndex}
           header-icon='right-shape'
           class='feedback-cause-collapse'
-          list={this.collapseList}
+          list={collapseList}
           v-slots={{
             content: (item: any) => item.renderFn()
           }}

@@ -23,74 +23,24 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
+export default function (miliseconds = 100, timeoutPropertyName = 'timeoutFn'): MethodDecorator {
+  return function (
+    target: Object,
+    propertyKey: string | symbol,
+    descriptor: TypedPropertyDescriptor<any>
+  ): TypedPropertyDescriptor<any> {
+    Object.defineProperty(target, timeoutPropertyName, {
+      value: 0,
+      writable: true
+    });
+    const originalMethod: Function = descriptor.value;
 
-import { ITopoNode } from './types';
-
-const rootNodeAttrs = {
-  groupAttrs: {
-    fill: '#F55555',
-    stroke: '#F55555'
-  },
-  rectAttrs: {
-    stroke: '#3A3B3D',
-    fill: '#F55555'
-  },
-  textAttrs: {
-    fill: '#fff'
-  }
-};
-const feedbackRootAttrs = {
-  groupAttrs: {
-    fill: '#FF9C01',
-    stroke: '#FF9C01'
-  },
-  rectAttrs: {
-    stroke: '#3A3B3D',
-    fill: '#FF9C01'
-  },
-  textAttrs: {
-    fill: '#fff'
-  }
-};
-const errorNodeAttrs = {
-  groupAttrs: {
-    fill: 'rgba(255, 102, 102, 0.4)',
-    stroke: '#F55555'
-  },
-  rectAttrs: {
-    stroke: '#F55555',
-    fill: '#313238'
-  },
-  textErrorAttrs: {
-    fill: '#313238'
-  },
-  textNormalAttrs: {
-    fill: '#fff'
-  }
-};
-
-const normalNodeAttrs = {
-  groupAttrs: {
-    fill: 'rgba(197, 197, 197, 0.2)',
-    stroke: '#979BA5'
-  },
-  rectAttrs: {
-    stroke: '#EAEBF0',
-    fill: '#313238'
-  },
-  textAttrs: {
-    fill: '#fff'
-  }
-};
-export const getNodeAttrs = (node: ITopoNode) => {
-  if (node?.is_feedback_root) {
-    return { ...feedbackRootAttrs };
-  }
-  if (node.entity?.is_root) {
-    return { ...rootNodeAttrs };
-  }
-  if (node.entity?.is_anomaly) {
-    return { ...errorNodeAttrs };
-  }
-  return { ...normalNodeAttrs };
-};
+    descriptor.value = function (...args) {
+      if (this[timeoutPropertyName]) clearTimeout(this[timeoutPropertyName]);
+      this[timeoutPropertyName] = setTimeout(() => {
+        originalMethod.apply(this, args);
+      }, miliseconds);
+    };
+    return descriptor;
+  };
+}
