@@ -16,7 +16,6 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 from django.conf import settings
-from django.templatetags.i18n import language
 
 from alarm_backends.core.context import logger
 from alarm_backends.service.new_report.handler.base import BaseReportHandler
@@ -231,7 +230,7 @@ class ClusteringReportHandler(BaseReportHandler):
         """
         获取渲染参数
         """
-        time_config = get_data_range(self.report.frequency)
+        time_config = get_data_range(self.report.frequency, self.report.bk_biz_id)
         try:
             result = self.query_patterns(time_config)
         except Exception as e:
@@ -266,7 +265,7 @@ class ClusteringReportHandler(BaseReportHandler):
             logger.exception("get space info error: {}".format(e))
 
         render_params = {
-            "language": language,
+            "bk_biz_id": self.report.bk_biz_id,
             "title": content_config["title"],
             "time_config": time_config,
             "show_year_on_year": False if scenario_config["year_on_year_hour"] == YearOnYearEnum.NOT.value else True,
@@ -291,6 +290,9 @@ class ClusteringReportHandler(BaseReportHandler):
         """
         渲染订阅
         """
+        if not render_params:
+            logger.exception(f"render_params {render_params} is None.")
+            return render_params
         render_params["title"] = render_params["title"].format(**render_params)
         render_params["mail_template_path"] = self.mail_template_path
         render_params["wechat_template_path"] = self.wechat_template_path

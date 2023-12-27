@@ -44,23 +44,18 @@ class BaseReportHandler(object):
         """
         执行订阅
         """
-        # 根据渠道分别发送，记录最新发送轮次
-        send_round = 0
-        if self.report.id:
-            send_round = self.report.send_round + 1 if self.report.send_round else 1
-            self.report.send_round = send_round
-            self.report.save()
         if not channels:
             channels = self.channels
-        SendChannelHandler.create_send_record(channels, send_round)
         # 获取渲染参数
         render_params = self.get_render_params()
         # 渲染订阅内容,获取上下文
         context = self.render(render_params)
-
+        if not context:
+            logger.exception(f"failed to send report({self.report.id}), context is None.")
+            return
         for channel in channels:
             if channel.is_enabled:
-                SendChannelHandler(channel).send(context, send_round, self.report.bk_biz_id)
+                SendChannelHandler(channel).send(context, self.report.send_round, self.report.bk_biz_id)
 
     def get_render_params(self) -> dict:
         """
@@ -108,9 +103,9 @@ class SendChannelHandler(object):
         send_time = datetime.datetime.now()
         send_results = []
         # 解析发送结果并记录
-        if result.get("error_code", None) is not None:
-            send_status = SendStatusEnum.SUCCESS.value if result["error_code"] == 0 else SendStatusEnum.FAILED.value
-            send_result = result["error_code"] == 0
+        if result.get("errcode", None) is not None:
+            send_status = SendStatusEnum.SUCCESS.value if result["errcode"] == 0 else SendStatusEnum.FAILED.value
+            send_result = result["errcode"] == 0
             for subscriber in self.channel.subscribers:
                 send_results.append({"id": subscriber["id"], "result": send_result})
         else:
@@ -143,27 +138,6 @@ class SendChannelHandler(object):
         ReportSendRecord.objects.filter(
             report_id=self.channel.report_id, channel_name=self.channel.channel_name, send_round=send_round
         ).update(**send_record)
-
-    @staticmethod
-    def create_send_record(channels, send_round):
-        send_time = datetime.datetime.now()
-        send_records = []
-        for channel in channels:
-            if not channel.is_enabled:
-                continue
-            send_records.append(
-                ReportSendRecord(
-                    **{
-                        "report_id": channel.report_id,
-                        "channel_name": channel.channel_name,
-                        "send_results": [],
-                        "send_status": SendStatusEnum.NO_STATUS.value,
-                        "send_time": send_time,
-                        "send_round": send_round,
-                    }
-                )
-            )
-        ReportSendRecord.objects.bulk_create(send_records)
 
     def fetch_subscribers(self, bk_biz_id=None):
         """
